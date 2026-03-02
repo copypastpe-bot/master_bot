@@ -22,6 +22,7 @@ class Master:
     bonus_birthday: int = 300
     gc_connected: bool = False
     gc_credentials: Optional[str] = None
+    home_message_id: Optional[int] = None
     created_at: Optional[datetime] = None
 
 
@@ -50,6 +51,10 @@ class MasterClient:
     last_visit: Optional[datetime] = None
     notify_reminders: bool = True
     notify_marketing: bool = True
+    notify_24h: bool = True
+    notify_1h: bool = True
+    notify_promos: bool = True
+    home_message_id: Optional[int] = None
 
 
 @dataclass

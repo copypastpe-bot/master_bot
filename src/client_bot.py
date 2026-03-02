@@ -1,25 +1,38 @@
 """Client bot - for clients to view bonuses, history, and make requests."""
 
 import logging
+from datetime import date
+
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.exceptions import TelegramBadRequest
 
 from src.config import CLIENT_BOT_TOKEN, LOG_LEVEL
 from src.states import ClientRegistration
-from src.keyboards import client_home_kb, skip_kb, share_contact_kb
+from src.keyboards import (
+    home_client_kb, client_bonuses_kb, client_history_kb as client_history_section_kb,
+    client_promos_kb, client_master_info_kb, client_notifications_kb,
+    skip_kb, share_contact_kb, stub_kb,
+)
 from src.database import (
     init_db,
     get_master_by_invite_token,
+    get_master_by_id,
     get_client_by_tg_id,
     get_client_by_phone,
     create_client,
     update_client,
     link_client_to_master,
     get_master_client,
-    get_master_by_tg_id,
+    get_master_client_by_client_tg_id,
+    save_client_home_message_id,
+    toggle_client_notification,
+    get_client_orders,
+    get_client_bonus_log,
+    get_active_campaigns,
 )
 from src.utils import format_phone, parse_date
 
@@ -30,58 +43,91 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize bot and dispatcher
+# Initialize router
 router = Router()
 
-
-async def show_home(message: Message, client, master, master_client) -> None:
-    """Display home screen for client."""
-    text = (
-        f"👋 Привет, {client.name}!\n\n"
-        f"Ваш мастер: {master.name}\n"
-        f"💰 Бонусов: {master_client.bonus_balance} ₽"
-    )
-
-    await message.answer(text, reply_markup=client_home_kb())
+MONTHS_RU = [
+    "", "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря"
+]
 
 
 # =============================================================================
-# Start command and registration
+# Home Screen
+# =============================================================================
+
+async def build_home_text(client, master, master_client) -> str:
+    """Build home screen text."""
+    return (
+        f"👋 Привет, {client.name}!\n\n"
+        f"💰 Ваши бонусы: {master_client.bonus_balance} ₽\n"
+        f"Мастер: {master.name}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+
+async def show_home(bot: Bot, client, master, master_client, chat_id: int) -> int:
+    """Show or update home screen. Returns message_id."""
+    text = await build_home_text(client, master, master_client)
+    keyboard = home_client_kb()
+
+    if master_client.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=master_client.home_message_id,
+                text=text,
+                reply_markup=keyboard
+            )
+            return master_client.home_message_id
+        except TelegramBadRequest:
+            pass
+
+    # Send new message
+    msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+    await save_client_home_message_id(master_client.master_id, master_client.client_id, msg.message_id)
+    return msg.message_id
+
+
+async def edit_home_message(callback: CallbackQuery, text: str, keyboard) -> None:
+    """Edit the home message with new content."""
+    try:
+        await callback.message.edit_text(text=text, reply_markup=keyboard)
+    except TelegramBadRequest:
+        pass
+
+
+async def get_client_context(tg_id: int) -> tuple:
+    """Get client, master, and master_client for a user."""
+    client = await get_client_by_tg_id(tg_id)
+    if not client or not client.registered_via:
+        return None, None, None
+
+    master = await get_master_by_id(client.registered_via)
+    if not master:
+        return client, None, None
+
+    master_client = await get_master_client(master.id, client.id)
+    return client, master, master_client
+
+
+# =============================================================================
+# Start and Home Commands
 # =============================================================================
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, state: FSMContext) -> None:
-    """Handle /start command - check invite token or show message."""
+async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Handle /start command."""
     tg_id = message.from_user.id
 
-    # Check if client already registered
-    client = await get_client_by_tg_id(tg_id)
-    if client and client.registered_via:
+    # Check if already registered
+    client, master, master_client = await get_client_context(tg_id)
+    if client and master and master_client:
         await state.clear()
-        # Get master info for home screen
-        from src.database import get_connection
-        conn = await get_connection()
-        try:
-            cursor = await conn.execute(
-                "SELECT * FROM masters WHERE id = ?",
-                (client.registered_via,)
-            )
-            master_row = await cursor.fetchone()
-            if master_row:
-                from src.models import Master
-                master = Master(
-                    id=master_row["id"],
-                    tg_id=master_row["tg_id"],
-                    name=master_row["name"],
-                    invite_token=master_row["invite_token"],
-                )
-                master_client = await get_master_client(master.id, client.id)
-                await show_home(message, client, master, master_client)
-                return
-        finally:
-            await conn.close()
+        await show_home(bot, client, master, master_client, message.chat.id)
+        return
 
-    # Extract invite token from start parameter
+    # Extract invite token
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
         await message.answer(
@@ -93,7 +139,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
     invite_token = args[1].strip()
 
-    # Find master by invite token
+    # Find master
     master = await get_master_by_invite_token(invite_token)
     if not master:
         await message.answer(
@@ -102,7 +148,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         )
         return
 
-    # Store master_id in state for registration
+    # Store master_id for registration
     await state.update_data(master_id=master.id)
 
     await message.answer(
@@ -114,47 +160,26 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
 
 @router.message(Command("home"))
-async def cmd_home(message: Message, state: FSMContext) -> None:
-    """Handle /home command - return to home screen."""
+async def cmd_home(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Handle /home command."""
     tg_id = message.from_user.id
-    client = await get_client_by_tg_id(tg_id)
 
-    if not client or not client.registered_via:
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master or not master_client:
         await message.answer("Вы ещё не зарегистрированы. Перейдите по ссылке от мастера.")
         return
 
     await state.clear()
-
-    # Get master info
-    from src.database import get_connection
-    conn = await get_connection()
-    try:
-        cursor = await conn.execute(
-            "SELECT * FROM masters WHERE id = ?",
-            (client.registered_via,)
-        )
-        master_row = await cursor.fetchone()
-        if master_row:
-            from src.models import Master
-            master = Master(
-                id=master_row["id"],
-                tg_id=master_row["tg_id"],
-                name=master_row["name"],
-                invite_token=master_row["invite_token"],
-            )
-            master_client = await get_master_client(master.id, client.id)
-            await show_home(message, client, master, master_client)
-    finally:
-        await conn.close()
+    await show_home(bot, client, master, master_client, message.chat.id)
 
 
 # =============================================================================
-# Registration FSM handlers
+# Registration FSM
 # =============================================================================
 
 @router.message(ClientRegistration.name)
 async def reg_name(message: Message, state: FSMContext) -> None:
-    """Step 1: Save name and ask for phone."""
+    """Step 1: Save name."""
     name = message.text.strip()[:100]
     await state.update_data(name=name)
 
@@ -169,7 +194,7 @@ async def reg_name(message: Message, state: FSMContext) -> None:
 
 @router.message(ClientRegistration.phone, F.contact)
 async def reg_phone_contact(message: Message, state: FSMContext) -> None:
-    """Step 2: Save phone from contact and ask for birthday."""
+    """Step 2: Save phone from contact."""
     phone = format_phone(message.contact.phone_number)
     await state.update_data(phone=phone)
 
@@ -179,14 +204,13 @@ async def reg_phone_contact(message: Message, state: FSMContext) -> None:
         "Мастер сможет поздравить вас и начислить бонусы!",
         reply_markup=ReplyKeyboardRemove()
     )
-    # Also send skip keyboard
     await message.answer("Или пропустите этот шаг:", reply_markup=skip_kb())
     await state.set_state(ClientRegistration.birthday)
 
 
 @router.message(ClientRegistration.phone)
 async def reg_phone_text(message: Message, state: FSMContext) -> None:
-    """Step 2: Save phone from text and ask for birthday."""
+    """Step 2: Save phone from text."""
     phone = format_phone(message.text.strip())
     await state.update_data(phone=phone)
 
@@ -201,39 +225,38 @@ async def reg_phone_text(message: Message, state: FSMContext) -> None:
 
 
 @router.message(ClientRegistration.birthday)
-async def reg_birthday(message: Message, state: FSMContext) -> None:
-    """Step 3: Save birthday and complete registration."""
+async def reg_birthday(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Step 3: Save birthday."""
     birthday = parse_date(message.text)
     if birthday:
         await state.update_data(birthday=birthday.isoformat())
     else:
         await state.update_data(birthday=None)
 
-    await complete_registration(message, state)
+    await complete_registration(message, state, bot)
 
 
 @router.callback_query(ClientRegistration.birthday, F.data == "skip")
-async def reg_birthday_skip(callback: CallbackQuery, state: FSMContext) -> None:
+async def reg_birthday_skip(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
     """Step 3: Skip birthday."""
     await state.update_data(birthday=None)
-    await complete_registration(callback.message, state, edit=True)
+    await complete_registration(callback.message, state, bot, edit=True)
     await callback.answer()
 
 
-async def complete_registration(message: Message, state: FSMContext, edit: bool = False) -> None:
-    """Complete client registration and show home."""
+async def complete_registration(message: Message, state: FSMContext, bot: Bot, edit: bool = False) -> None:
+    """Complete client registration."""
     data = await state.get_data()
     tg_id = message.chat.id
     master_id = data["master_id"]
 
-    # Check if client exists by phone (added manually by master)
+    # Check if client exists by phone
     phone = data.get("phone")
     existing_client = None
     if phone:
         existing_client = await get_client_by_phone(phone)
 
     if existing_client:
-        # Link existing client record to Telegram
         await update_client(existing_client.id, tg_id=tg_id, name=data["name"])
         if data.get("birthday"):
             await update_client(existing_client.id, birthday=data["birthday"])
@@ -241,7 +264,6 @@ async def complete_registration(message: Message, state: FSMContext, edit: bool 
         client.tg_id = tg_id
         client.name = data["name"]
     else:
-        # Create new client
         client = await create_client(
             tg_id=tg_id,
             name=data["name"],
@@ -250,13 +272,11 @@ async def complete_registration(message: Message, state: FSMContext, edit: bool 
             registered_via=master_id,
         )
 
-    # Link client to master
+    # Link to master
     master_client = await link_client_to_master(master_id, client.id)
+    master = await get_master_by_id(master_id)
 
     await state.clear()
-
-    # Get master info for home screen
-    master = await get_master_by_invite_token_by_id(master_id)
 
     success_text = "✅ Регистрация завершена!\n\nДобро пожаловать!"
 
@@ -265,77 +285,280 @@ async def complete_registration(message: Message, state: FSMContext, edit: bool 
     else:
         await message.answer(success_text)
 
-    await show_home(message, client, master, master_client)
-
-
-async def get_master_by_invite_token_by_id(master_id: int):
-    """Get master by ID."""
-    from src.database import get_connection
-    from src.models import Master
-    conn = await get_connection()
-    try:
-        cursor = await conn.execute(
-            "SELECT * FROM masters WHERE id = ?",
-            (master_id,)
-        )
-        row = await cursor.fetchone()
-        if row:
-            return Master(
-                id=row["id"],
-                tg_id=row["tg_id"],
-                name=row["name"],
-                invite_token=row["invite_token"],
-            )
-        return None
-    finally:
-        await conn.close()
+    await show_home(bot, client, master, master_client, message.chat.id)
 
 
 # =============================================================================
-# Callback query handlers for menu (placeholders)
+# Navigation: Home
+# =============================================================================
+
+@router.callback_query(F.data == "home")
+async def cb_home(callback: CallbackQuery, bot: Bot) -> None:
+    """Return to home screen."""
+    tg_id = callback.from_user.id
+
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master or not master_client:
+        await callback.answer("Ошибка")
+        return
+
+    text = await build_home_text(client, master, master_client)
+    await edit_home_message(callback, text, home_client_kb())
+    await callback.answer()
+
+
+# =============================================================================
+# Bonuses Section
 # =============================================================================
 
 @router.callback_query(F.data == "bonuses")
 async def cb_bonuses(callback: CallbackQuery) -> None:
-    """Handle Bonuses button."""
-    await callback.answer("Раздел 'Мои бонусы' будет доступен в следующей версии")
+    """Show bonuses."""
+    tg_id = callback.from_user.id
 
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master:
+        await callback.answer("Ошибка")
+        return
+
+    bonus_log = await get_client_bonus_log(master.id, client.id, limit=10)
+
+    if bonus_log:
+        log_text = "\n".join(
+            f"• {b.get('created_at', '')[:10] if b.get('created_at') else '—'} "
+            f"{'+' if b.get('amount', 0) > 0 else ''}{b.get('amount', 0)} — "
+            f"{b.get('comment', 'операция')}"
+            for b in bonus_log
+        )
+    else:
+        log_text = "Операций пока нет"
+
+    text = (
+        "💰 Мои бонусы\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Баланс: {master_client.bonus_balance} ₽\n\n"
+        f"{log_text}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_bonuses_kb())
+    await callback.answer()
+
+
+# =============================================================================
+# History Section
+# =============================================================================
 
 @router.callback_query(F.data == "history")
 async def cb_history(callback: CallbackQuery) -> None:
-    """Handle History button."""
-    await callback.answer("Раздел 'История' будет доступен в следующей версии")
+    """Show order history."""
+    tg_id = callback.from_user.id
 
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master:
+        await callback.answer("Ошибка")
+        return
+
+    orders = await get_client_orders(master.id, client.id, limit=20)
+
+    if orders:
+        orders_text = "\n".join(
+            f"• {o.get('scheduled_at', '')[:10] if o.get('scheduled_at') else '—'} — "
+            f"{o.get('services', '—')[:25]} | {o.get('amount_total', 0)} ₽"
+            for o in orders
+            if o.get('status') == 'done'
+        )
+        if not orders_text:
+            orders_text = "Выполненных заказов пока нет"
+    else:
+        orders_text = "История пуста"
+
+    text = (
+        "📋 История визитов\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"{orders_text}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_history_section_kb())
+    await callback.answer()
+
+
+# =============================================================================
+# Promos Section
+# =============================================================================
 
 @router.callback_query(F.data == "promos")
 async def cb_promos(callback: CallbackQuery) -> None:
-    """Handle Promos button."""
-    await callback.answer("Раздел 'Акции' будет доступен в следующей версии")
+    """Show active promos."""
+    tg_id = callback.from_user.id
 
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master:
+        await callback.answer("Ошибка")
+        return
+
+    campaigns = await get_active_campaigns(master.id)
+
+    if campaigns:
+        promos_text = ""
+        for c in campaigns:
+            active_to = c.active_to
+            if active_to:
+                try:
+                    d = date.fromisoformat(str(active_to))
+                    until_text = f"До {d.day} {MONTHS_RU[d.month]}"
+                except:
+                    until_text = ""
+            else:
+                until_text = ""
+
+            promos_text += f"🔥 {c.title or 'Акция'}\n"
+            promos_text += f"{c.text}\n"
+            if until_text:
+                promos_text += f"{until_text}\n"
+            promos_text += "\n"
+    else:
+        promos_text = "Акций пока нет. Следите за обновлениями!"
+
+    text = (
+        "🎁 Акции\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"{promos_text.strip()}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_promos_kb())
+    await callback.answer()
+
+
+# =============================================================================
+# Master Info Section
+# =============================================================================
+
+@router.callback_query(F.data == "master_info")
+async def cb_master_info(callback: CallbackQuery) -> None:
+    """Show master info."""
+    tg_id = callback.from_user.id
+
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master:
+        await callback.answer("Ошибка")
+        return
+
+    text = (
+        "👨‍🔧 Ваш мастер\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"{master.name}\n"
+        f"{master.sphere or ''}\n\n"
+        f"📞 {master.contacts or '—'}\n"
+        f"🌐 {master.socials or '—'}\n"
+        f"🕐 {master.work_hours or '—'}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_master_info_kb())
+    await callback.answer()
+
+
+# =============================================================================
+# Notifications Section
+# =============================================================================
+
+@router.callback_query(F.data == "notifications")
+async def cb_notifications(callback: CallbackQuery) -> None:
+    """Show notifications settings."""
+    tg_id = callback.from_user.id
+
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master or not master_client:
+        await callback.answer("Ошибка")
+        return
+
+    text = (
+        "🔔 Настройки уведомлений\n"
+        "━━━━━━━━━━━━━━━\n"
+        "(Уведомления о статусе заказа\n"
+        "отключить нельзя)\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_notifications_kb(
+        master_client.notify_24h,
+        master_client.notify_1h,
+        master_client.notify_marketing,
+        master_client.notify_promos,
+    ))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("notifications:toggle:"))
+async def cb_notifications_toggle(callback: CallbackQuery) -> None:
+    """Toggle notification setting."""
+    tg_id = callback.from_user.id
+
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master or not master_client:
+        await callback.answer("Ошибка")
+        return
+
+    field = callback.data.split(":")[2]
+
+    # Toggle in DB
+    new_value = await toggle_client_notification(master.id, client.id, field)
+
+    # Update master_client object
+    setattr(master_client, field, new_value)
+
+    # Update keyboard
+    text = (
+        "🔔 Настройки уведомлений\n"
+        "━━━━━━━━━━━━━━━\n"
+        "(Уведомления о статусе заказа\n"
+        "отключить нельзя)\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_notifications_kb(
+        master_client.notify_24h,
+        master_client.notify_1h,
+        master_client.notify_marketing,
+        master_client.notify_promos,
+    ))
+    await callback.answer("Сохранено")
+
+
+# =============================================================================
+# FSM Stubs
+# =============================================================================
 
 @router.callback_query(F.data == "order_request")
 async def cb_order_request(callback: CallbackQuery) -> None:
-    """Handle Order Request button."""
-    await callback.answer("Раздел 'Заказать' будет доступен в следующей версии")
+    """Order request stub."""
+    text = "🚧 Заявка на заказ — в разработке"
+    await edit_home_message(callback, text, stub_kb("home"))
+    await callback.answer()
 
 
 @router.callback_query(F.data == "question")
 async def cb_question(callback: CallbackQuery) -> None:
-    """Handle Question button."""
-    await callback.answer("Раздел 'Вопрос' будет доступен в следующей версии")
+    """Question stub."""
+    text = "🚧 Вопрос мастеру — в разработке"
+    await edit_home_message(callback, text, stub_kb("home"))
+    await callback.answer()
 
 
 @router.callback_query(F.data == "media")
 async def cb_media(callback: CallbackQuery) -> None:
-    """Handle Media button."""
-    await callback.answer("Раздел 'Фото/видео' будет доступен в следующей версии")
+    """Media stub."""
+    text = "🚧 Отправка фото/видео — в разработке"
+    await edit_home_message(callback, text, stub_kb("home"))
+    await callback.answer()
 
 
-@router.callback_query(F.data == "notifications")
-async def cb_notifications(callback: CallbackQuery) -> None:
-    """Handle Notifications button."""
-    await callback.answer("Раздел 'Уведомления' будет доступен в следующей версии")
-
+# =============================================================================
+# Bot Setup
+# =============================================================================
 
 def setup_dispatcher() -> Dispatcher:
     """Create and configure dispatcher."""
@@ -346,11 +569,9 @@ def setup_dispatcher() -> Dispatcher:
 
 async def main() -> None:
     """Main entry point."""
-    # Initialize database
     await init_db()
     logger.info("Database initialized")
 
-    # Create bot and dispatcher
     bot = Bot(token=CLIENT_BOT_TOKEN)
     dp = setup_dispatcher()
 
