@@ -17,3 +17,68 @@ class ClientRegistration(StatesGroup):
     name = State()      # Step 1: Name
     phone = State()     # Step 2: Phone number
     birthday = State()  # Step 3: Birthday (optional)
+
+
+class CreateOrder(StatesGroup):
+    """Create order flow states (7 steps)."""
+    search_client = State()     # Step 1: Search client by name/phone
+    select_client = State()     # Step 1b: Select from search results
+    address = State()           # Step 2: Enter or select address
+    date = State()              # Step 3: Select date from calendar
+    hour = State()              # Step 4a: Select hour (8-19)
+    minutes = State()           # Step 4b: Select minutes (00/30)
+    services = State()          # Step 5: Select services
+    custom_service = State()    # Step 5b: Enter custom service name
+    amount = State()            # Step 6: Enter amount
+    confirm = State()           # Step 7: Confirmation screen
+    edit_field = State()        # Edit mode: select which field to edit
+
+
+class CreateClientInOrder(StatesGroup):
+    """Mini-FSM for creating new client during order creation."""
+    name = State()      # Client name
+    phone = State()     # Client phone
+    birthday = State()  # Client birthday (optional)
+
+
+class CompleteOrder(StatesGroup):
+    """Complete order flow states."""
+    confirm_amount = State()    # Step 1: Confirm or change amount
+    payment_type = State()      # Step 2: Select payment type
+    use_bonus = State()         # Step 3: Use bonus points (if available)
+    bonus_amount = State()      # Step 3b: Enter bonus amount to use
+    confirm = State()           # Step 4: Final confirmation
+
+
+class MoveOrder(StatesGroup):
+    """Move/reschedule order flow states."""
+    date = State()      # Select new date
+    hour = State()      # Select new hour
+    minutes = State()   # Select new minutes
+    confirm = State()   # Confirm changes (show old vs new)
+
+
+class CancelOrder(StatesGroup):
+    """Cancel order flow states."""
+    reason = State()        # Select or enter reason
+    custom_reason = State() # Enter custom reason
+    confirm = State()       # Confirm cancellation
+
+
+class ClientAdd(StatesGroup):
+    """Add new client from Clients menu."""
+    name = State()      # Client name
+    phone = State()     # Client phone
+    birthday = State()  # Client birthday (optional)
+
+
+class ServiceAdd(StatesGroup):
+    """Add new service to catalog."""
+    name = State()      # Service name
+    price = State()     # Service price
+
+
+class ServiceEdit(StatesGroup):
+    """Edit service in catalog."""
+    name = State()      # Edit service name
+    price = State()     # Edit service price

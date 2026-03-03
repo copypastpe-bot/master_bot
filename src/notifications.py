@@ -1,0 +1,208 @@
+"""Notifications module for sending messages to clients via client_bot."""
+
+import logging
+from datetime import datetime
+from aiogram import Bot
+from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+
+from src.config import CLIENT_BOT_TOKEN
+from src.models import Client, Order, Master
+
+logger = logging.getLogger(__name__)
+
+# Bot instance for sending notifications (no polling)
+client_bot = Bot(token=CLIENT_BOT_TOKEN)
+
+MONTHS_RU = [
+    "", "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря"
+]
+
+
+def format_datetime(dt: datetime) -> str:
+    """Format datetime for display."""
+    return f"{dt.day} {MONTHS_RU[dt.month]} в {dt.strftime('%H:%M')}"
+
+
+async def notify_order_created(
+    client: Client,
+    order: dict,
+    master: Master,
+    services: list[dict]
+) -> bool:
+    """Notify client about new order."""
+    if not client.tg_id:
+        return False
+
+    try:
+        scheduled_at = order.get("scheduled_at")
+        if isinstance(scheduled_at, str):
+            scheduled_at = datetime.fromisoformat(scheduled_at)
+
+        services_text = ", ".join(s["name"] for s in services)
+        amount = order.get("amount_total", 0)
+
+        text = (
+            "📋 Новая запись!\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"📅 {format_datetime(scheduled_at)}\n"
+            f"📍 {order.get('address', '—')}\n"
+            f"🛠 {services_text}\n"
+            f"💰 Сумма: {amount} ₽\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Мастер: {master.name}\n"
+            f"📞 {master.contacts or '—'}"
+        )
+
+        await client_bot.send_message(client.tg_id, text)
+        logger.info(f"Notification sent to client {client.id}: order created")
+        return True
+
+    except TelegramForbiddenError:
+        logger.warning(f"Client {client.id} blocked the bot")
+        return False
+    except TelegramBadRequest as e:
+        logger.error(f"Failed to send notification to client {client.id}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending notification to client {client.id}: {e}")
+        return False
+
+
+async def notify_order_moved(
+    client: Client,
+    order: dict,
+    master: Master,
+    old_dt: datetime
+) -> bool:
+    """Notify client that order was rescheduled."""
+    if not client.tg_id:
+        return False
+
+    try:
+        new_dt = order.get("scheduled_at")
+        if isinstance(new_dt, str):
+            new_dt = datetime.fromisoformat(new_dt)
+
+        text = (
+            "📅 Запись перенесена\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"❌ Было: {format_datetime(old_dt)}\n"
+            f"✅ Стало: {format_datetime(new_dt)}\n"
+            f"📍 {order.get('address', '—')}\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Мастер: {master.name}\n"
+            f"📞 {master.contacts or '—'}"
+        )
+
+        await client_bot.send_message(client.tg_id, text)
+        logger.info(f"Notification sent to client {client.id}: order moved")
+        return True
+
+    except TelegramForbiddenError:
+        logger.warning(f"Client {client.id} blocked the bot")
+        return False
+    except TelegramBadRequest as e:
+        logger.error(f"Failed to send notification to client {client.id}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending notification to client {client.id}: {e}")
+        return False
+
+
+async def notify_order_cancelled(
+    client: Client,
+    order: dict,
+    master: Master
+) -> bool:
+    """Notify client that order was cancelled."""
+    if not client.tg_id:
+        return False
+
+    try:
+        scheduled_at = order.get("scheduled_at")
+        if isinstance(scheduled_at, str):
+            scheduled_at = datetime.fromisoformat(scheduled_at)
+
+        services = order.get("services", "—")
+        cancel_reason = order.get("cancel_reason")
+
+        text = (
+            "❌ Запись отменена\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"📅 {format_datetime(scheduled_at)}\n"
+            f"🛠 {services}\n"
+        )
+
+        if cancel_reason:
+            text += f"📝 Причина: {cancel_reason}\n"
+
+        text += (
+            "━━━━━━━━━━━━━━━\n"
+            f"Мастер: {master.name}\n"
+            f"📞 {master.contacts or '—'}"
+        )
+
+        await client_bot.send_message(client.tg_id, text)
+        logger.info(f"Notification sent to client {client.id}: order cancelled")
+        return True
+
+    except TelegramForbiddenError:
+        logger.warning(f"Client {client.id} blocked the bot")
+        return False
+    except TelegramBadRequest as e:
+        logger.error(f"Failed to send notification to client {client.id}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending notification to client {client.id}: {e}")
+        return False
+
+
+async def notify_order_done(
+    client: Client,
+    order: dict,
+    master: Master,
+    bonus_accrued: int,
+    new_balance: int
+) -> bool:
+    """Notify client that order was completed."""
+    if not client.tg_id:
+        return False
+
+    try:
+        services = order.get("services", "—")
+        amount = order.get("amount_total", 0)
+        bonus_spent = order.get("bonus_spent", 0)
+
+        text = (
+            "✅ Заказ выполнен!\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"🛠 {services}\n"
+            f"💰 Сумма: {amount} ₽\n"
+        )
+
+        if bonus_spent > 0:
+            text += f"🎁 Списано бонусов: {bonus_spent} ₽\n"
+
+        if bonus_accrued > 0:
+            text += f"⭐ Начислено бонусов: +{bonus_accrued} ₽\n"
+
+        text += (
+            f"💳 Ваш баланс: {new_balance} ₽\n"
+            "━━━━━━━━━━━━━━━\n"
+            "Спасибо, что выбираете нас!"
+        )
+
+        await client_bot.send_message(client.tg_id, text)
+        logger.info(f"Notification sent to client {client.id}: order done")
+        return True
+
+    except TelegramForbiddenError:
+        logger.warning(f"Client {client.id} blocked the bot")
+        return False
+    except TelegramBadRequest as e:
+        logger.error(f"Failed to send notification to client {client.id}: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error sending notification to client {client.id}: {e}")
+        return False

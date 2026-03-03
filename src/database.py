@@ -605,6 +605,194 @@ async def get_active_dates(master_id: int, year: int, month: int) -> list[date]:
 
 
 # =============================================================================
+# Order CRUD
+# =============================================================================
+
+async def create_order(
+    master_id: int,
+    client_id: int,
+    address: str,
+    scheduled_at: datetime,
+    amount_total: int,
+    status: str = "confirmed"
+) -> int:
+    """Create a new order. Returns order_id."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO orders (master_id, client_id, address, scheduled_at, amount_total, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (master_id, client_id, address, scheduled_at.isoformat(), amount_total, status)
+        )
+        await conn.commit()
+        return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def create_order_items(order_id: int, services: list[dict]) -> None:
+    """Create order items. services = [{"name": str, "price": int}, ...]"""
+    conn = await get_connection()
+    try:
+        for service in services:
+            await conn.execute(
+                """
+                INSERT INTO order_items (order_id, name, price)
+                VALUES (?, ?, ?)
+                """,
+                (order_id, service["name"], service["price"])
+            )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
+    """Update order status and optional fields."""
+    conn = await get_connection()
+    try:
+        fields = {"status": status, **kwargs}
+        set_clause = ", ".join(f"{k} = ?" for k in fields.keys())
+        values = list(fields.values()) + [order_id]
+
+        await conn.execute(
+            f"UPDATE orders SET {set_clause} WHERE id = ?",
+            values
+        )
+        await conn.commit()
+        return True
+    finally:
+        await conn.close()
+
+
+async def update_order_schedule(order_id: int, new_scheduled_at: datetime) -> bool:
+    """Update order scheduled time."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET scheduled_at = ? WHERE id = ?",
+            (new_scheduled_at.isoformat(), order_id)
+        )
+        await conn.commit()
+        return True
+    finally:
+        await conn.close()
+
+
+async def get_last_client_address(master_id: int, client_id: int) -> Optional[str]:
+    """Get last used address for a client."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT address FROM orders
+            WHERE master_id = ? AND client_id = ? AND address IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        return row["address"] if row else None
+    finally:
+        await conn.close()
+
+
+async def apply_bonus_transaction(
+    master_id: int,
+    client_id: int,
+    order_id: int,
+    bonus_spent: int,
+    bonus_accrued: int
+) -> tuple[int, int]:
+    """Apply bonus transaction. Returns (new_balance, total_spent_update)."""
+    conn = await get_connection()
+    try:
+        # Get current balance
+        cursor = await conn.execute(
+            "SELECT bonus_balance, total_spent FROM master_clients WHERE master_id = ? AND client_id = ?",
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        current_balance = row["bonus_balance"] if row else 0
+        current_total_spent = row["total_spent"] if row else 0
+
+        # Calculate new balance
+        new_balance = current_balance - bonus_spent + bonus_accrued
+
+        # Get order amount for total_spent
+        cursor = await conn.execute(
+            "SELECT amount_total FROM orders WHERE id = ?",
+            (order_id,)
+        )
+        order_row = await cursor.fetchone()
+        order_amount = order_row["amount_total"] if order_row else 0
+
+        new_total_spent = current_total_spent + order_amount
+
+        # Update master_clients
+        await conn.execute(
+            """
+            UPDATE master_clients
+            SET bonus_balance = ?, total_spent = ?, last_visit = CURRENT_TIMESTAMP
+            WHERE master_id = ? AND client_id = ?
+            """,
+            (new_balance, new_total_spent, master_id, client_id)
+        )
+
+        # Log bonus spent
+        if bonus_spent > 0:
+            await conn.execute(
+                """
+                INSERT INTO bonus_log (master_id, client_id, order_id, type, amount, comment)
+                VALUES (?, ?, ?, 'spend', ?, 'Списание за заказ')
+                """,
+                (master_id, client_id, order_id, -bonus_spent)
+            )
+
+        # Log bonus accrued
+        if bonus_accrued > 0:
+            await conn.execute(
+                """
+                INSERT INTO bonus_log (master_id, client_id, order_id, type, amount, comment)
+                VALUES (?, ?, ?, 'accrual', ?, 'Начисление за заказ')
+                """,
+                (master_id, client_id, order_id, bonus_accrued)
+            )
+
+        await conn.commit()
+        return new_balance, order_amount
+    finally:
+        await conn.close()
+
+
+async def save_gc_credentials(master_id: int, credentials_json: str) -> None:
+    """Save Google Calendar credentials."""
+    await update_master(master_id, gc_credentials=credentials_json, gc_connected=True)
+
+
+async def get_gc_credentials(master_id: int) -> Optional[str]:
+    """Get Google Calendar credentials."""
+    master = await get_master_by_id(master_id)
+    return master.gc_credentials if master else None
+
+
+async def save_gc_event_id(order_id: int, event_id: str) -> None:
+    """Save Google Calendar event ID for an order."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET gc_event_id = ? WHERE id = ?",
+            (event_id, order_id)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+# =============================================================================
 # Services
 # =============================================================================
 
@@ -633,6 +821,101 @@ async def get_services(master_id: int, active_only: bool = True) -> list[Service
         ) for row in rows]
     finally:
         await conn.close()
+
+
+async def get_archived_services(master_id: int) -> list[Service]:
+    """Get master's archived services."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM services WHERE master_id = ? AND is_active = 0 ORDER BY name",
+            (master_id,)
+        )
+        rows = await cursor.fetchall()
+        return [Service(
+            id=row["id"],
+            master_id=row["master_id"],
+            name=row["name"],
+            price=row["price"],
+            is_active=bool(row["is_active"]),
+            created_at=row["created_at"],
+        ) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_service_by_id(service_id: int) -> Optional[Service]:
+    """Get service by ID."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM services WHERE id = ?",
+            (service_id,)
+        )
+        row = await cursor.fetchone()
+        if row:
+            return Service(
+                id=row["id"],
+                master_id=row["master_id"],
+                name=row["name"],
+                price=row["price"],
+                is_active=bool(row["is_active"]),
+                created_at=row["created_at"],
+            )
+        return None
+    finally:
+        await conn.close()
+
+
+async def create_service(master_id: int, name: str, price: Optional[int] = None) -> Service:
+    """Create a new service."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "INSERT INTO services (master_id, name, price) VALUES (?, ?, ?)",
+            (master_id, name, price)
+        )
+        await conn.commit()
+        service_id = cursor.lastrowid
+
+        return Service(
+            id=service_id,
+            master_id=master_id,
+            name=name,
+            price=price,
+            is_active=True,
+        )
+    finally:
+        await conn.close()
+
+
+async def update_service(service_id: int, **kwargs) -> None:
+    """Update service fields."""
+    if not kwargs:
+        return
+
+    conn = await get_connection()
+    try:
+        set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
+        values = list(kwargs.values()) + [service_id]
+
+        await conn.execute(
+            f"UPDATE services SET {set_clause} WHERE id = ?",
+            values
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def archive_service(service_id: int) -> None:
+    """Archive a service (set is_active = 0)."""
+    await update_service(service_id, is_active=False)
+
+
+async def restore_service(service_id: int) -> None:
+    """Restore archived service (set is_active = 1)."""
+    await update_service(service_id, is_active=True)
 
 
 # =============================================================================

@@ -27,6 +27,7 @@ ENV/
 
 # Logs
 *.log
+logs/
 
 # Google credentials
 credentials.json
