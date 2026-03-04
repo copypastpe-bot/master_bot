@@ -82,3 +82,29 @@ class ServiceEdit(StatesGroup):
     """Edit service in catalog."""
     name = State()      # Edit service name
     price = State()     # Edit service price
+
+
+class ProfileEdit(StatesGroup):
+    """Edit master profile fields."""
+    waiting_value = State()  # Waiting for new field value
+
+
+class BonusSettingsEdit(StatesGroup):
+    """Edit bonus program settings."""
+    waiting_value = State()  # Waiting for new setting value
+
+
+class ClientEdit(StatesGroup):
+    """Edit client fields."""
+    waiting_value = State()  # Waiting for new field value
+
+
+class ClientNote(StatesGroup):
+    """Edit client note."""
+    waiting_note = State()  # Waiting for note text
+
+
+class BonusManual(StatesGroup):
+    """Manual bonus add/subtract."""
+    waiting_amount = State()   # Waiting for amount
+    waiting_comment = State()  # Waiting for comment

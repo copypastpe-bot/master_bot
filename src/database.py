@@ -398,9 +398,79 @@ async def get_client_bonus_log(master_id: int, client_id: int, limit: int = 20) 
     try:
         cursor = await conn.execute(
             """
-            SELECT * FROM bonus_log
-            WHERE master_id = ? AND client_id = ?
-            ORDER BY created_at DESC
+            SELECT bl.*, o.id as order_id_display
+            FROM bonus_log bl
+            LEFT JOIN orders o ON bl.order_id = o.id
+            WHERE bl.master_id = ? AND bl.client_id = ?
+            ORDER BY bl.created_at DESC
+            LIMIT ?
+            """,
+            (master_id, client_id, limit)
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def update_client_note(master_id: int, client_id: int, note: Optional[str]) -> None:
+    """Update client note in master_clients."""
+    await update_master_client(master_id, client_id, note=note)
+
+
+async def manual_bonus_transaction(
+    master_id: int,
+    client_id: int,
+    amount: int,
+    comment: Optional[str] = None
+) -> int:
+    """Manual bonus add/subtract. Returns new balance."""
+    conn = await get_connection()
+    try:
+        # Get current balance
+        cursor = await conn.execute(
+            "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        current_balance = row["bonus_balance"] if row else 0
+
+        new_balance = current_balance + amount
+
+        # Update balance
+        await conn.execute(
+            "UPDATE master_clients SET bonus_balance = ? WHERE master_id = ? AND client_id = ?",
+            (new_balance, master_id, client_id)
+        )
+
+        # Log transaction
+        log_type = "manual"
+        await conn.execute(
+            """
+            INSERT INTO bonus_log (master_id, client_id, type, amount, comment)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (master_id, client_id, log_type, amount, comment)
+        )
+
+        await conn.commit()
+        return new_balance
+    finally:
+        await conn.close()
+
+
+async def get_client_orders_history(master_id: int, client_id: int, limit: int = 10) -> list[dict]:
+    """Get client's order history with status."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT o.*, GROUP_CONCAT(oi.name, ', ') as services
+            FROM orders o
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.master_id = ? AND o.client_id = ?
+            GROUP BY o.id
+            ORDER BY o.scheduled_at DESC
             LIMIT ?
             """,
             (master_id, client_id, limit)

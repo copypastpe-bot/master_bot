@@ -155,11 +155,27 @@ def client_card_kb(client_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="🎁 Бонусы", callback_data=f"clients:bonus:{client_id}"),
         ],
         [
-            InlineKeyboardButton(text="✏️ Изменить", callback_data=f"clients:edit:{client_id}"),
+            InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"clients:edit:{client_id}"),
             InlineKeyboardButton(text="📝 Заметка", callback_data=f"clients:note:{client_id}"),
         ],
+        [InlineKeyboardButton(text="➕ Создать заказ", callback_data=f"clients:order:{client_id}")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="clients"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+
+def client_edit_kb(client_id: int) -> InlineKeyboardMarkup:
+    """Client edit keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✏️ Имя", callback_data=f"clients:edit:name:{client_id}"),
+            InlineKeyboardButton(text="✏️ Телефон", callback_data=f"clients:edit:phone:{client_id}"),
+        ],
+        [InlineKeyboardButton(text="✏️ Дата рождения", callback_data=f"clients:edit:birthday:{client_id}")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"clients:view:{client_id}"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
         ],
     ])
@@ -234,14 +250,15 @@ def settings_profile_kb() -> InlineKeyboardMarkup:
     """Profile settings keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="Имя", callback_data="settings:profile:name"),
-            InlineKeyboardButton(text="Сфера", callback_data="settings:profile:sphere"),
+            InlineKeyboardButton(text="✏️ Имя", callback_data="profile:edit:name"),
+            InlineKeyboardButton(text="✏️ Сфера", callback_data="profile:edit:sphere"),
         ],
         [
-            InlineKeyboardButton(text="Контакты", callback_data="settings:profile:contacts"),
-            InlineKeyboardButton(text="Соцсети", callback_data="settings:profile:socials"),
+            InlineKeyboardButton(text="✏️ Контакты", callback_data="profile:edit:contacts"),
+            InlineKeyboardButton(text="✏️ Соцсети", callback_data="profile:edit:socials"),
         ],
-        [InlineKeyboardButton(text="Режим работы", callback_data="settings:profile:work_hours")],
+        [InlineKeyboardButton(text="✏️ Режим работы", callback_data="profile:edit:work_hours")],
+        [InlineKeyboardButton(text="📅 Google Calendar", callback_data="profile:gc")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
@@ -251,14 +268,14 @@ def settings_profile_kb() -> InlineKeyboardMarkup:
 
 def settings_bonus_kb(bonus_enabled: bool) -> InlineKeyboardMarkup:
     """Bonus program settings keyboard."""
-    status = "✅ Выкл" if bonus_enabled else "❌ Вкл"
+    toggle_text = "🔄 Выключить" if bonus_enabled else "🔄 Включить"
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=status, callback_data="settings:bonus:toggle")],
+        [InlineKeyboardButton(text=toggle_text, callback_data="bonus:toggle")],
         [
-            InlineKeyboardButton(text="% начисления", callback_data="settings:bonus:rate"),
-            InlineKeyboardButton(text="% списания", callback_data="settings:bonus:max_spend"),
+            InlineKeyboardButton(text="✏️ % начисления", callback_data="bonus:edit:rate"),
+            InlineKeyboardButton(text="✏️ % списания", callback_data="bonus:edit:max_spend"),
         ],
-        [InlineKeyboardButton(text="Бонус на ДР", callback_data="settings:bonus:birthday")],
+        [InlineKeyboardButton(text="✏️ Бонус на ДР", callback_data="bonus:edit:birthday")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
@@ -367,8 +384,8 @@ def client_bonuses_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def client_history_kb() -> InlineKeyboardMarkup:
-    """Client history section keyboard."""
+def client_bot_history_kb() -> InlineKeyboardMarkup:
+    """Client bot history section keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
     ])

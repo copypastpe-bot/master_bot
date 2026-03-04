@@ -16,6 +16,7 @@ from src.states import (
     MasterRegistration, CreateOrder, CreateClientInOrder,
     CompleteOrder, MoveOrder, CancelOrder,
     ClientAdd, ServiceAdd, ServiceEdit,
+    ProfileEdit, BonusSettingsEdit, ClientEdit, ClientNote, BonusManual,
 )
 from src.keyboards import (
     home_master_kb, orders_kb, order_card_kb, calendar_kb,
@@ -31,6 +32,8 @@ from src.keyboards import (
     cancel_reason_kb, cancel_confirm_kb,
     # Service keyboards
     service_edit_kb, service_archived_kb,
+    # Client keyboards
+    client_edit_kb,
 )
 from src.database import (
     init_db,
@@ -38,6 +41,7 @@ from src.database import (
     get_master_by_id,
     create_master,
     update_master,
+    update_client,
     save_master_home_message_id,
     get_orders_today,
     get_orders_by_date,
@@ -54,6 +58,7 @@ from src.database import (
     create_client,
     link_client_to_master,
     get_master_client,
+    update_master_client,
     create_order,
     create_order_items,
     update_order_status,
@@ -68,6 +73,10 @@ from src.database import (
     update_service,
     archive_service,
     restore_service,
+    # Client functions
+    update_client_note,
+    manual_bonus_transaction,
+    get_client_orders_history,
 )
 from src.utils import generate_invite_token
 from src import notifications
@@ -2318,22 +2327,35 @@ async def cb_client_view(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
+ORDER_STATUS_ICONS = {
+    "new": "🆕",
+    "confirmed": "📌",
+    "done": "✅",
+    "cancelled": "❌",
+    "moved": "📅",
+}
+
+
 @router.callback_query(F.data.startswith("clients:history:"))
 async def cb_client_history(callback: CallbackQuery, state: FSMContext) -> None:
-    """View client history."""
+    """View client history with status icons."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
     client_id = int(callback.data.split(":")[2])
     client = await get_client_with_stats(master.id, client_id)
-    orders = await get_client_orders(master.id, client_id)
+    orders = await get_client_orders_history(master.id, client_id)
 
     if orders:
-        orders_text = "\n".join(
-            f"• {o.get('scheduled_at', '')[:10] if o.get('scheduled_at') else '—'} — "
-            f"{o.get('services', '—')[:30]} | {o.get('amount_total', 0)} ₽"
-            for o in orders
-        )
+        def format_order(o):
+            status = o.get("status", "")
+            icon = ORDER_STATUS_ICONS.get(status, "•")
+            scheduled = o.get("scheduled_at", "")[:10] if o.get("scheduled_at") else "—"
+            services = o.get("services", "—")[:25] if o.get("services") else "—"
+            amount = o.get("amount_total", 0)
+            return f"{icon} {scheduled} — {services} | {amount} ₽"
+
+        orders_text = "\n".join(format_order(o) for o in orders)
     else:
         orders_text = "История пуста"
 
@@ -2350,7 +2372,7 @@ async def cb_client_history(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data.startswith("clients:bonus:") & ~F.data.contains("add") & ~F.data.contains("sub"))
 async def cb_client_bonus(callback: CallbackQuery, state: FSMContext) -> None:
-    """View client bonus log."""
+    """View client bonus log with order references."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
@@ -2359,11 +2381,17 @@ async def cb_client_bonus(callback: CallbackQuery, state: FSMContext) -> None:
     bonus_log = await get_client_bonus_log(master.id, client_id)
 
     if bonus_log:
-        log_text = "\n".join(
-            f"• {b.get('created_at', '')[:10] if b.get('created_at') else '—'} "
-            f"{'+' if b.get('amount', 0) > 0 else ''}{b.get('amount', 0)} — {b.get('comment', '—')}"
-            for b in bonus_log
-        )
+        def format_bonus(b):
+            date_str = b.get("created_at", "")[:10] if b.get("created_at") else "—"
+            amount = b.get("amount", 0)
+            sign = "+" if amount > 0 else ""
+            comment = b.get("comment", "—")
+            order_id = b.get("order_id_display")
+            if order_id:
+                return f"• {date_str} {sign}{amount} — #{order_id} {comment}"
+            return f"• {date_str} {sign}{amount} — {comment}"
+
+        log_text = "\n".join(format_bonus(b) for b in bonus_log)
     else:
         log_text = "Операций пока нет"
 
@@ -2559,39 +2587,503 @@ async def finish_client_add(state: FSMContext, master, bot: Bot, chat_id: int, b
             pass
 
 
-@router.callback_query(F.data.startswith("clients:edit:"))
-async def cb_clients_edit(callback: CallbackQuery) -> None:
-    """Edit client stub."""
-    client_id = callback.data.split(":")[2]
-    text = "🚧 Редактирование клиента — в разработке"
-    await edit_home_message(callback, text, stub_kb(f"clients:view:{client_id}"))
+# =============================================================================
+# Client Edit FSM
+# =============================================================================
+
+CLIENT_FIELDS = {
+    "name": ("Имя", "name"),
+    "phone": ("Телефон", "phone"),
+    "birthday": ("Дата рождения", "birthday"),
+}
+
+
+@router.callback_query(F.data.regexp(r"^clients:edit:\d+$"))
+async def cb_clients_edit_menu(callback: CallbackQuery) -> None:
+    """Show client edit menu."""
+    client_id = int(callback.data.split(":")[2])
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    text = (
+        f"✏️ Редактирование — {client.get('name', 'Клиент')}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 Имя: {client.get('name', '—')}\n"
+        f"📞 Телефон: {client.get('phone', '—')}\n"
+        f"🎂 ДР: {client.get('birthday', '—') or '—'}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, client_edit_kb(client_id))
     await callback.answer()
 
+
+@router.callback_query(F.data.regexp(r"^clients:edit:(name|phone|birthday):\d+$"))
+async def cb_clients_edit_field(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start editing a client field."""
+    parts = callback.data.split(":")
+    field = parts[2]
+    client_id = int(parts[3])
+
+    if field not in CLIENT_FIELDS:
+        await callback.answer("Неизвестное поле")
+        return
+
+    field_name, db_field = CLIENT_FIELDS[field]
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    await state.update_data(
+        edit_client_id=client_id,
+        edit_client_field=field,
+        edit_client_db_field=db_field,
+    )
+
+    hint = ""
+    if field == "birthday":
+        hint = "\n(формат: ДД.ММ.ГГГГ)"
+
+    text = (
+        f"✏️ Изменить {field_name}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Введите новое значение:{hint}"
+    )
+
+    await edit_home_message(callback, text, stub_kb(f"clients:edit:{client_id}"))
+    await state.set_state(ClientEdit.waiting_value)
+    await callback.answer()
+
+
+@router.message(ClientEdit.waiting_value)
+async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save edited client field value."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    data = await state.get_data()
+    client_id = data.get("edit_client_id")
+    field = data.get("edit_client_field")
+    db_field = data.get("edit_client_db_field")
+
+    value = message.text.strip()
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    # Parse birthday if needed
+    if field == "birthday":
+        try:
+            from src.utils import parse_date
+            value = parse_date(value)
+        except:
+            # Invalid date format - show error
+            if master.home_message_id:
+                try:
+                    await bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=master.home_message_id,
+                        text="❌ Неверный формат даты. Используйте ДД.ММ.ГГГГ",
+                        reply_markup=stub_kb(f"clients:edit:{client_id}")
+                    )
+                except TelegramBadRequest:
+                    pass
+            return
+
+    # Update client
+    await update_client(client_id, **{db_field: value})
+
+    await state.clear()
+
+    # Show updated client card
+    client = await get_client_with_stats(master.id, client_id)
+
+    birthday_str = client.get("birthday", "")
+    if birthday_str:
+        try:
+            bd = date.fromisoformat(birthday_str)
+            birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
+        except:
+            birthday_text = "не указана"
+    else:
+        birthday_text = "не указана"
+
+    text = (
+        f"✅ Сохранено!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 {client.get('name', '—')}\n"
+        f"📞 {client.get('phone', '—')}\n"
+        f"🎂 {birthday_text}\n"
+        f"💰 Бонусов: {client.get('bonus_balance', 0)} ₽\n"
+        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} ₽\n"
+        f"📝 {client.get('note') or '—'}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=client_card_kb(client_id)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+# =============================================================================
+# Client Note FSM
+# =============================================================================
 
 @router.callback_query(F.data.startswith("clients:note:"))
-async def cb_clients_note(callback: CallbackQuery) -> None:
-    """Edit client note stub."""
-    client_id = callback.data.split(":")[2]
-    text = "🚧 Заметка — в разработке"
+async def cb_clients_note(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start editing client note."""
+    client_id = int(callback.data.split(":")[2])
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    current_note = client.get("note") or ""
+
+    await state.update_data(note_client_id=client_id)
+
+    text = (
+        f"📝 Заметка — {client.get('name', 'Клиент')}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Текущая: {current_note or '(пусто)'}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Введите новую заметку\n"
+        f"или «-» для удаления:"
+    )
+
     await edit_home_message(callback, text, stub_kb(f"clients:view:{client_id}"))
+    await state.set_state(ClientNote.waiting_note)
     await callback.answer()
 
 
+@router.message(ClientNote.waiting_note)
+async def client_note_value(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save client note."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    data = await state.get_data()
+    client_id = data.get("note_client_id")
+
+    note_text = message.text.strip()
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    # Delete note if "-"
+    if note_text == "-":
+        note_text = None
+
+    # Update note
+    await update_client_note(master.id, client_id, note_text)
+
+    await state.clear()
+
+    # Show updated client card
+    client = await get_client_with_stats(master.id, client_id)
+
+    birthday_str = client.get("birthday", "")
+    if birthday_str:
+        try:
+            bd = date.fromisoformat(birthday_str)
+            birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
+        except:
+            birthday_text = "не указана"
+    else:
+        birthday_text = "не указана"
+
+    text = (
+        f"✅ Заметка сохранена!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 {client.get('name', '—')}\n"
+        f"📞 {client.get('phone', '—')}\n"
+        f"🎂 {birthday_text}\n"
+        f"💰 Бонусов: {client.get('bonus_balance', 0)} ₽\n"
+        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} ₽\n"
+        f"📝 {client.get('note') or '—'}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=client_card_kb(client_id)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+# =============================================================================
+# Manual Bonus FSM
+# =============================================================================
+
 @router.callback_query(F.data.startswith("clients:bonus:add:"))
-async def cb_clients_bonus_add(callback: CallbackQuery) -> None:
-    """Add bonus stub."""
-    client_id = callback.data.split(":")[3]
-    text = "🚧 Начисление бонусов — в разработке"
+async def cb_clients_bonus_add(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start adding bonus."""
+    client_id = int(callback.data.split(":")[3])
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    await state.update_data(
+        bonus_client_id=client_id,
+        bonus_operation="add"
+    )
+
+    text = (
+        f"➕ Начисление бонусов — {client.get('name', 'Клиент')}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Баланс: {client.get('bonus_balance', 0)} ₽\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Введите сумму для начисления:"
+    )
+
     await edit_home_message(callback, text, stub_kb(f"clients:bonus:{client_id}"))
+    await state.set_state(BonusManual.waiting_amount)
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("clients:bonus:sub:"))
-async def cb_clients_bonus_sub(callback: CallbackQuery) -> None:
-    """Subtract bonus stub."""
-    client_id = callback.data.split(":")[3]
-    text = "🚧 Списание бонусов — в разработке"
+async def cb_clients_bonus_sub(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start subtracting bonus."""
+    client_id = int(callback.data.split(":")[3])
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    await state.update_data(
+        bonus_client_id=client_id,
+        bonus_operation="sub"
+    )
+
+    text = (
+        f"➖ Списание бонусов — {client.get('name', 'Клиент')}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Баланс: {client.get('bonus_balance', 0)} ₽\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Введите сумму для списания:"
+    )
+
     await edit_home_message(callback, text, stub_kb(f"clients:bonus:{client_id}"))
+    await state.set_state(BonusManual.waiting_amount)
+    await callback.answer()
+
+
+@router.message(BonusManual.waiting_amount)
+async def bonus_manual_amount(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Process bonus amount."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    try:
+        amount = int(message.text.strip())
+        if amount <= 0:
+            raise ValueError()
+    except ValueError:
+        await message.answer("Введите положительное целое число")
+        return
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    client_id = data.get("bonus_client_id")
+    operation = data.get("bonus_operation")
+
+    await state.update_data(bonus_amount=amount)
+
+    client = await get_client_with_stats(master.id, client_id)
+    op_text = "начисления" if operation == "add" else "списания"
+    sign = "+" if operation == "add" else "-"
+
+    text = (
+        f"💬 Комментарий к {op_text}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Сумма: {sign}{amount} ₽\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Введите комментарий или пропустите:"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=skip_kb()
+            )
+        except TelegramBadRequest:
+            pass
+
+    await state.set_state(BonusManual.waiting_comment)
+
+
+@router.message(BonusManual.waiting_comment)
+async def bonus_manual_comment(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save bonus with comment."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    comment = message.text.strip()[:200]
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    await finish_manual_bonus(state, master, bot, message.chat.id, comment)
+
+
+@router.callback_query(BonusManual.waiting_comment, F.data == "skip")
+async def bonus_manual_comment_skip(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    """Skip comment."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    await finish_manual_bonus(state, master, bot, callback.message.chat.id, None)
+    await callback.answer()
+
+
+async def finish_manual_bonus(state: FSMContext, master, bot: Bot, chat_id: int, comment: str) -> None:
+    """Finish manual bonus operation."""
+    data = await state.get_data()
+    client_id = data.get("bonus_client_id")
+    amount = data.get("bonus_amount")
+    operation = data.get("bonus_operation")
+
+    # Apply sign based on operation
+    if operation == "sub":
+        amount = -amount
+
+    # Perform transaction
+    new_balance = await manual_bonus_transaction(master.id, client_id, amount, comment)
+
+    await state.clear()
+
+    # Show bonus log
+    client = await get_client_with_stats(master.id, client_id)
+    bonus_log = await get_client_bonus_log(master.id, client_id)
+
+    op_text = "начислено" if operation == "add" else "списано"
+
+    if bonus_log:
+        log_text = "\n".join(
+            f"• {b.get('created_at', '')[:10] if b.get('created_at') else '—'} "
+            f"{'+' if b.get('amount', 0) > 0 else ''}{b.get('amount', 0)} — {b.get('comment', '—')}"
+            for b in bonus_log[:10]
+        )
+    else:
+        log_text = "Операций пока нет"
+
+    text = (
+        f"✅ Бонусы {op_text}!\n"
+        f"🎁 Баланс: {new_balance} ₽\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{log_text}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=client_bonus_kb(client_id)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+# =============================================================================
+# Create Order from Client Card
+# =============================================================================
+
+@router.callback_query(F.data.startswith("clients:order:"))
+async def cb_clients_order(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start creating order from client card - skip client search, go to address."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    client_id = int(callback.data.split(":")[2])
+    client = await get_client_by_id(client_id)
+
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
+
+    # Initialize order data with client already selected
+    last_address = await get_last_client_address(master.id, client_id)
+
+    await state.update_data(
+        order_master_id=master.id,
+        order_client_id=client_id,
+        order_client_name=client.name,
+        order_address=None,
+        order_date=None,
+        order_hour=None,
+        order_minutes=None,
+        order_services=[],
+        order_custom_services=[],
+        order_amount=None,
+        order_last_address=last_address,
+    )
+
+    if last_address:
+        text = (
+            "📋 Новый заказ — Шаг 2/7\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"👤 Клиент: {client.name}\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📍 Выберите адрес или введите новый:"
+        )
+    else:
+        text = (
+            "📋 Новый заказ — Шаг 2/7\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"👤 Клиент: {client.name}\n"
+            "━━━━━━━━━━━━━━━\n"
+            "📍 Введите адрес:"
+        )
+
+    await edit_home_message(callback, text, order_address_kb(last_address))
+    await state.set_state(CreateOrder.address)
     await callback.answer()
 
 
@@ -2793,11 +3285,11 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
     text = (
         "👤 Профиль\n"
         "━━━━━━━━━━━━━━━\n"
-        f"Имя: {master.name}\n"
-        f"Сфера: {master.sphere or '—'}\n"
-        f"Контакты: {master.contacts or '—'}\n"
-        f"Соцсети: {master.socials or '—'}\n"
-        f"Режим работы: {master.work_hours or '—'}\n"
+        f"Имя: {master.name or 'не указано'}\n"
+        f"Сфера: {master.sphere or 'не указано'}\n"
+        f"Контакты: {master.contacts or 'не указано'}\n"
+        f"Соцсети: {master.socials or 'не указано'}\n"
+        f"Режим работы: {master.work_hours or 'не указано'}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -2805,13 +3297,105 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("settings:profile:"))
-async def cb_settings_profile_field(callback: CallbackQuery) -> None:
-    """Edit profile field stub."""
-    text = "🚧 Редактирование профиля — в разработке"
+# =============================================================================
+# Profile Edit FSM
+# =============================================================================
+
+PROFILE_FIELDS = {
+    "name": ("Имя", "name"),
+    "sphere": ("Сфера деятельности", "sphere"),
+    "contacts": ("Контакты", "contacts"),
+    "socials": ("Соцсети", "socials"),
+    "work_hours": ("Режим работы", "work_hours"),
+}
+
+
+@router.callback_query(F.data.startswith("profile:edit:"))
+async def cb_profile_edit_field(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start editing a profile field."""
+    field = callback.data.split(":")[2]
+
+    if field not in PROFILE_FIELDS:
+        await callback.answer("Неизвестное поле")
+        return
+
+    field_name, db_field = PROFILE_FIELDS[field]
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    current_value = getattr(master, db_field) or "не указано"
+
+    await state.update_data(profile_edit_field=db_field)
+
+    text = (
+        f"✏️ Изменить: {field_name}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Текущее значение: {current_value}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        "Введите новое значение:"
+    )
+
+    await edit_home_message(callback, text, stub_kb("settings:profile"))
+    await state.set_state(ProfileEdit.waiting_value)
+    await callback.answer()
+
+
+@router.message(ProfileEdit.waiting_value)
+async def profile_edit_value(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save new profile field value."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    data = await state.get_data()
+    db_field = data.get("profile_edit_field")
+
+    value = message.text.strip()[:500]
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    await update_master(master.id, **{db_field: value})
+    await state.clear()
+
+    # Refresh master data and show updated profile
+    master = await get_master_by_tg_id(tg_id)
+
+    text = (
+        "👤 Профиль\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Имя: {master.name or 'не указано'}\n"
+        f"Сфера: {master.sphere or 'не указано'}\n"
+        f"Контакты: {master.contacts or 'не указано'}\n"
+        f"Соцсети: {master.socials or 'не указано'}\n"
+        f"Режим работы: {master.work_hours or 'не указано'}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=settings_profile_kb()
+            )
+        except TelegramBadRequest:
+            pass
+
+
+@router.callback_query(F.data == "profile:gc")
+async def cb_profile_gc(callback: CallbackQuery) -> None:
+    """Google Calendar stub."""
+    text = "🚧 Google Calendar — в разработке"
     await edit_home_message(callback, text, stub_kb("settings:profile"))
     await callback.answer()
 
+
+# =============================================================================
+# Bonus Program Settings
+# =============================================================================
 
 @router.callback_query(F.data == "settings:bonus")
 async def cb_settings_bonus(callback: CallbackQuery) -> None:
@@ -2835,12 +3419,124 @@ async def cb_settings_bonus(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("settings:bonus:"))
-async def cb_settings_bonus_field(callback: CallbackQuery) -> None:
-    """Edit bonus field stub."""
-    text = "🚧 Настройка бонусной программы — в разработке"
+@router.callback_query(F.data == "bonus:toggle")
+async def cb_bonus_toggle(callback: CallbackQuery) -> None:
+    """Toggle bonus program on/off."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    new_value = not master.bonus_enabled
+    await update_master(master.id, bonus_enabled=new_value)
+
+    # Refresh and show updated screen
+    master = await get_master_by_tg_id(tg_id)
+    status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
+
+    text = (
+        "🎁 Бонусная программа\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Статус: {status}\n"
+        f"Начисление: {master.bonus_rate}% от суммы заказа\n"
+        f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
+        f"Бонус на ДР: {master.bonus_birthday} ₽\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, settings_bonus_kb(master.bonus_enabled))
+    await callback.answer("Настройка обновлена!")
+
+
+BONUS_FIELDS = {
+    "rate": ("% начисления", "bonus_rate", "Введите процент начисления (0-100):"),
+    "max_spend": ("% списания", "bonus_max_spend", "Введите макс. процент списания (0-100):"),
+    "birthday": ("Бонус на ДР", "bonus_birthday", "Введите сумму бонуса на день рождения:"),
+}
+
+
+@router.callback_query(F.data.startswith("bonus:edit:"))
+async def cb_bonus_edit_field(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start editing a bonus field."""
+    field = callback.data.split(":")[2]
+
+    if field not in BONUS_FIELDS:
+        await callback.answer("Неизвестное поле")
+        return
+
+    field_name, db_field, prompt = BONUS_FIELDS[field]
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    current_value = getattr(master, db_field)
+
+    await state.update_data(bonus_edit_field=db_field, bonus_field_type=field)
+
+    text = (
+        f"✏️ Изменить: {field_name}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Текущее значение: {current_value}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{prompt}"
+    )
+
     await edit_home_message(callback, text, stub_kb("settings:bonus"))
+    await state.set_state(BonusSettingsEdit.waiting_value)
     await callback.answer()
+
+
+@router.message(BonusSettingsEdit.waiting_value)
+async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save new bonus field value."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    data = await state.get_data()
+    db_field = data.get("bonus_edit_field")
+    field_type = data.get("bonus_field_type")
+
+    try:
+        value = int(message.text.strip())
+        if field_type in ("rate", "max_spend"):
+            if value < 0 or value > 100:
+                raise ValueError("Процент должен быть от 0 до 100")
+        elif field_type == "birthday":
+            if value < 0:
+                raise ValueError("Сумма должна быть положительной")
+    except ValueError as e:
+        await message.answer(str(e) if str(e) else "Введите целое число")
+        return
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    await update_master(master.id, **{db_field: value})
+    await state.clear()
+
+    # Refresh and show updated screen
+    master = await get_master_by_tg_id(tg_id)
+    status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
+
+    text = (
+        "🎁 Бонусная программа\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Статус: {status}\n"
+        f"Начисление: {master.bonus_rate}% от суммы заказа\n"
+        f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
+        f"Бонус на ДР: {master.bonus_birthday} ₽\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=settings_bonus_kb(master.bonus_enabled)
+            )
+        except TelegramBadRequest:
+            pass
 
 
 @router.callback_query(F.data == "settings:services")

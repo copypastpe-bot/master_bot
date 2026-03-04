@@ -13,7 +13,7 @@ from aiogram.exceptions import TelegramBadRequest
 from src.config import CLIENT_BOT_TOKEN, LOG_LEVEL
 from src.states import ClientRegistration
 from src.keyboards import (
-    home_client_kb, client_bonuses_kb, client_history_kb as client_history_section_kb,
+    home_client_kb, client_bonuses_kb, client_bot_history_kb,
     client_promos_kb, client_master_info_kb, client_notifications_kb,
     skip_kb, share_contact_kb, stub_kb,
 )
@@ -380,7 +380,7 @@ async def cb_history(callback: CallbackQuery) -> None:
         "━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, client_history_section_kb())
+    await edit_home_message(callback, text, client_bot_history_kb())
     await callback.answer()
 
 
