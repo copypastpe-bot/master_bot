@@ -108,3 +108,20 @@ class BonusManual(StatesGroup):
     """Manual bonus add/subtract."""
     waiting_amount = State()   # Waiting for amount
     waiting_comment = State()  # Waiting for comment
+
+
+class BroadcastFSM(StatesGroup):
+    """Broadcast message flow states."""
+    text = State()      # Step 1: Message text
+    media = State()     # Step 2: Attach photo/video (optional)
+    segment = State()   # Step 3: Select recipient segment
+    confirm = State()   # Step 4: Preview and confirm
+
+
+class PromoFSM(StatesGroup):
+    """Promo campaign creation flow states."""
+    title = State()       # Step 1: Promo title
+    description = State() # Step 2: Promo description
+    date_from = State()   # Step 3: Start date
+    date_to = State()     # Step 4: End date
+    confirm = State()     # Step 5: Confirm and optionally broadcast

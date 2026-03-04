@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
 
-from src.config import CLIENT_BOT_TOKEN, LOG_LEVEL
+from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL
 from src.states import ClientRegistration
 from src.keyboards import (
     home_client_kb, client_bonuses_kb, client_bot_history_kb,
@@ -33,8 +33,12 @@ from src.database import (
     get_client_orders,
     get_client_bonus_log,
     get_active_campaigns,
+    get_order_for_confirmation,
 )
 from src.utils import format_phone, parse_date
+
+# Master bot instance for sending notifications
+master_bot: Bot = None
 
 # Configure logging
 logging.basicConfig(
@@ -557,6 +561,78 @@ async def cb_media(callback: CallbackQuery) -> None:
 
 
 # =============================================================================
+# Order Confirmation (from reminder)
+# =============================================================================
+
+@router.callback_query(F.data.startswith("confirm_order:"))
+async def handle_order_confirmation(callback: CallbackQuery) -> None:
+    """Handle order confirmation from 24h reminder."""
+    global master_bot
+
+    order_id = int(callback.data.split(":")[1])
+    client_tg_id = callback.from_user.id
+
+    # Get order data
+    order = await get_order_for_confirmation(order_id, client_tg_id)
+
+    if not order:
+        await callback.answer("Заказ не найден")
+        return
+
+    if order["status"] not in ("new", "confirmed"):
+        await callback.answer("Заказ уже обработан")
+        return
+
+    # Parse scheduled_at for display
+    from datetime import datetime
+    scheduled_at = datetime.fromisoformat(order["scheduled_at"])
+    day = scheduled_at.day
+    month = MONTHS_RU[scheduled_at.month]
+    time_str = scheduled_at.strftime("%H:%M")
+
+    services = order.get("services") or "—"
+    address = order.get("address") or "—"
+    master_name = order.get("master_name") or "—"
+    master_contacts = order.get("master_contacts") or "—"
+
+    # Update client message - remove button, add confirmation text
+    new_text = (
+        f"🔔 Напоминание о записи\n\n"
+        f"📅 {day} {month}, {time_str}\n"
+        f"📍 {address}\n"
+        f"🛠 {services}\n\n"
+        f"Мастер: {master_name}\n"
+        f"📞 {master_contacts}\n\n"
+        f"✅ Вы подтвердили запись"
+    )
+
+    try:
+        await callback.message.edit_text(text=new_text, reply_markup=None)
+    except TelegramBadRequest:
+        pass
+
+    # Send notification to master
+    if master_bot and order.get("master_tg_id"):
+        try:
+            client_name = order.get("client_name") or "Клиент"
+            master_text = (
+                f"✅ Клиент подтвердил запись!\n\n"
+                f"👤 {client_name}\n"
+                f"📅 {day} {month}, {time_str}\n"
+                f"📍 {address}\n"
+                f"🛠 {services}"
+            )
+            await master_bot.send_message(
+                chat_id=order["master_tg_id"],
+                text=master_text
+            )
+        except Exception as e:
+            logger.error(f"Failed to notify master about confirmation: {e}")
+
+    await callback.answer("Запись подтверждена!")
+
+
+# =============================================================================
 # Bot Setup
 # =============================================================================
 
@@ -569,14 +645,29 @@ def setup_dispatcher() -> Dispatcher:
 
 async def main() -> None:
     """Main entry point."""
+    global master_bot
+
     await init_db()
     logger.info("Database initialized")
 
+    # Create bot instances
     bot = Bot(token=CLIENT_BOT_TOKEN)
+    master_bot = Bot(token=MASTER_BOT_TOKEN)
+
+    # Setup scheduler
+    from src.scheduler import setup_scheduler, start_scheduler
+    setup_scheduler(bot)
+    start_scheduler()
+    logger.info("Scheduler started")
+
     dp = setup_dispatcher()
 
     logger.info("Starting client bot...")
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        from src.scheduler import stop_scheduler
+        stop_scheduler()
 
 
 if __name__ == "__main__":

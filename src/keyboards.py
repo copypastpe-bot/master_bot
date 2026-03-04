@@ -205,12 +205,111 @@ def client_bonus_kb(client_id: int) -> InlineKeyboardMarkup:
     ])
 
 
-def marketing_kb() -> InlineKeyboardMarkup:
-    """Marketing section keyboard."""
+def marketing_kb(promos: list = None) -> InlineKeyboardMarkup:
+    """Marketing section keyboard with active promos."""
+    buttons = []
+
+    # Active promos as buttons
+    if promos:
+        for promo in promos:
+            title = promo.title[:30] if promo.title else "Акция"
+            buttons.append([InlineKeyboardButton(
+                text=f"🎁 {title} ›",
+                callback_data=f"marketing:promo:view:{promo.id}"
+            )])
+
+    # Action buttons
+    buttons.append([InlineKeyboardButton(text="➕ Создать акцию", callback_data="marketing:promo:new")])
+    buttons.append([InlineKeyboardButton(text="📨 Рассылка", callback_data="marketing:broadcast")])
+    buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def broadcast_cancel_kb() -> InlineKeyboardMarkup:
+    """Cancel button for broadcast FSM."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📨 Рассылка", callback_data="marketing:broadcast")],
-        [InlineKeyboardButton(text="🎁 Создать акцию", callback_data="marketing:promo")],
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast:cancel")],
+    ])
+
+
+def broadcast_media_kb() -> InlineKeyboardMarkup:
+    """Media step keyboard for broadcast."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭ Пропустить", callback_data="broadcast:media:skip")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast:cancel")],
+    ])
+
+
+def broadcast_segment_kb() -> InlineKeyboardMarkup:
+    """Segment selection keyboard for broadcast."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👥 Всем клиентам", callback_data="broadcast:segment:all")],
+        [InlineKeyboardButton(text="😴 Не приходили 3+ месяца", callback_data="broadcast:segment:inactive_3m")],
+        [InlineKeyboardButton(text="💤 Не приходили 6+ месяцев", callback_data="broadcast:segment:inactive_6m")],
+        [InlineKeyboardButton(text="🆕 Новые за последние 30 дней", callback_data="broadcast:segment:new_30d")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast:cancel")],
+    ])
+
+
+def broadcast_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirm keyboard for broadcast."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Отправить", callback_data="broadcast:send")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast:cancel")],
+    ])
+
+
+def broadcast_no_recipients_kb() -> InlineKeyboardMarkup:
+    """Keyboard when no recipients in segment."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="marketing"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+
+def promo_cancel_kb() -> InlineKeyboardMarkup:
+    """Cancel button for promo FSM."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="promo:cancel")],
+    ])
+
+
+def promo_date_from_kb() -> InlineKeyboardMarkup:
+    """Start date keyboard for promo."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📅 Сегодня", callback_data="promo:date_from:today")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="promo:cancel")],
+    ])
+
+
+def promo_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirm keyboard for promo creation."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Создать и разослать", callback_data="promo:confirm:broadcast")],
+        [InlineKeyboardButton(text="💾 Создать без рассылки", callback_data="promo:confirm:save")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="promo:cancel")],
+    ])
+
+
+def promo_card_kb(promo_id: int) -> InlineKeyboardMarkup:
+    """Promo card keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Завершить акцию", callback_data=f"marketing:promo:end:{promo_id}")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="marketing"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+
+def promo_end_confirm_kb(promo_id: int) -> InlineKeyboardMarkup:
+    """Confirm promo deactivation keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, завершить", callback_data=f"marketing:promo:end:confirm:{promo_id}")],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data=f"marketing:promo:view:{promo_id}")],
     ])
 
 

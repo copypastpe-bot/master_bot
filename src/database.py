@@ -1127,3 +1127,461 @@ async def get_active_campaigns(master_id: int) -> list[Campaign]:
         ) for row in rows]
     finally:
         await conn.close()
+
+
+# =============================================================================
+# Reminders and Scheduler
+# =============================================================================
+
+async def get_orders_for_reminder_24h() -> list[dict]:
+    """Get orders that need 24h reminder.
+
+    Finds orders where:
+    - scheduled_at BETWEEN (now + 23h) AND (now + 25h)
+    - status IN ('new', 'confirmed')
+    - reminder_24h_sent = false
+    - client.tg_id IS NOT NULL
+    - master_clients.notify_reminders = true
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.id as order_id,
+                o.scheduled_at,
+                o.address,
+                o.amount_total,
+                c.id as client_id,
+                c.tg_id as client_tg_id,
+                c.name as client_name,
+                m.id as master_id,
+                m.tg_id as master_tg_id,
+                m.name as master_name,
+                m.contacts as master_contacts,
+                mc.notify_reminders,
+                GROUP_CONCAT(oi.name, ', ') as services
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            JOIN masters m ON o.master_id = m.id
+            JOIN master_clients mc ON mc.master_id = m.id AND mc.client_id = c.id
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.status IN ('new', 'confirmed')
+              AND o.reminder_24h_sent = 0
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_reminders = 1
+              AND o.scheduled_at BETWEEN datetime('now', '+23 hours') AND datetime('now', '+25 hours')
+            GROUP BY o.id
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_orders_for_reminder_1h() -> list[dict]:
+    """Get orders that need 1h reminder.
+
+    Finds orders where:
+    - scheduled_at BETWEEN (now + 45min) AND (now + 75min)
+    - status IN ('new', 'confirmed')
+    - reminder_1h_sent = false
+    - client.tg_id IS NOT NULL
+    - master_clients.notify_reminders = true
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.id as order_id,
+                o.scheduled_at,
+                o.address,
+                o.amount_total,
+                c.id as client_id,
+                c.tg_id as client_tg_id,
+                c.name as client_name,
+                m.id as master_id,
+                m.tg_id as master_tg_id,
+                m.name as master_name,
+                m.contacts as master_contacts,
+                mc.notify_reminders,
+                GROUP_CONCAT(oi.name, ', ') as services
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            JOIN masters m ON o.master_id = m.id
+            JOIN master_clients mc ON mc.master_id = m.id AND mc.client_id = c.id
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.status IN ('new', 'confirmed')
+              AND o.reminder_1h_sent = 0
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_reminders = 1
+              AND o.scheduled_at BETWEEN datetime('now', '+45 minutes') AND datetime('now', '+75 minutes')
+            GROUP BY o.id
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_clients_with_birthday_today() -> list[dict]:
+    """Get clients with birthday today who should receive bonus.
+
+    Returns clients where:
+    - birthday matches today (month-day)
+    - master.bonus_enabled = true
+    - master.bonus_birthday > 0
+    - client.tg_id IS NOT NULL
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                c.id as client_id,
+                c.tg_id as client_tg_id,
+                c.name as client_name,
+                m.id as master_id,
+                m.tg_id as master_tg_id,
+                m.name as master_name,
+                m.bonus_birthday,
+                mc.bonus_balance
+            FROM clients c
+            JOIN master_clients mc ON mc.client_id = c.id
+            JOIN masters m ON mc.master_id = m.id
+            WHERE strftime('%m-%d', c.birthday) = strftime('%m-%d', 'now')
+              AND m.bonus_enabled = 1
+              AND m.bonus_birthday > 0
+              AND c.tg_id IS NOT NULL
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def mark_reminder_sent(order_id: int, reminder_type: str) -> None:
+    """Mark reminder as sent.
+
+    Args:
+        order_id: Order ID
+        reminder_type: '24h' or '1h'
+    """
+    conn = await get_connection()
+    try:
+        field = "reminder_24h_sent" if reminder_type == "24h" else "reminder_1h_sent"
+        await conn.execute(
+            f"UPDATE orders SET {field} = 1 WHERE id = ?",
+            (order_id,)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def accrue_birthday_bonus(master_id: int, client_id: int) -> int:
+    """Accrue birthday bonus to client. Returns new balance.
+
+    Also checks if bonus was already accrued today to prevent duplicates.
+    """
+    conn = await get_connection()
+    try:
+        # Check if already accrued today
+        cursor = await conn.execute(
+            """
+            SELECT COUNT(*) as cnt FROM bonus_log
+            WHERE master_id = ? AND client_id = ? AND type = 'birthday'
+              AND date(created_at) = date('now')
+            """,
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        if row["cnt"] > 0:
+            # Already accrued today - get current balance
+            cursor = await conn.execute(
+                "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+                (master_id, client_id)
+            )
+            row = await cursor.fetchone()
+            return row["bonus_balance"] if row else 0
+
+        # Get bonus amount from master
+        cursor = await conn.execute(
+            "SELECT bonus_birthday FROM masters WHERE id = ?",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        bonus_amount = row["bonus_birthday"] if row else 0
+
+        if bonus_amount <= 0:
+            cursor = await conn.execute(
+                "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+                (master_id, client_id)
+            )
+            row = await cursor.fetchone()
+            return row["bonus_balance"] if row else 0
+
+        # Get current balance
+        cursor = await conn.execute(
+            "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        current_balance = row["bonus_balance"] if row else 0
+        new_balance = current_balance + bonus_amount
+
+        # Update balance
+        await conn.execute(
+            "UPDATE master_clients SET bonus_balance = ? WHERE master_id = ? AND client_id = ?",
+            (new_balance, master_id, client_id)
+        )
+
+        # Log bonus
+        await conn.execute(
+            """
+            INSERT INTO bonus_log (master_id, client_id, type, amount, comment)
+            VALUES (?, ?, 'birthday', ?, 'Бонус на день рождения')
+            """,
+            (master_id, client_id, bonus_amount)
+        )
+
+        await conn.commit()
+        return new_balance
+    finally:
+        await conn.close()
+
+
+async def get_order_for_confirmation(order_id: int, client_tg_id: int) -> Optional[dict]:
+    """Get order for confirmation by client.
+
+    Verifies order belongs to client and has valid status.
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.id as order_id,
+                o.scheduled_at,
+                o.address,
+                o.status,
+                c.id as client_id,
+                c.name as client_name,
+                m.id as master_id,
+                m.tg_id as master_tg_id,
+                m.name as master_name,
+                m.contacts as master_contacts,
+                GROUP_CONCAT(oi.name, ', ') as services
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            JOIN masters m ON o.master_id = m.id
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.id = ? AND c.tg_id = ?
+            GROUP BY o.id
+            """,
+            (order_id, client_tg_id)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+# =============================================================================
+# Marketing: Broadcasts and Promos
+# =============================================================================
+
+async def get_broadcast_recipients(master_id: int, segment: str) -> list[dict]:
+    """Get broadcast recipients by segment.
+
+    Args:
+        master_id: Master ID
+        segment: 'all' | 'inactive_3m' | 'inactive_6m' | 'new_30d'
+
+    Returns clients with tg_id and notify_marketing = true.
+    """
+    conn = await get_connection()
+    try:
+        base_query = """
+            SELECT c.id, c.tg_id, c.name
+            FROM clients c
+            JOIN master_clients mc ON mc.client_id = c.id
+            WHERE mc.master_id = ?
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_marketing = 1
+        """
+
+        if segment == "all":
+            query = base_query
+            params = (master_id,)
+        elif segment == "inactive_3m":
+            query = base_query + """
+              AND (mc.last_visit < datetime('now', '-90 days') OR mc.last_visit IS NULL)
+            """
+            params = (master_id,)
+        elif segment == "inactive_6m":
+            query = base_query + """
+              AND (mc.last_visit < datetime('now', '-180 days') OR mc.last_visit IS NULL)
+            """
+            params = (master_id,)
+        elif segment == "new_30d":
+            query = base_query + """
+              AND mc.first_visit > datetime('now', '-30 days')
+            """
+            params = (master_id,)
+        else:
+            query = base_query
+            params = (master_id,)
+
+        cursor = await conn.execute(query, params)
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_broadcast_recipients_count(master_id: int, segment: str) -> int:
+    """Get count of broadcast recipients by segment."""
+    recipients = await get_broadcast_recipients(master_id, segment)
+    return len(recipients)
+
+
+async def save_campaign(
+    master_id: int,
+    campaign_type: str,
+    title: Optional[str],
+    text: Optional[str],
+    active_from: Optional[str],
+    active_to: Optional[str],
+    sent_count: int = 0,
+    segment: Optional[str] = None
+) -> Campaign:
+    """Save a campaign (broadcast or promo)."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO campaigns (master_id, type, title, text, active_from, active_to, sent_count, segment, sent_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            """,
+            (master_id, campaign_type, title, text, active_from, active_to, sent_count, segment)
+        )
+        await conn.commit()
+        campaign_id = cursor.lastrowid
+
+        return Campaign(
+            id=campaign_id,
+            master_id=master_id,
+            type=campaign_type,
+            title=title,
+            text=text,
+            active_from=active_from,
+            active_to=active_to,
+            segment=segment,
+            sent_at=datetime.now().isoformat(),
+            sent_count=sent_count,
+        )
+    finally:
+        await conn.close()
+
+
+async def get_active_promos(master_id: int) -> list[Campaign]:
+    """Get active promo campaigns for a master."""
+    conn = await get_connection()
+    try:
+        today = date.today().isoformat()
+        cursor = await conn.execute(
+            """
+            SELECT * FROM campaigns
+            WHERE master_id = ?
+              AND type = 'promo'
+              AND (active_from IS NULL OR active_from <= ?)
+              AND (active_to IS NULL OR active_to >= ?)
+            ORDER BY created_at DESC
+            """,
+            (master_id, today, today)
+        )
+        rows = await cursor.fetchall()
+        return [Campaign(
+            id=row["id"],
+            master_id=row["master_id"],
+            type=row["type"],
+            title=row["title"],
+            text=row["text"],
+            active_from=row["active_from"],
+            active_to=row["active_to"],
+            segment=row["segment"],
+            sent_at=row["sent_at"],
+            sent_count=row["sent_count"],
+            created_at=row["created_at"],
+        ) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_promo_by_id(campaign_id: int, master_id: int) -> Optional[Campaign]:
+    """Get promo campaign by ID."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM campaigns WHERE id = ? AND master_id = ? AND type = 'promo'",
+            (campaign_id, master_id)
+        )
+        row = await cursor.fetchone()
+        if row:
+            return Campaign(
+                id=row["id"],
+                master_id=row["master_id"],
+                type=row["type"],
+                title=row["title"],
+                text=row["text"],
+                active_from=row["active_from"],
+                active_to=row["active_to"],
+                segment=row["segment"],
+                sent_at=row["sent_at"],
+                sent_count=row["sent_count"],
+                created_at=row["created_at"],
+            )
+        return None
+    finally:
+        await conn.close()
+
+
+async def deactivate_promo(campaign_id: int, master_id: int) -> bool:
+    """Deactivate promo by setting active_to to yesterday."""
+    conn = await get_connection()
+    try:
+        yesterday = (date.today() - relativedelta(days=1)).isoformat()
+        await conn.execute(
+            "UPDATE campaigns SET active_to = ? WHERE id = ? AND master_id = ? AND type = 'promo'",
+            (yesterday, campaign_id, master_id)
+        )
+        await conn.commit()
+        return True
+    finally:
+        await conn.close()
+
+
+async def get_marketing_recipients_count(master_id: int) -> int:
+    """Get count of clients with tg_id and notify_marketing = true."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT COUNT(*) as cnt
+            FROM clients c
+            JOIN master_clients mc ON mc.client_id = c.id
+            WHERE mc.master_id = ?
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_marketing = 1
+            """,
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        await conn.close()
