@@ -1014,21 +1014,22 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
         revenue = row["revenue"] or 0
         order_count = row["order_count"] or 0
 
-        # New clients
+        # New clients (added to database in the period)
         cursor = await conn.execute(
             """
-            SELECT COUNT(DISTINCT client_id) as new_clients
-            FROM master_clients
-            WHERE master_id = ?
-              AND date(first_visit) >= ?
-              AND date(first_visit) <= ?
+            SELECT COUNT(*) as new_clients
+            FROM master_clients mc
+            JOIN clients c ON mc.client_id = c.id
+            WHERE mc.master_id = ?
+              AND date(c.created_at) >= ?
+              AND date(c.created_at) <= ?
             """,
             (master_id, date_from.isoformat(), date_to.isoformat())
         )
         row = await cursor.fetchone()
         new_clients = row["new_clients"] or 0
 
-        # Repeat clients (had orders before the period)
+        # Repeat clients (clients with 2+ orders total, who had order in period)
         cursor = await conn.execute(
             """
             SELECT COUNT(DISTINCT o.client_id) as repeat_clients
@@ -1037,15 +1038,14 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
               AND o.status = 'done'
               AND date(o.done_at) >= ?
               AND date(o.done_at) <= ?
-              AND EXISTS (
-                  SELECT 1 FROM orders o2
+              AND (
+                  SELECT COUNT(*) FROM orders o2
                   WHERE o2.client_id = o.client_id
                     AND o2.master_id = o.master_id
-                    AND date(o2.done_at) < ?
                     AND o2.status = 'done'
-              )
+              ) >= 2
             """,
-            (master_id, date_from.isoformat(), date_to.isoformat(), date_from.isoformat())
+            (master_id, date_from.isoformat(), date_to.isoformat())
         )
         row = await cursor.fetchone()
         repeat_clients = row["repeat_clients"] or 0
@@ -1058,10 +1058,10 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
         row = await cursor.fetchone()
         total_clients = row["total"] or 0
 
-        # Top services
+        # Top services by popularity (count only)
         cursor = await conn.execute(
             """
-            SELECT oi.name, SUM(oi.price) as total
+            SELECT oi.name, COUNT(*) as cnt
             FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
             WHERE o.master_id = ?
@@ -1069,12 +1069,39 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
               AND date(o.done_at) >= ?
               AND date(o.done_at) <= ?
             GROUP BY oi.name
-            ORDER BY total DESC
+            ORDER BY cnt DESC
             LIMIT 5
             """,
             (master_id, date_from.isoformat(), date_to.isoformat())
         )
-        top_services = [{"name": row["name"], "total": row["total"]} for row in await cursor.fetchall()]
+        top_services = [
+            {"name": row["name"], "count": row["cnt"]}
+            for row in await cursor.fetchall()
+        ]
+
+        # Top orders by amount (with client name and date)
+        cursor = await conn.execute(
+            """
+            SELECT o.amount_total, c.name as client_name, o.scheduled_at
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            WHERE o.master_id = ?
+              AND o.status = 'done'
+              AND date(o.done_at) >= ?
+              AND date(o.done_at) <= ?
+            ORDER BY o.amount_total DESC
+            LIMIT 5
+            """,
+            (master_id, date_from.isoformat(), date_to.isoformat())
+        )
+        top_orders = [
+            {
+                "amount": row["amount_total"],
+                "client_name": row["client_name"],
+                "date": row["scheduled_at"]
+            }
+            for row in await cursor.fetchall()
+        ]
 
         avg_check = revenue // order_count if order_count > 0 else 0
 
@@ -1086,6 +1113,7 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
             "avg_check": avg_check,
             "total_clients": total_clients,
             "top_services": top_services,
+            "top_orders": top_orders,
         }
     finally:
         await conn.close()

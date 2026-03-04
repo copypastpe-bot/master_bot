@@ -315,22 +315,28 @@ def promo_end_confirm_kb(promo_id: int) -> InlineKeyboardMarkup:
 
 def reports_kb(active: str = "month") -> InlineKeyboardMarkup:
     """Reports section keyboard."""
-    def mark(period: str) -> str:
-        return f"· {period}" if active == period.lower() else period
+    today_text = "· Сегодня" if active == "today" else "Сегодня"
+    week_text = "· Неделя" if active == "week" else "Неделя"
+    month_text = "· Месяц" if active == "month" else "Месяц"
+    period_text = "· 📅 Период" if active == "custom" else "📅 Период"
 
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text=mark("Сегодня") if active == "today" else "Сегодня",
-                               callback_data="reports:today"),
-            InlineKeyboardButton(text=mark("Неделя") if active == "week" else "Неделя",
-                               callback_data="reports:week"),
+            InlineKeyboardButton(text=today_text, callback_data="reports:today"),
+            InlineKeyboardButton(text=week_text, callback_data="reports:week"),
         ],
         [
-            InlineKeyboardButton(text=mark("Месяц") if active == "month" else "Месяц",
-                               callback_data="reports:month"),
-            InlineKeyboardButton(text="📅 Период", callback_data="reports:period"),
+            InlineKeyboardButton(text=month_text, callback_data="reports:month"),
+            InlineKeyboardButton(text=period_text, callback_data="reports:period"),
         ],
         [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def report_period_cancel_kb() -> InlineKeyboardMarkup:
+    """Cancel keyboard for report period FSM."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="reports")],
     ])
 
 

@@ -125,3 +125,9 @@ class PromoFSM(StatesGroup):
     date_from = State()   # Step 3: Start date
     date_to = State()     # Step 4: End date
     confirm = State()     # Step 5: Confirm and optionally broadcast
+
+
+class ReportPeriodFSM(StatesGroup):
+    """Custom report period selection flow."""
+    date_from = State()   # Step 1: Start date
+    date_to = State()     # Step 2: End date
