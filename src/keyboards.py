@@ -371,6 +371,36 @@ def settings_profile_kb() -> InlineKeyboardMarkup:
     ])
 
 
+def gc_not_connected_kb() -> InlineKeyboardMarkup:
+    """Google Calendar not connected keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Подключить", callback_data="gc:connect")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="settings:profile"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+
+def gc_connected_kb() -> InlineKeyboardMarkup:
+    """Google Calendar connected keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отключить", callback_data="gc:disconnect")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="settings:profile"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+
+def gc_disconnect_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirm Google Calendar disconnect keyboard."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, отключить", callback_data="gc:disconnect:confirm")],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="profile:gc")],
+    ])
+
+
 def settings_bonus_kb(bonus_enabled: bool) -> InlineKeyboardMarkup:
     """Bonus program settings keyboard."""
     toggle_text = "🔄 Выключить" if bonus_enabled else "🔄 Включить"

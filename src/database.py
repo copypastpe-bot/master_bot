@@ -1664,3 +1664,60 @@ async def get_master_services_for_client(master_id: int) -> list[dict]:
         return [dict(row) for row in rows]
     finally:
         await conn.close()
+
+
+# =============================================================================
+# Google Calendar Credentials
+# =============================================================================
+
+async def get_gc_credentials(master_id: int) -> Optional[str]:
+    """Get Google Calendar credentials JSON for master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT gc_credentials FROM masters WHERE id = ?",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        return row["gc_credentials"] if row else None
+    finally:
+        await conn.close()
+
+
+async def save_gc_credentials(master_id: int, credentials_json: str) -> None:
+    """Save Google Calendar credentials JSON for master."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE masters SET gc_credentials = ?, gc_connected = 1 WHERE id = ?",
+            (credentials_json, master_id)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def delete_gc_credentials(master_id: int) -> None:
+    """Delete Google Calendar credentials for master."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE masters SET gc_credentials = NULL, gc_connected = 0 WHERE id = ?",
+            (master_id,)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def save_gc_event_id(order_id: int, event_id: str) -> None:
+    """Save Google Calendar event ID for order."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET gc_event_id = ? WHERE id = ?",
+            (event_id, order_id)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()

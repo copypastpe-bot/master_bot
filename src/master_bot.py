@@ -43,6 +43,8 @@ from src.keyboards import (
     promo_card_kb, promo_end_confirm_kb,
     # Report keyboards
     report_period_cancel_kb,
+    # Google Calendar keyboards
+    gc_not_connected_kb, gc_connected_kb, gc_disconnect_confirm_kb,
 )
 from src.database import (
     init_db,
@@ -1306,23 +1308,25 @@ async def order_confirm_create(callback: CallbackQuery, state: FSMContext, bot: 
 
     await create_order_items(order_id, order_items)
 
-    # Google Calendar (stub)
+    # Google Calendar integration
     client = await get_client_by_id(client_id)
     services_text = ", ".join(item["name"] for item in order_items)
 
-    gc_event_id = await google_calendar.create_event(
-        master_id=master.id,
-        order={"id": order_id},
-        client_name=client.name,
-        client_phone=client.phone or "",
-        services=services_text,
-        address=address,
-        amount=amount,
-        scheduled_at=scheduled_at
-    )
+    try:
+        gc_event_id = await google_calendar.create_event(
+            master_id=master.id,
+            client_name=client.name,
+            client_phone=client.phone or "",
+            services=services_text,
+            address=address,
+            amount=amount,
+            scheduled_at=scheduled_at
+        )
 
-    if gc_event_id:
-        await save_gc_event_id(order_id, gc_event_id)
+        if gc_event_id:
+            await save_gc_event_id(order_id, gc_event_id)
+    except Exception as e:
+        logger.error(f"GC create_event error: {e}")
 
     # Send notification to client
     if client.tg_id:
@@ -1817,7 +1821,10 @@ async def complete_order_final(callback: CallbackQuery, state: FSMContext, bot: 
 
     # Delete GC event if exists
     if order.get("gc_event_id"):
-        await google_calendar.delete_event(master.id, order.get("gc_event_id"))
+        try:
+            await google_calendar.delete_event(master.id, order.get("gc_event_id"))
+        except Exception as e:
+            logger.error(f"GC delete_event error: {e}")
 
     # Notify client
     client = await get_client_by_id(client_id)
@@ -2042,7 +2049,10 @@ async def move_order_final(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
     # Update GC event if exists
     if order.get("gc_event_id"):
-        await google_calendar.update_event(master.id, order.get("gc_event_id"), new_dt)
+        try:
+            await google_calendar.update_event(master.id, order.get("gc_event_id"), new_dt)
+        except Exception as e:
+            logger.error(f"GC update_event error: {e}")
 
     # Notify client
     client = await get_client_by_id(order.get("client_id"))
@@ -2237,7 +2247,10 @@ async def cancel_order_final(callback: CallbackQuery, state: FSMContext, bot: Bo
 
     # Delete GC event if exists
     if order.get("gc_event_id"):
-        await google_calendar.delete_event(master.id, order.get("gc_event_id"))
+        try:
+            await google_calendar.delete_event(master.id, order.get("gc_event_id"))
+        except Exception as e:
+            logger.error(f"GC delete_event error: {e}")
 
     # Notify client
     client = await get_client_by_id(order.get("client_id"))
@@ -4359,10 +4372,88 @@ async def profile_edit_value(message: Message, state: FSMContext, bot: Bot) -> N
 
 @router.callback_query(F.data == "profile:gc")
 async def cb_profile_gc(callback: CallbackQuery) -> None:
-    """Google Calendar stub."""
-    text = "🚧 Google Calendar — в разработке"
-    await edit_home_message(callback, text, stub_kb("settings:profile"))
+    """Show Google Calendar settings."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    # Check if connected
+    email = await google_calendar.get_calendar_account(master.id)
+
+    if email:
+        text = (
+            "📅 Google Calendar\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Статус: ✅ Подключён\n"
+            f"Аккаунт: {email}"
+        )
+        kb = gc_connected_kb()
+    else:
+        text = (
+            "📅 Google Calendar\n"
+            "━━━━━━━━━━━━━━━\n"
+            "Статус: ❌ Не подключён\n\n"
+            "Подключите свой Google Calendar —\n"
+            "заказы будут автоматически появляться\n"
+            "в вашем расписании."
+        )
+        kb = gc_not_connected_kb()
+
+    await edit_home_message(callback, text, kb)
     await callback.answer()
+
+
+@router.callback_query(F.data == "gc:connect")
+async def cb_gc_connect(callback: CallbackQuery) -> None:
+    """Generate OAuth URL and send to master."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    url = await google_calendar.get_oauth_url(master.id)
+
+    text = (
+        "🔗 Для подключения Google Calendar:\n\n"
+        f"1. Перейдите по ссылке:\n{url}\n\n"
+        "2. Авторизуйтесь в Google\n"
+        "3. Разрешите доступ к календарю\n\n"
+        "После авторизации бот получит\n"
+        "уведомление автоматически."
+    )
+
+    await edit_home_message(callback, text, gc_not_connected_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "gc:disconnect")
+async def cb_gc_disconnect(callback: CallbackQuery) -> None:
+    """Confirm Google Calendar disconnect."""
+    text = (
+        "❌ Отключить Google Calendar?\n\n"
+        "Новые заказы больше не будут\n"
+        "добавляться в календарь."
+    )
+
+    await edit_home_message(callback, text, gc_disconnect_confirm_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "gc:disconnect:confirm")
+async def cb_gc_disconnect_confirm(callback: CallbackQuery) -> None:
+    """Disconnect Google Calendar."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    await google_calendar.disconnect_calendar(master.id)
+
+    text = (
+        "📅 Google Calendar\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Статус: ❌ Не подключён\n\n"
+        "Google Calendar отключён.\n"
+        "Вы можете подключить его снова."
+    )
+
+    await edit_home_message(callback, text, gc_not_connected_kb())
+    await callback.answer("Отключено")
 
 
 # =============================================================================
