@@ -131,3 +131,26 @@ class ReportPeriodFSM(StatesGroup):
     """Custom report period selection flow."""
     date_from = State()   # Step 1: Start date
     date_to = State()     # Step 2: End date
+
+
+# =============================================================================
+# Client Bot FSM States
+# =============================================================================
+
+class OrderRequestFSM(StatesGroup):
+    """Order request flow in client_bot."""
+    service = State()         # Step 1: Select service
+    custom_service = State()  # Step 1b: Enter custom service name
+    comment = State()         # Step 2: Add comment (optional)
+    confirm = State()         # Step 3: Confirm and send
+
+
+class QuestionFSM(StatesGroup):
+    """Question to master flow in client_bot."""
+    text = State()  # Step 1: Enter question text
+
+
+class MediaFSM(StatesGroup):
+    """Media sending flow in client_bot."""
+    media = State()    # Step 1: Send photo/video
+    comment = State()  # Step 2: Add comment (optional)

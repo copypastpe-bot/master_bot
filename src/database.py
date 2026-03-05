@@ -1613,3 +1613,54 @@ async def get_marketing_recipients_count(master_id: int) -> int:
         return row["cnt"] if row else 0
     finally:
         await conn.close()
+
+
+# =============================================================================
+# Inbound Requests (client_bot)
+# =============================================================================
+
+async def save_inbound_request(
+    master_id: int,
+    client_id: int,
+    type: str,
+    text: str = None,
+    service_name: str = None,
+    file_id: str = None
+) -> int:
+    """Save inbound request from client.
+
+    Types: 'order_request', 'question', 'media'
+    Returns the id of the created request.
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO inbound_requests (master_id, client_id, type, text, service_name, file_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (master_id, client_id, type, text, service_name, file_id)
+        )
+        await conn.commit()
+        return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def get_master_services_for_client(master_id: int) -> list[dict]:
+    """Get active services for a master (for client order request)."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, name, price
+            FROM services
+            WHERE master_id = ? AND is_active = 1
+            ORDER BY name
+            """,
+            (master_id,)
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()

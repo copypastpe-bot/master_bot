@@ -536,6 +536,79 @@ def client_notifications_kb(notify_24h: bool, notify_1h: bool, notify_marketing:
     ])
 
 
+def order_request_services_kb(services: list) -> InlineKeyboardMarkup:
+    """Services selection keyboard for order request."""
+    buttons = []
+
+    # Service buttons in rows of 2
+    row = []
+    for service in services:
+        row.append(InlineKeyboardButton(
+            text=service["name"],
+            callback_data=f"order_req:service:{service['id']}"
+        ))
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+
+    # "Other" and "Cancel" buttons
+    buttons.append([InlineKeyboardButton(text="📝 Другое", callback_data="order_req:service:other")])
+    buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="home")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def order_request_comment_kb() -> InlineKeyboardMarkup:
+    """Comment step keyboard for order request."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⏭ Пропустить", callback_data="order_req:skip_comment"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="home"),
+        ],
+    ])
+
+
+def order_request_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirmation keyboard for order request."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Отправить заявку", callback_data="order_req:confirm")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="home")],
+    ])
+
+
+def question_cancel_kb() -> InlineKeyboardMarkup:
+    """Cancel keyboard for question FSM."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="home")],
+    ])
+
+
+def media_cancel_kb() -> InlineKeyboardMarkup:
+    """Cancel keyboard for media FSM."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="home")],
+    ])
+
+
+def media_comment_kb() -> InlineKeyboardMarkup:
+    """Comment step keyboard for media FSM."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⏭ Пропустить", callback_data="media:skip_comment"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="home"),
+        ],
+    ])
+
+
+def client_home_kb() -> InlineKeyboardMarkup:
+    """Home button keyboard for client."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
 # =============================================================================
 # Common Keyboards
 # =============================================================================
