@@ -28,9 +28,13 @@ MONTHS_RU = [
 
 
 def confirm_order_kb(order_id: int) -> InlineKeyboardMarkup:
-    """Keyboard with confirm button for 24h reminder."""
+    """Keyboard with confirm/reschedule/cancel buttons for 24h reminder."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтверждаю запись", callback_data=f"confirm_order:{order_id}")]
+        [InlineKeyboardButton(text="✅ Подтверждаю запись", callback_data=f"confirm_order:{order_id}")],
+        [
+            InlineKeyboardButton(text="📅 Перенести", callback_data=f"reschedule_order:{order_id}"),
+            InlineKeyboardButton(text="❌ Отменить", callback_data=f"cancel_order:{order_id}"),
+        ],
     ])
 
 

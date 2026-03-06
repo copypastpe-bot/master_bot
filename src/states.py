@@ -74,14 +74,16 @@ class ClientAdd(StatesGroup):
 
 class ServiceAdd(StatesGroup):
     """Add new service to catalog."""
-    name = State()      # Service name
-    price = State()     # Service price
+    name = State()         # Service name
+    price = State()        # Service price
+    description = State()  # Service description (optional)
 
 
 class ServiceEdit(StatesGroup):
     """Edit service in catalog."""
-    name = State()      # Edit service name
-    price = State()     # Edit service price
+    name = State()         # Edit service name
+    price = State()        # Edit service price
+    description = State()  # Edit service description
 
 
 class ProfileEdit(StatesGroup):
@@ -154,3 +156,17 @@ class MediaFSM(StatesGroup):
     """Media sending flow in client_bot."""
     media = State()    # Step 1: Send photo/video
     comment = State()  # Step 2: Add comment (optional)
+
+
+class ClientRescheduleOrder(StatesGroup):
+    """Client reschedule order flow in client_bot."""
+    date = State()       # Step 1: Select new date
+    hour = State()       # Step 2: Select hour
+    minutes = State()    # Step 3: Select minutes
+    confirm = State()    # Step 4: Confirm reschedule
+
+
+class ClientCancelOrder(StatesGroup):
+    """Client cancel order flow in client_bot."""
+    reason = State()   # Step 1: Select/enter reason
+    confirm = State()  # Step 2: Confirm cancellation

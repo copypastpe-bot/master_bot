@@ -64,6 +64,7 @@ class Service:
     master_id: int
     name: str
     price: Optional[int] = None
+    description: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
 

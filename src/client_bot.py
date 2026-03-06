@@ -1,23 +1,30 @@
 """Client bot - for clients to view bonuses, history, and make requests."""
 
 import logging
-from datetime import date
+from datetime import date, datetime
 
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
+from typing import Callable, Dict, Any, Awaitable
 
 from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL
-from src.states import ClientRegistration, OrderRequestFSM, QuestionFSM, MediaFSM
+from src.states import (
+    ClientRegistration, OrderRequestFSM, QuestionFSM, MediaFSM,
+    ClientRescheduleOrder, ClientCancelOrder,
+)
 from src.keyboards import (
     home_client_kb, client_bonuses_kb, client_bot_history_kb,
     client_promos_kb, client_master_info_kb, client_notifications_kb,
-    skip_kb, share_contact_kb, stub_kb,
+    skip_kb, share_contact_kb, stub_kb, home_reply_kb,
     order_request_services_kb, order_request_comment_kb, order_request_confirm_kb,
     question_cancel_kb, media_cancel_kb, media_comment_kb, client_home_kb,
+    client_reschedule_calendar_kb, client_reschedule_hour_kb,
+    client_reschedule_minutes_kb, client_reschedule_confirm_kb,
+    client_cancel_reason_kb, client_cancel_confirm_kb,
 )
 from src.database import (
     init_db,
@@ -38,6 +45,10 @@ from src.database import (
     get_order_for_confirmation,
     get_master_services_for_client,
     save_inbound_request,
+    mark_order_confirmed_by_client,
+    update_order_schedule,
+    update_order_status,
+    reset_order_for_reconfirmation,
 )
 from src.utils import format_phone, parse_date
 
@@ -74,11 +85,27 @@ async def build_home_text(client, master, master_client) -> str:
     )
 
 
-async def show_home(bot: Bot, client, master, master_client, chat_id: int) -> int:
-    """Show or update home screen. Returns message_id."""
+async def show_home(bot: Bot, client, master, master_client, chat_id: int, force_new: bool = False) -> int:
+    """Show or update home screen. Returns message_id.
+
+    Args:
+        force_new: If True, always send new message (delete old if exists)
+    """
     text = await build_home_text(client, master, master_client)
     keyboard = home_client_kb()
 
+    # Delete old message if force_new
+    if force_new and master_client.home_message_id:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=master_client.home_message_id)
+        except TelegramBadRequest:
+            pass
+        # Send new message
+        msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+        await save_client_home_message_id(master_client.master_id, master_client.client_id, msg.message_id)
+        return msg.message_id
+
+    # Try to edit existing message
     if master_client.home_message_id:
         try:
             await bot.edit_message_text(
@@ -88,8 +115,11 @@ async def show_home(bot: Bot, client, master, master_client, chat_id: int) -> in
                 reply_markup=keyboard
             )
             return master_client.home_message_id
-        except TelegramBadRequest:
-            pass
+        except TelegramBadRequest as e:
+            # "message is not modified" - no need to send new message
+            if "message is not modified" in str(e):
+                return master_client.home_message_id
+            # Otherwise message was deleted or not found - send new
 
     # Send new message
     msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
@@ -119,9 +149,41 @@ async def get_client_context(tg_id: int) -> tuple:
     return client, master, master_client
 
 
+class HomeButtonMiddleware(BaseMiddleware):
+    """Middleware to intercept Home button before any FSM handlers."""
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        # Only process text messages with "Home" button
+        if isinstance(event, Message) and event.text and event.text == "🏠 Домой":
+            bot: Bot = data["bot"]
+            state: FSMContext = data["state"]
+            tg_id = event.from_user.id
+
+            client, master, master_client = await get_client_context(tg_id)
+            if client and master and master_client:
+                await state.clear()
+                try:
+                    await event.delete()
+                except TelegramBadRequest:
+                    pass
+                await show_home(bot, client, master, master_client, event.chat.id, force_new=True)
+            else:
+                # Not registered - show message
+                await event.answer("Вы не зарегистрированы. Перейдите по ссылке от мастера.")
+            return  # Always stop propagation for "Home" button
+
+        return await handler(event, data)
+
+
 # =============================================================================
 # Start and Home Commands
 # =============================================================================
+
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
@@ -132,7 +194,8 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     client, master, master_client = await get_client_context(tg_id)
     if client and master and master_client:
         await state.clear()
-        await show_home(bot, client, master, master_client, message.chat.id)
+        # Show home menu (force_new to show at bottom of chat)
+        await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
         return
 
     # Extract invite token
@@ -141,7 +204,8 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         await message.answer(
             "👋 Добро пожаловать!\n\n"
             "Для регистрации нужна ссылка от вашего мастера.\n"
-            "Попросите мастера отправить вам персональную ссылку."
+            "Попросите мастера отправить вам персональную ссылку.",
+            reply_markup=home_reply_kb()
         )
         return
 
@@ -293,6 +357,8 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     else:
         await message.answer(success_text)
 
+    # Send reply keyboard
+    await bot.send_message(message.chat.id, "🏠", reply_markup=home_reply_kb())
     await show_home(bot, client, master, master_client, message.chat.id)
 
 
@@ -1214,7 +1280,6 @@ async def handle_order_confirmation(callback: CallbackQuery) -> None:
         return
 
     # Parse scheduled_at for display
-    from datetime import datetime
     scheduled_at = datetime.fromisoformat(order["scheduled_at"])
     day = scheduled_at.day
     month = MONTHS_RU[scheduled_at.month]
@@ -1224,6 +1289,9 @@ async def handle_order_confirmation(callback: CallbackQuery) -> None:
     address = order.get("address") or "—"
     master_name = order.get("master_name") or "—"
     master_contacts = order.get("master_contacts") or "—"
+
+    # Mark order as confirmed by client
+    await mark_order_confirmed_by_client(order_id)
 
     # Update client message - remove button, add confirmation text
     new_text = (
@@ -1263,12 +1331,406 @@ async def handle_order_confirmation(callback: CallbackQuery) -> None:
 
 
 # =============================================================================
+# Order Reschedule from Reminder (client-side)
+# =============================================================================
+
+@router.callback_query(F.data.startswith("reschedule_order:"))
+async def handle_reschedule_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start reschedule flow from 24h reminder."""
+    order_id = int(callback.data.split(":")[1])
+    client_tg_id = callback.from_user.id
+
+    # Get order data
+    order = await get_order_for_confirmation(order_id, client_tg_id)
+
+    if not order:
+        await callback.answer("Заказ не найден")
+        return
+
+    if order["status"] not in ("new", "confirmed"):
+        await callback.answer("Заказ уже обработан")
+        return
+
+    # Store order data in state
+    await state.update_data(
+        reschedule_order_id=order_id,
+        reschedule_old_dt=order["scheduled_at"],
+        reschedule_master_id=order["master_id"],
+        reschedule_master_tg_id=order["master_tg_id"],
+        reschedule_address=order.get("address"),
+        reschedule_services=order.get("services"),
+        reschedule_master_name=order.get("master_name"),
+        reschedule_master_contacts=order.get("master_contacts"),
+    )
+
+    # Show calendar
+    today = date.today()
+    text = "📅 Выберите новую дату:"
+    await callback.message.edit_text(
+        text=text,
+        reply_markup=client_reschedule_calendar_kb(today.year, today.month)
+    )
+    await state.set_state(ClientRescheduleOrder.date)
+    await callback.answer()
+
+
+@router.callback_query(ClientRescheduleOrder.date, F.data.regexp(r"^client_resched:cal:\d+:\d+$"))
+async def client_reschedule_calendar_nav(callback: CallbackQuery, state: FSMContext) -> None:
+    """Navigate calendar for reschedule."""
+    parts = callback.data.split(":")
+    year = int(parts[2])
+    month = int(parts[3])
+
+    text = "📅 Выберите новую дату:"
+    await callback.message.edit_text(
+        text=text,
+        reply_markup=client_reschedule_calendar_kb(year, month)
+    )
+    await callback.answer()
+
+
+@router.callback_query(ClientRescheduleOrder.date, F.data.startswith("client_resched:date:"))
+async def client_reschedule_select_date(callback: CallbackQuery, state: FSMContext) -> None:
+    """Select new date for order."""
+    date_str = callback.data.split(":")[2]
+    await state.update_data(reschedule_new_date=date_str)
+
+    text = "⏰ Выберите время:"
+    await callback.message.edit_text(text=text, reply_markup=client_reschedule_hour_kb())
+    await state.set_state(ClientRescheduleOrder.hour)
+    await callback.answer()
+
+
+@router.callback_query(ClientRescheduleOrder.hour, F.data.startswith("client_resched:hour:"))
+async def client_reschedule_select_hour(callback: CallbackQuery, state: FSMContext) -> None:
+    """Select new hour for order."""
+    hour = int(callback.data.split(":")[2])
+    await state.update_data(reschedule_new_hour=hour)
+
+    text = "⏰ Выберите минуты:"
+    await callback.message.edit_text(
+        text=text,
+        reply_markup=client_reschedule_minutes_kb(hour)
+    )
+    await state.set_state(ClientRescheduleOrder.minutes)
+    await callback.answer()
+
+
+@router.callback_query(ClientRescheduleOrder.minutes, F.data.startswith("client_resched:minutes:"))
+async def client_reschedule_select_minutes(callback: CallbackQuery, state: FSMContext) -> None:
+    """Select new minutes, show confirmation."""
+    minutes = int(callback.data.split(":")[2])
+    await state.update_data(reschedule_new_minutes=minutes)
+
+    data = await state.get_data()
+    new_date_str = data.get("reschedule_new_date")
+    new_hour = data.get("reschedule_new_hour")
+    old_dt = datetime.fromisoformat(data.get("reschedule_old_dt"))
+    new_dt = datetime.fromisoformat(f"{new_date_str}T{new_hour:02d}:{minutes:02d}:00")
+
+    old_day = old_dt.day
+    old_month = MONTHS_RU[old_dt.month]
+    old_time = old_dt.strftime("%H:%M")
+
+    new_day = new_dt.day
+    new_month = MONTHS_RU[new_dt.month]
+    new_time = new_dt.strftime("%H:%M")
+
+    text = (
+        f"📅 Перенос записи\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Было: {old_time} | {old_day} {old_month}\n"
+        f"Станет: {new_time} | {new_day} {new_month}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Подтвердить перенос?"
+    )
+
+    await callback.message.edit_text(text=text, reply_markup=client_reschedule_confirm_kb())
+    await state.set_state(ClientRescheduleOrder.confirm)
+    await callback.answer()
+
+
+@router.callback_query(ClientRescheduleOrder.confirm, F.data == "client_resched:confirm:yes")
+async def client_reschedule_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    """Execute order reschedule from client side."""
+    global master_bot
+
+    data = await state.get_data()
+    order_id = data.get("reschedule_order_id")
+    new_date_str = data.get("reschedule_new_date")
+    new_hour = data.get("reschedule_new_hour")
+    new_minutes = data.get("reschedule_new_minutes")
+    master_tg_id = data.get("reschedule_master_tg_id")
+    master_name = data.get("reschedule_master_name")
+    master_contacts = data.get("reschedule_master_contacts")
+    address = data.get("reschedule_address")
+    services = data.get("reschedule_services")
+
+    new_dt = datetime.fromisoformat(f"{new_date_str}T{new_hour:02d}:{new_minutes:02d}:00")
+
+    # Update order schedule
+    await update_order_schedule(order_id, new_dt)
+
+    # Check if new time is within 24 hours - auto-confirm, otherwise reset for reconfirmation
+    now = datetime.now()
+    hours_until = (new_dt - now).total_seconds() / 3600
+
+    if hours_until <= 24:
+        # Auto-confirm: within 24h, no need for new reminder cycle
+        await mark_order_confirmed_by_client(order_id)
+    else:
+        # Reset flags for new reminder cycle
+        await reset_order_for_reconfirmation(order_id)
+
+    await state.clear()
+
+    # Format new date for display
+    new_day = new_dt.day
+    new_month = MONTHS_RU[new_dt.month]
+    new_time = new_dt.strftime("%H:%M")
+
+    # Get client info
+    tg_id = callback.from_user.id
+    client = await get_client_by_tg_id(tg_id)
+
+    # Show success to client
+    text = (
+        f"✅ Запись перенесена!\n\n"
+        f"📅 {new_day} {new_month}, {new_time}\n"
+        f"📍 {address or '—'}\n"
+        f"🛠 {services or '—'}\n\n"
+        f"Мастер: {master_name}\n"
+        f"📞 {master_contacts or '—'}"
+    )
+
+    await callback.message.edit_text(text=text, reply_markup=None)
+
+    # Notify master
+    if master_bot and master_tg_id:
+        try:
+            master_text = (
+                f"📅 Клиент перенёс запись!\n\n"
+                f"👤 {client.name if client else '—'}\n"
+                f"📅 Новая дата: {new_day} {new_month}, {new_time}\n"
+                f"📍 {address or '—'}\n"
+                f"🛠 {services or '—'}"
+            )
+            await master_bot.send_message(chat_id=master_tg_id, text=master_text)
+        except Exception as e:
+            logger.error(f"Failed to notify master about reschedule: {e}")
+
+    await callback.answer("Запись перенесена!")
+
+
+@router.callback_query(F.data == "client_resched:cancel")
+async def client_reschedule_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+    """Cancel reschedule flow."""
+    await state.clear()
+    await callback.message.edit_text(
+        text="❌ Перенос отменён.\n\nВаша запись осталась без изменений.",
+        reply_markup=None
+    )
+    await callback.answer()
+
+
+# =============================================================================
+# Order Cancel from Reminder (client-side)
+# =============================================================================
+
+@router.callback_query(F.data.startswith("cancel_order:"))
+async def handle_cancel_start(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start cancel flow from 24h reminder."""
+    order_id = int(callback.data.split(":")[1])
+    client_tg_id = callback.from_user.id
+
+    # Get order data
+    order = await get_order_for_confirmation(order_id, client_tg_id)
+
+    if not order:
+        await callback.answer("Заказ не найден")
+        return
+
+    if order["status"] not in ("new", "confirmed"):
+        await callback.answer("Заказ уже обработан")
+        return
+
+    # Parse scheduled_at for display
+    scheduled_at = datetime.fromisoformat(order["scheduled_at"])
+    day = scheduled_at.day
+    month = MONTHS_RU[scheduled_at.month]
+    time_str = scheduled_at.strftime("%H:%M")
+
+    # Store order data in state
+    await state.update_data(
+        cancel_order_id=order_id,
+        cancel_scheduled_at=order["scheduled_at"],
+        cancel_master_tg_id=order["master_tg_id"],
+        cancel_master_name=order.get("master_name"),
+        cancel_address=order.get("address"),
+        cancel_services=order.get("services"),
+    )
+
+    text = (
+        f"❌ Отмена записи\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 {day} {month}, {time_str}\n"
+        f"📍 {order.get('address') or '—'}\n"
+        f"🛠 {order.get('services') or '—'}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Укажите причину отмены:"
+    )
+
+    await callback.message.edit_text(text=text, reply_markup=client_cancel_reason_kb())
+    await state.set_state(ClientCancelOrder.reason)
+    await callback.answer()
+
+
+@router.callback_query(ClientCancelOrder.reason, F.data.startswith("client_cancel:reason:"))
+async def client_cancel_select_reason(callback: CallbackQuery, state: FSMContext) -> None:
+    """Handle cancel reason selection."""
+    reason_code = callback.data.split(":")[2]
+
+    reason_map = {
+        "cant_come": "Не смогу прийти",
+        "changed_mind": "Передумал(а)",
+    }
+
+    if reason_code == "custom":
+        await callback.message.edit_text(
+            text="✏️ Введите причину отмены:",
+            reply_markup=None
+        )
+        await state.set_state(ClientCancelOrder.confirm)
+        await state.update_data(cancel_waiting_custom_reason=True)
+    else:
+        reason = reason_map.get(reason_code, "Без причины")
+        await state.update_data(cancel_reason=reason, cancel_waiting_custom_reason=False)
+
+        data = await state.get_data()
+        scheduled_at = datetime.fromisoformat(data.get("cancel_scheduled_at"))
+        day = scheduled_at.day
+        month = MONTHS_RU[scheduled_at.month]
+        time_str = scheduled_at.strftime("%H:%M")
+
+        text = (
+            f"❌ Подтверждение отмены\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📅 {day} {month}, {time_str}\n"
+            f"📍 {data.get('cancel_address') or '—'}\n"
+            f"Причина: {reason}\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"Вы уверены?"
+        )
+
+        await callback.message.edit_text(text=text, reply_markup=client_cancel_confirm_kb())
+        await state.set_state(ClientCancelOrder.confirm)
+
+    await callback.answer()
+
+
+@router.message(ClientCancelOrder.confirm)
+async def client_cancel_custom_reason(message: Message, state: FSMContext) -> None:
+    """Handle custom cancel reason input."""
+    data = await state.get_data()
+
+    if not data.get("cancel_waiting_custom_reason"):
+        return
+
+    reason = message.text.strip() if message.text else "Без причины"
+    await state.update_data(cancel_reason=reason, cancel_waiting_custom_reason=False)
+
+    scheduled_at = datetime.fromisoformat(data.get("cancel_scheduled_at"))
+    day = scheduled_at.day
+    month = MONTHS_RU[scheduled_at.month]
+    time_str = scheduled_at.strftime("%H:%M")
+
+    text = (
+        f"❌ Подтверждение отмены\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📅 {day} {month}, {time_str}\n"
+        f"📍 {data.get('cancel_address') or '—'}\n"
+        f"Причина: {reason}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Вы уверены?"
+    )
+
+    await message.answer(text=text, reply_markup=client_cancel_confirm_kb())
+
+
+@router.callback_query(ClientCancelOrder.confirm, F.data == "client_cancel:confirm:yes")
+async def client_cancel_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    """Execute order cancel from client side."""
+    global master_bot
+
+    data = await state.get_data()
+    order_id = data.get("cancel_order_id")
+    reason = data.get("cancel_reason", "Клиент отменил")
+    master_tg_id = data.get("cancel_master_tg_id")
+    master_name = data.get("cancel_master_name")
+    address = data.get("cancel_address")
+    services = data.get("cancel_services")
+    scheduled_at = datetime.fromisoformat(data.get("cancel_scheduled_at"))
+
+    # Update order status
+    await update_order_status(order_id, "cancelled", cancel_reason=reason)
+
+    await state.clear()
+
+    # Get client info
+    tg_id = callback.from_user.id
+    client = await get_client_by_tg_id(tg_id)
+
+    # Show success to client
+    text = (
+        f"❌ Запись отменена.\n\n"
+        f"Мастер {master_name} будет уведомлён.\n"
+        f"Для новой записи свяжитесь с мастером."
+    )
+
+    await callback.message.edit_text(text=text, reply_markup=None)
+
+    # Notify master
+    if master_bot and master_tg_id:
+        try:
+            day = scheduled_at.day
+            month = MONTHS_RU[scheduled_at.month]
+            time_str = scheduled_at.strftime("%H:%M")
+
+            master_text = (
+                f"❌ Клиент отменил запись!\n\n"
+                f"👤 {client.name if client else '—'}\n"
+                f"📅 {day} {month}, {time_str}\n"
+                f"📍 {address or '—'}\n"
+                f"🛠 {services or '—'}\n"
+                f"📝 Причина: {reason}"
+            )
+            await master_bot.send_message(chat_id=master_tg_id, text=master_text)
+        except Exception as e:
+            logger.error(f"Failed to notify master about cancellation: {e}")
+
+    await callback.answer("Запись отменена")
+
+
+@router.callback_query(F.data == "client_cancel:back")
+async def client_cancel_back(callback: CallbackQuery, state: FSMContext) -> None:
+    """Cancel the cancel flow."""
+    await state.clear()
+    await callback.message.edit_text(
+        text="Отмена записи прервана.\n\nВаша запись осталась без изменений.",
+        reply_markup=None
+    )
+    await callback.answer()
+
+
+# =============================================================================
 # Bot Setup
 # =============================================================================
 
 def setup_dispatcher() -> Dispatcher:
     """Create and configure dispatcher."""
     dp = Dispatcher(storage=MemoryStorage())
+    # Outer middleware intercepts "Home" button before any filters/handlers
+    dp.message.outer_middleware(HomeButtonMiddleware())
     dp.include_router(router)
     return dp
 

@@ -31,6 +31,32 @@ def home_master_kb() -> InlineKeyboardMarkup:
     ])
 
 
+STATUS_EMOJI = {
+    "new": "🆕",
+    "confirmed": "📌",
+    "done": "✅",
+    "cancelled": "❌",
+    "moved": "📅",
+}
+
+
+def get_order_emoji(order: dict) -> str:
+    """Get emoji for order based on status and confirmation."""
+    status = order.get("status", "new")
+    if status == "done":
+        return "✅"
+    if status == "cancelled":
+        return "❌"
+    if status == "moved":
+        return "📅"
+    # Check if reminder sent but not confirmed
+    if order.get("reminder_24h_sent") and not order.get("client_confirmed"):
+        return "❓"
+    if status == "confirmed" or order.get("client_confirmed"):
+        return "📌"
+    return "🆕"
+
+
 def orders_kb(orders: list, selected_date: date = None) -> InlineKeyboardMarkup:
     """Orders list keyboard."""
     buttons = []
@@ -40,7 +66,8 @@ def orders_kb(orders: list, selected_date: date = None) -> InlineKeyboardMarkup:
         time_str = order.get("scheduled_at", "")[:5] if order.get("scheduled_at") else "—"
         client_name = order.get("client_name", "Клиент")
         services = order.get("services", "")[:20] if order.get("services") else ""
-        text = f"{time_str} — {client_name}"
+        emoji = get_order_emoji(order)
+        text = f"{emoji} {time_str} — {client_name}"
         if services:
             text += f" | {services}"
         buttons.append([InlineKeyboardButton(
@@ -61,7 +88,7 @@ def orders_kb(orders: list, selected_date: date = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
-def order_card_kb(order_id: int, status: str) -> InlineKeyboardMarkup:
+def order_card_kb(order_id: int, status: str, client_id: int = None) -> InlineKeyboardMarkup:
     """Order card keyboard."""
     buttons = []
 
@@ -73,6 +100,13 @@ def order_card_kb(order_id: int, status: str) -> InlineKeyboardMarkup:
         buttons.append([
             InlineKeyboardButton(text="❌ Отменить", callback_data=f"orders:cancel:{order_id}"),
         ])
+
+    # For completed/cancelled orders, show link to client
+    if status in ("done", "cancelled") and client_id:
+        buttons.append([
+            InlineKeyboardButton(text="👤 Перейти к клиенту", callback_data=f"clients:view:{client_id}"),
+        ])
+
     buttons.append([
         InlineKeyboardButton(text="◀️ Назад", callback_data="orders"),
         InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
@@ -443,9 +477,14 @@ def settings_services_kb(services: list, show_archive_btn: bool = True) -> Inlin
 def service_edit_kb(service_id: int) -> InlineKeyboardMarkup:
     """Service edit keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✏️ Изменить название", callback_data=f"settings:services:edit:name:{service_id}")],
-        [InlineKeyboardButton(text="💰 Изменить цену", callback_data=f"settings:services:edit:price:{service_id}")],
-        [InlineKeyboardButton(text="📦 В архив", callback_data=f"settings:services:archive:{service_id}")],
+        [
+            InlineKeyboardButton(text="✏️ Название", callback_data=f"settings:services:edit:name:{service_id}"),
+            InlineKeyboardButton(text="✏️ Цена", callback_data=f"settings:services:edit:price:{service_id}"),
+        ],
+        [
+            InlineKeyboardButton(text="✏️ Описание", callback_data=f"settings:services:edit:description:{service_id}"),
+            InlineKeyboardButton(text="📦 В архив", callback_data=f"settings:services:archive:{service_id}"),
+        ],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings:services"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
@@ -678,6 +717,15 @@ def share_contact_kb() -> ReplyKeyboardMarkup:
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
+    )
+
+
+def home_reply_kb() -> ReplyKeyboardMarkup:
+    """Persistent home button keyboard (Reply keyboard)."""
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="🏠 Домой")]],
+        resize_keyboard=True,
+        is_persistent=True,
     )
 
 
@@ -987,4 +1035,104 @@ def cancel_confirm_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="◀️ Назад", callback_data="cancel:back"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
         ],
+    ])
+
+
+# =============================================================================
+# Client Bot Order Reschedule/Cancel Keyboards
+# =============================================================================
+
+def client_reschedule_calendar_kb(year: int, month: int) -> InlineKeyboardMarkup:
+    """Calendar keyboard for client order reschedule."""
+    buttons = []
+
+    # Header with navigation
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    buttons.append([
+        InlineKeyboardButton(text="◀️", callback_data=f"client_resched:cal:{prev_year}:{prev_month}"),
+        InlineKeyboardButton(text=f"{MONTHS_RU[month]} {year}", callback_data="noop"),
+        InlineKeyboardButton(text="▶️", callback_data=f"client_resched:cal:{next_year}:{next_month}"),
+    ])
+
+    # Weekday headers
+    buttons.append([
+        InlineKeyboardButton(text=day, callback_data="noop")
+        for day in ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    ])
+
+    # Days grid
+    cal = calendar.Calendar(firstweekday=0)
+
+    for week in cal.monthdayscalendar(year, month):
+        row = []
+        for day in week:
+            if day == 0:
+                row.append(InlineKeyboardButton(text=" ", callback_data="noop"))
+            else:
+                row.append(InlineKeyboardButton(
+                    text=str(day),
+                    callback_data=f"client_resched:date:{year}-{month:02d}-{day:02d}"
+                ))
+        buttons.append(row)
+
+    buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="client_resched:cancel")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def client_reschedule_hour_kb() -> InlineKeyboardMarkup:
+    """Hour selection keyboard for client order reschedule."""
+    buttons = []
+
+    hours = list(range(8, 20))
+    for i in range(0, len(hours), 4):
+        row = [
+            InlineKeyboardButton(text=f"{h}:00", callback_data=f"client_resched:hour:{h}")
+            for h in hours[i:i+4]
+        ]
+        buttons.append(row)
+
+    buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="client_resched:cancel")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def client_reschedule_minutes_kb(hour: int) -> InlineKeyboardMarkup:
+    """Minutes selection keyboard for client order reschedule."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=f"{hour}:00", callback_data="client_resched:minutes:00"),
+            InlineKeyboardButton(text=f"{hour}:30", callback_data="client_resched:minutes:30"),
+        ],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="client_resched:cancel")],
+    ])
+
+
+def client_reschedule_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirmation keyboard for client order reschedule."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить перенос", callback_data="client_resched:confirm:yes")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="client_resched:cancel")],
+    ])
+
+
+def client_cancel_reason_kb() -> InlineKeyboardMarkup:
+    """Cancel reason selection keyboard for client."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚫 Не смогу прийти", callback_data="client_cancel:reason:cant_come")],
+        [InlineKeyboardButton(text="📅 Передумал(а)", callback_data="client_cancel:reason:changed_mind")],
+        [InlineKeyboardButton(text="✏️ Своя причина", callback_data="client_cancel:reason:custom")],
+        [InlineKeyboardButton(text="◀️ Отмена", callback_data="client_cancel:back")],
+    ])
+
+
+def client_cancel_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirmation keyboard for client order cancel."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Да, отменить запись", callback_data="client_cancel:confirm:yes")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="client_cancel:back")],
     ])

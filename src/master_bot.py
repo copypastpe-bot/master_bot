@@ -4,12 +4,13 @@ import logging
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command, StateFilter
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, TelegramObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from typing import Callable, Dict, Any, Awaitable
 import asyncio
 
 from src.config import MASTER_BOT_TOKEN, CLIENT_BOT_USERNAME, LOG_LEVEL
@@ -25,7 +26,7 @@ from src.keyboards import (
     clients_kb, client_card_kb, client_history_kb, client_bonus_kb,
     marketing_kb, reports_kb, settings_kb, settings_profile_kb,
     settings_bonus_kb, settings_services_kb, settings_invite_kb,
-    skip_kb, stub_kb,
+    skip_kb, stub_kb, home_reply_kb,
     # Order keyboards
     client_search_results_kb, order_address_kb, order_calendar_kb,
     order_hour_kb, order_minutes_kb, order_services_kb, order_confirm_kb,
@@ -96,6 +97,9 @@ from src.database import (
     get_promo_by_id,
     deactivate_promo,
     get_marketing_recipients_count,
+    # Confirmation functions
+    mark_order_confirmed_by_client,
+    reset_order_for_reconfirmation,
 )
 from src.utils import generate_invite_token
 from src import notifications
@@ -110,6 +114,38 @@ logger = logging.getLogger(__name__)
 
 # Initialize router
 router = Router()
+
+
+class HomeButtonMiddleware(BaseMiddleware):
+    """Middleware to intercept Home button before any FSM handlers."""
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        # Only process text messages with "Home" button
+        if isinstance(event, Message) and event.text and event.text == "🏠 Домой":
+            bot: Bot = data["bot"]
+            state: FSMContext = data["state"]
+            tg_id = event.from_user.id
+
+            master = await get_master_by_tg_id(tg_id)
+            if master:
+                await state.clear()
+                try:
+                    await event.delete()
+                except TelegramBadRequest:
+                    pass
+                await show_home(bot, master, event.chat.id, force_new=True)
+            else:
+                # Not registered - show message
+                await event.answer("Вы не зарегистрированы. Отправьте /start")
+            return  # Always stop propagation for "Home" button
+
+        return await handler(event, data)
+
 
 MONTHS_RU = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
@@ -152,12 +188,28 @@ async def build_home_text(master) -> str:
     )
 
 
-async def show_home(bot: Bot, master, chat_id: int, message_id: int = None) -> int:
-    """Show or update home screen. Returns message_id."""
+async def show_home(bot: Bot, master, chat_id: int, force_new: bool = False) -> int:
+    """Show or update home screen. Returns message_id.
+
+    Args:
+        force_new: If True, always send new message (delete old if exists)
+    """
     text = await build_home_text(master)
     keyboard = home_master_kb()
 
-    if message_id and master.home_message_id:
+    # Delete old message if force_new
+    if force_new and master.home_message_id:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=master.home_message_id)
+        except TelegramBadRequest:
+            pass
+        # Send new message
+        msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
+        await save_master_home_message_id(master.id, msg.message_id)
+        return msg.message_id
+
+    # Try to edit existing message
+    if master.home_message_id:
         try:
             await bot.edit_message_text(
                 chat_id=chat_id,
@@ -166,8 +218,11 @@ async def show_home(bot: Bot, master, chat_id: int, message_id: int = None) -> i
                 reply_markup=keyboard
             )
             return master.home_message_id
-        except TelegramBadRequest:
-            pass
+        except TelegramBadRequest as e:
+            # "message is not modified" - no need to send new message
+            if "message is not modified" in str(e):
+                return master.home_message_id
+            # Otherwise message was deleted or not found - send new
 
     # Send new message
     msg = await bot.send_message(chat_id=chat_id, text=text, reply_markup=keyboard)
@@ -196,14 +251,16 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     if master:
         await state.clear()
         await state.update_data(current_screen="home")
-        await show_home(bot, master, message.chat.id)
+        # Show home menu (force_new to show at bottom of chat)
+        await show_home(bot, master, message.chat.id, force_new=True)
         return
 
     # Start registration
     await message.answer(
         "👋 Добро пожаловать в Master CRM Bot!\n\n"
         "Давайте настроим ваш профиль.\n\n"
-        "📝 Введите ваше имя или псевдоним:"
+        "📝 Введите ваше имя или псевдоним:",
+        reply_markup=home_reply_kb()
     )
     await state.set_state(MasterRegistration.name)
 
@@ -371,6 +428,8 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     else:
         await message.answer(success_text)
 
+    # Send reply keyboard
+    await bot.send_message(message.chat.id, "🏠", reply_markup=home_reply_kb())
     await show_home(bot, master, message.chat.id)
 
 
@@ -417,7 +476,7 @@ async def cb_orders(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(current_screen="orders", orders_date=date.today().isoformat())
 
     today = date.today()
-    orders = await get_orders_today(master.id)
+    orders = await get_orders_today(master.id, all_statuses=True)
 
     day = today.day
     month = MONTHS_RU[today.month]
@@ -461,6 +520,15 @@ async def cb_order_view(callback: CallbackQuery, state: FSMContext) -> None:
         "moved": "перенесён",
     }
 
+    status = order.get("status", "")
+    status_emoji = {
+        "new": "🆕",
+        "confirmed": "📌",
+        "done": "✅",
+        "cancelled": "❌",
+        "moved": "📅",
+    }
+
     text = (
         f"📋 Заказ #{order['id']}\n"
         f"━━━━━━━━━━━━━━━\n"
@@ -470,11 +538,11 @@ async def cb_order_view(callback: CallbackQuery, state: FSMContext) -> None:
         f"🕐 {time_str} | {date_str}\n"
         f"🛠 {order.get('services', '—')}\n"
         f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
-        f"📊 Статус: {status_map.get(order.get('status', ''), order.get('status', ''))}\n"
+        f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, order_card_kb(order_id, order.get("status", "")))
+    await edit_home_message(callback, text, order_card_kb(order_id, status, order.get("client_id")))
     await callback.answer()
 
 
@@ -520,7 +588,7 @@ async def cb_orders_calendar_date(callback: CallbackQuery, state: FSMContext) ->
     date_str = callback.data.split(":")[3]
     selected_date = date.fromisoformat(date_str)
 
-    orders = await get_orders_by_date(master.id, selected_date)
+    orders = await get_orders_by_date(master.id, selected_date, all_statuses=True)
 
     day = selected_date.day
     month = MONTHS_RU[selected_date.month]
@@ -1342,24 +1410,24 @@ async def order_confirm_create(callback: CallbackQuery, state: FSMContext, bot: 
             services=order_items
         )
 
-    # Clear FSM and show success
+    # Clear FSM and show orders screen
     await state.clear()
+    await state.update_data(current_screen="orders", orders_date=date.today().isoformat())
 
-    selected_date = date.fromisoformat(date_str)
-    day = selected_date.day
-    month = MONTHS_RU[selected_date.month]
+    today = date.today()
+    orders = await get_orders_today(master.id, all_statuses=True)
+
+    day = today.day
+    month = MONTHS_RU[today.month]
 
     text = (
-        "✅ Заказ создан!\n"
-        "━━━━━━━━━━━━━━━\n"
-        f"👤 {client.name}\n"
-        f"📍 {address}\n"
-        f"📅 {day} {month} в {hour}:{minutes:02d}\n"
-        f"💰 {amount} ₽\n"
-        "━━━━━━━━━━━━━━━"
+        f"✅ Заказ создан!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📦 Заказы — Сегодня, {day} {month}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, stub_kb("orders"))
+    await edit_home_message(callback, text, orders_kb(orders, today))
     await callback.answer("Заказ создан!")
 
 
@@ -1488,14 +1556,26 @@ async def order_edit_specific_field(callback: CallbackQuery, state: FSMContext) 
 # Cancel order creation
 @router.callback_query(F.data == "order:cancel")
 async def order_cancel(callback: CallbackQuery, state: FSMContext) -> None:
-    """Cancel order creation."""
+    """Cancel order creation - return to orders screen."""
     await state.clear()
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    text = await build_home_text(master)
-    await edit_home_message(callback, text, home_master_kb())
+    await state.update_data(current_screen="orders", orders_date=date.today().isoformat())
+
+    today = date.today()
+    orders = await get_orders_today(master.id, all_statuses=True)
+
+    day = today.day
+    month = MONTHS_RU[today.month]
+
+    text = (
+        f"📦 Заказы — Сегодня, {day} {month}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, orders_kb(orders, today))
     await callback.answer("Отменено")
 
 
@@ -1843,31 +1923,85 @@ async def complete_order_final(callback: CallbackQuery, state: FSMContext, bot: 
 
     await state.clear()
 
+    # Show updated order card
+    updated_order = await get_order_by_id(order_id, master.id)
+    scheduled = updated_order.get("scheduled_at", "")
+    if scheduled:
+        dt = datetime.fromisoformat(scheduled)
+        time_str = dt.strftime("%H:%M")
+        date_str = f"{dt.day} {MONTHS_RU[dt.month]}"
+    else:
+        time_str = "—"
+        date_str = "—"
+
     text = (
-        "✅ Заказ выполнен!\n"
-        "━━━━━━━━━━━━━━━\n"
+        f"✅ Заказ выполнен!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📋 Заказ #{order_id}\n"
+        f"👤 {updated_order.get('client_name', '—')}\n"
+        f"🕐 {time_str} | {date_str}\n"
         f"💰 Сумма: {amount} ₽\n"
     )
     if bonus_spent > 0:
         text += f"🎁 Списано: {bonus_spent} ₽\n"
     if bonus_accrued > 0:
         text += f"⭐ Начислено: +{bonus_accrued} ₽\n"
+    text += f"📊 Статус: ✅ выполнен\n"
     text += "━━━━━━━━━━━━━━━"
 
-    await edit_home_message(callback, text, stub_kb("orders"))
+    await edit_home_message(callback, text, order_card_kb(order_id, client_id, "done"))
     await callback.answer("Заказ выполнен!")
 
 
 @router.callback_query(F.data == "complete:cancel")
 async def complete_cancel(callback: CallbackQuery, state: FSMContext) -> None:
-    """Cancel order completion."""
+    """Cancel order completion - return to order card."""
+    data = await state.get_data()
+    order_id = data.get("complete_order_id")
+
     await state.clear()
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    text = await build_home_text(master)
-    await edit_home_message(callback, text, home_master_kb())
+    # Show order card
+    order = await get_order_by_id(order_id, master.id)
+    if not order:
+        text = await build_home_text(master)
+        await edit_home_message(callback, text, home_master_kb())
+        await callback.answer("Отменено")
+        return
+
+    scheduled = order.get("scheduled_at", "")
+    if scheduled:
+        dt = datetime.fromisoformat(scheduled)
+        time_str = dt.strftime("%H:%M")
+        date_str = f"{dt.day} {MONTHS_RU[dt.month]}"
+    else:
+        time_str = "—"
+        date_str = "—"
+
+    status_map = {
+        "new": "новый", "confirmed": "подтверждён", "done": "выполнен",
+        "cancelled": "отменён", "moved": "перенесён",
+    }
+    status_emoji = {"new": "🆕", "confirmed": "📌", "done": "✅", "cancelled": "❌", "moved": "📅"}
+    status = order.get("status", "")
+
+    text = (
+        f"📋 Заказ #{order['id']}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 {order.get('client_name', '—')}\n"
+        f"📞 {order.get('client_phone', '—')}\n"
+        f"📍 {order.get('address', '—')}\n"
+        f"🕐 {time_str} | {date_str}\n"
+        f"🛠 {order.get('services', '—')}\n"
+        f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
+        f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, order_card_kb(order_id, order.get("client_id"), status))
     await callback.answer("Отменено")
 
 
@@ -2044,6 +2178,17 @@ async def move_order_final(callback: CallbackQuery, state: FSMContext, bot: Bot)
     # Update order
     await update_order_schedule(order_id, new_dt)
 
+    # Handle confirmation status based on how far the new time is
+    now = datetime.now()
+    hours_until = (new_dt - now).total_seconds() / 3600
+
+    if hours_until <= 24:
+        # Auto-confirm: within 24h, no need for new reminder cycle
+        await mark_order_confirmed_by_client(order_id)
+    else:
+        # Reset flags for new reminder cycle
+        await reset_order_for_reconfirmation(order_id)
+
     # Get order details
     order = await get_order_by_id(order_id, master.id)
 
@@ -2066,31 +2211,87 @@ async def move_order_final(callback: CallbackQuery, state: FSMContext, bot: Bot)
 
     await state.clear()
 
+    # Show updated order card
+    updated_order = await get_order_by_id(order_id, master.id)
+    client_id = updated_order.get("client_id")
+    status = updated_order.get("status", "")
+
     new_day = new_dt.day
     new_month = MONTHS_RU[new_dt.month]
     new_time = new_dt.strftime("%H:%M")
 
+    status_map = {
+        "new": "новый", "confirmed": "подтверждён", "done": "выполнен",
+        "cancelled": "отменён", "moved": "перенесён",
+    }
+    status_emoji = {"new": "🆕", "confirmed": "📌", "done": "✅", "cancelled": "❌", "moved": "📅"}
+
     text = (
-        "✅ Заказ перенесён!\n"
-        "━━━━━━━━━━━━━━━\n"
-        f"📅 Новое время: {new_day} {new_month} в {new_time}\n"
-        "━━━━━━━━━━━━━━━"
+        f"✅ Заказ перенесён!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📋 Заказ #{order_id}\n"
+        f"👤 {updated_order.get('client_name', '—')}\n"
+        f"📍 {updated_order.get('address', '—')}\n"
+        f"🕐 {new_time} | {new_day} {new_month}\n"
+        f"🛠 {updated_order.get('services', '—')}\n"
+        f"💰 Итого: {updated_order.get('amount_total', 0) or '—'} ₽\n"
+        f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, stub_kb("orders"))
+    await edit_home_message(callback, text, order_card_kb(order_id, client_id, status))
     await callback.answer("Заказ перенесён!")
 
 
 @router.callback_query(F.data == "move:cancel")
 async def move_cancel(callback: CallbackQuery, state: FSMContext) -> None:
-    """Cancel order move."""
+    """Cancel order move - return to order card."""
+    data = await state.get_data()
+    order_id = data.get("move_order_id")
+
     await state.clear()
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    text = await build_home_text(master)
-    await edit_home_message(callback, text, home_master_kb())
+    # Show order card
+    order = await get_order_by_id(order_id, master.id)
+    if not order:
+        text = await build_home_text(master)
+        await edit_home_message(callback, text, home_master_kb())
+        await callback.answer("Отменено")
+        return
+
+    scheduled = order.get("scheduled_at", "")
+    if scheduled:
+        dt = datetime.fromisoformat(scheduled)
+        time_str = dt.strftime("%H:%M")
+        date_str = f"{dt.day} {MONTHS_RU[dt.month]}"
+    else:
+        time_str = "—"
+        date_str = "—"
+
+    status_map = {
+        "new": "новый", "confirmed": "подтверждён", "done": "выполнен",
+        "cancelled": "отменён", "moved": "перенесён",
+    }
+    status_emoji = {"new": "🆕", "confirmed": "📌", "done": "✅", "cancelled": "❌", "moved": "📅"}
+    status = order.get("status", "")
+
+    text = (
+        f"📋 Заказ #{order['id']}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 {order.get('client_name', '—')}\n"
+        f"📞 {order.get('client_phone', '—')}\n"
+        f"📍 {order.get('address', '—')}\n"
+        f"🕐 {time_str} | {date_str}\n"
+        f"🛠 {order.get('services', '—')}\n"
+        f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
+        f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, order_card_kb(order_id, order.get("client_id"), status))
     await callback.answer("Отменено")
 
 
@@ -2266,13 +2467,23 @@ async def cancel_order_final(callback: CallbackQuery, state: FSMContext, bot: Bo
         )
 
     await state.clear()
+    await state.update_data(current_screen="orders", orders_date=date.today().isoformat())
+
+    # Show orders screen
+    today = date.today()
+    orders = await get_orders_today(master.id, all_statuses=True)
+
+    day = today.day
+    month = MONTHS_RU[today.month]
 
     text = (
-        "✅ Заказ отменён!\n"
-        "━━━━━━━━━━━━━━━"
+        f"✅ Заказ отменён!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📦 Заказы — Сегодня, {day} {month}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, stub_kb("orders"))
+    await edit_home_message(callback, text, orders_kb(orders, today))
     await callback.answer("Заказ отменён!")
 
 
@@ -2564,7 +2775,7 @@ async def client_add_birthday_skip(callback: CallbackQuery, state: FSMContext, b
 
 
 async def finish_client_add(state: FSMContext, master, bot: Bot, chat_id: int, birthday: str) -> None:
-    """Finish adding client and show their card."""
+    """Finish adding client and show clients screen."""
     data = await state.get_data()
     name = data.get("add_client_name")
     phone = data.get("add_client_phone")
@@ -2581,28 +2792,15 @@ async def finish_client_add(state: FSMContext, master, bot: Bot, chat_id: int, b
     await link_client_to_master(master.id, client.id)
 
     await state.clear()
+    await state.update_data(current_screen="clients")
 
-    # Show client card
-    client_data = await get_client_with_stats(master.id, client.id)
-
-    birthday_str = client_data.get("birthday", "")
-    if birthday_str:
-        try:
-            bd = date.fromisoformat(birthday_str)
-            birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
-        except:
-            birthday_text = "не указана"
-    else:
-        birthday_text = "не указана"
-
+    # Show clients screen
     text = (
-        f"✅ Клиент создан!\n"
+        f"✅ Клиент «{name}» создан!\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"👤 {client_data.get('name', '—')}\n"
-        f"📞 {client_data.get('phone', '—')}\n"
-        f"🎂 {birthday_text}\n"
-        f"💰 Бонусов: {client_data.get('bonus_balance', 0)} ₽\n"
-        f"━━━━━━━━━━━━━━━"
+        f"👥 Клиенты\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🔍 Введите имя или телефон для поиска:"
     )
 
     if master.home_message_id:
@@ -2611,7 +2809,7 @@ async def finish_client_add(state: FSMContext, master, bot: Bot, chat_id: int, b
                 chat_id=chat_id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=client_card_kb(client.id)
+                reply_markup=clients_kb()
             )
         except TelegramBadRequest:
             pass
@@ -3466,12 +3664,26 @@ async def broadcast_send(callback: CallbackQuery, state: FSMContext, bot: Bot) -
     )
 
     await state.clear()
+    await state.update_data(current_screen="marketing")
+
+    # Show marketing screen
+    promos = await get_active_promos(master.id)
+
+    if promos:
+        promos_text = "Активные акции:\n" + "\n".join(f"• {p.title}" for p in promos)
+    else:
+        promos_text = "Активных акций нет"
 
     text = (
         f"✅ Рассылка отправлена!\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Отправлено: {sent}\n"
-        f"Не доставлено: {failed}"
+        f"Не доставлено: {failed}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📢 Маркетинг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{promos_text}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
     try:
@@ -3479,7 +3691,7 @@ async def broadcast_send(callback: CallbackQuery, state: FSMContext, bot: Bot) -
             chat_id=callback.message.chat.id,
             message_id=master.home_message_id,
             text=text,
-            reply_markup=stub_kb("home")
+            reply_markup=marketing_kb(promos)
         )
     except TelegramBadRequest:
         pass
@@ -3793,13 +4005,27 @@ async def promo_confirm_broadcast(callback: CallbackQuery, state: FSMContext, bo
     )
 
     await state.clear()
+    await state.update_data(current_screen="marketing")
+
+    # Show marketing screen
+    promos = await get_active_promos(master.id)
+
+    if promos:
+        promos_text = "Активные акции:\n" + "\n".join(f"• {p.title}" for p in promos)
+    else:
+        promos_text = "Активных акций нет"
 
     text = (
         f"✅ Акция создана!\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Название: {title}\n"
         f"Период: {date_from} — {date_to}\n"
-        f"Уведомлено клиентов: {sent}"
+        f"Уведомлено клиентов: {sent}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📢 Маркетинг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{promos_text}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
     try:
@@ -3807,7 +4033,7 @@ async def promo_confirm_broadcast(callback: CallbackQuery, state: FSMContext, bo
             chat_id=callback.message.chat.id,
             message_id=master.home_message_id,
             text=text,
-            reply_markup=stub_kb("marketing")
+            reply_markup=marketing_kb(promos)
         )
     except TelegramBadRequest:
         pass
@@ -3837,16 +4063,30 @@ async def promo_confirm_save(callback: CallbackQuery, state: FSMContext) -> None
     )
 
     await state.clear()
+    await state.update_data(current_screen="marketing")
+
+    # Show marketing screen
+    promos = await get_active_promos(master.id)
+
+    if promos:
+        promos_text = "Активные акции:\n" + "\n".join(f"• {p.title}" for p in promos)
+    else:
+        promos_text = "Активных акций нет"
 
     text = (
         f"✅ Акция создана!\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Название: {title}\n"
         f"Период: {date_from} — {date_to}\n"
-        f"Уведомления не отправлялись"
+        f"Уведомления не отправлялись\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"📢 Маркетинг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{promos_text}\n"
+        f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, stub_kb("marketing"))
+    await edit_home_message(callback, text, marketing_kb(promos))
     await callback.answer()
 
 
@@ -4637,7 +4877,7 @@ async def cb_settings_services(callback: CallbackQuery) -> None:
 async def cb_services_new(callback: CallbackQuery, state: FSMContext) -> None:
     """Start adding new service."""
     text = (
-        "🛠 Новая услуга — Шаг 1/2\n"
+        "🛠 Новая услуга — Шаг 1/3\n"
         "━━━━━━━━━━━━━━━\n"
         "Введите название услуги:"
     )
@@ -4661,7 +4901,7 @@ async def service_add_name(message: Message, state: FSMContext, bot: Bot) -> Non
         pass
 
     text = (
-        "🛠 Новая услуга — Шаг 2/2\n"
+        "🛠 Новая услуга — Шаг 2/3\n"
         "━━━━━━━━━━━━━━━\n"
         f"Название: {name}\n"
         "━━━━━━━━━━━━━━━\n"
@@ -4693,14 +4933,102 @@ async def service_add_name(message: Message, state: FSMContext, bot: Bot) -> Non
 
 @router.callback_query(ServiceAdd.price, F.data == "service:no_price")
 async def service_add_no_price(callback: CallbackQuery, state: FSMContext) -> None:
-    """Save service without price."""
+    """Step 2: No price - go to description."""
+    await state.update_data(service_price=None)
+
+    data = await state.get_data()
+    name = data.get("service_name")
+
+    text = (
+        "🛠 Новая услуга — Шаг 3/3\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Название: {name}\n"
+        f"Цена: —\n"
+        "━━━━━━━━━━━━━━━\n"
+        "📝 Введите описание услуги или нажмите «Пропустить»:"
+    )
+
+    from src.keyboards import InlineKeyboardMarkup, InlineKeyboardButton
+    skip_desc_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭ Пропустить", callback_data="service:skip_description")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="settings:services"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+    await edit_home_message(callback, text, skip_desc_kb)
+    await state.set_state(ServiceAdd.description)
+    await callback.answer()
+
+
+@router.message(ServiceAdd.price)
+async def service_add_price(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Step 2: Service price - go to description."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    try:
+        price = int(message.text.strip())
+        if price < 0:
+            raise ValueError()
+    except ValueError:
+        await message.answer("Введите положительное число")
+        return
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    await state.update_data(service_price=price)
+
+    data = await state.get_data()
+    name = data.get("service_name")
+
+    text = (
+        "🛠 Новая услуга — Шаг 3/3\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Название: {name}\n"
+        f"Цена: {price} ₽\n"
+        "━━━━━━━━━━━━━━━\n"
+        "📝 Введите описание услуги или нажмите «Пропустить»:"
+    )
+
+    from src.keyboards import InlineKeyboardMarkup, InlineKeyboardButton
+    skip_desc_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭ Пропустить", callback_data="service:skip_description")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="settings:services"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=skip_desc_kb
+            )
+        except TelegramBadRequest:
+            pass
+
+    await state.set_state(ServiceAdd.description)
+
+
+@router.callback_query(ServiceAdd.description, F.data == "service:skip_description")
+async def service_add_skip_description(callback: CallbackQuery, state: FSMContext) -> None:
+    """Step 3: Skip description - save service."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
     data = await state.get_data()
     name = data.get("service_name")
+    price = data.get("service_price")
 
-    await create_service(master.id, name, None)
+    await create_service(master.id, name, price, None)
     await state.clear()
 
     # Show updated services list
@@ -4725,19 +5053,13 @@ async def service_add_no_price(callback: CallbackQuery, state: FSMContext) -> No
     await callback.answer("Услуга добавлена!")
 
 
-@router.message(ServiceAdd.price)
-async def service_add_price(message: Message, state: FSMContext, bot: Bot) -> None:
-    """Step 2: Service price."""
+@router.message(ServiceAdd.description)
+async def service_add_description(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Step 3: Service description - save service."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    try:
-        price = int(message.text.strip())
-        if price < 0:
-            raise ValueError()
-    except ValueError:
-        await message.answer("Введите положительное число")
-        return
+    description = message.text.strip()[:500]
 
     try:
         await message.delete()
@@ -4746,8 +5068,9 @@ async def service_add_price(message: Message, state: FSMContext, bot: Bot) -> No
 
     data = await state.get_data()
     name = data.get("service_name")
+    price = data.get("service_price")
 
-    await create_service(master.id, name, price)
+    await create_service(master.id, name, price, description)
     await state.clear()
 
     # Show updated services list
@@ -4790,11 +5113,11 @@ async def cb_services_edit(callback: CallbackQuery) -> None:
         await callback.answer("Услуга не найдена")
         return
 
+    description_line = f"📝 {service.description}\n" if service.description else ""
     text = (
-        f"✏️ Редактирование услуги\n"
-        f"━━━━━━━━━━━━━━━\n"
-        f"Название: {service.name}\n"
-        f"Цена: {service.price or '—'} ₽\n"
+        f"🛠 {service.name}\n"
+        f"💰 {service.price or '—'} ₽\n"
+        f"{description_line}"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4846,13 +5169,23 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
     await update_service(service_id, name=name)
     await state.clear()
 
-    service = await get_service_by_id(service_id)
+    # Show services list
+    services = await get_services(master.id)
+
+    if services:
+        services_text = "\n".join(
+            f"• {s.name} — {s.price or '—'} ₽"
+            for s in services
+        )
+    else:
+        services_text = "Услуги не добавлены"
 
     text = (
         f"✅ Название обновлено!\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Название: {service.name}\n"
-        f"Цена: {service.price or '—'} ₽\n"
+        f"🛠 Справочник услуг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{services_text}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4862,7 +5195,7 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=service_edit_kb(service_id)
+                reply_markup=settings_services_kb(services)
             )
         except TelegramBadRequest:
             pass
@@ -4910,17 +5243,27 @@ async def service_remove_price(callback: CallbackQuery, state: FSMContext) -> No
     await update_service(service_id, price=None)
     await state.clear()
 
-    service = await get_service_by_id(service_id)
+    # Show services list
+    services = await get_services(master.id)
+
+    if services:
+        services_text = "\n".join(
+            f"• {s.name} — {s.price or '—'} ₽"
+            for s in services
+        )
+    else:
+        services_text = "Услуги не добавлены"
 
     text = (
         f"✅ Цена убрана!\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Название: {service.name}\n"
-        f"Цена: —\n"
+        f"🛠 Справочник услуг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{services_text}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, service_edit_kb(service_id))
+    await edit_home_message(callback, text, settings_services_kb(services))
     await callback.answer("Цена убрана!")
 
 
@@ -4949,13 +5292,23 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
     await update_service(service_id, price=price)
     await state.clear()
 
-    service = await get_service_by_id(service_id)
+    # Show services list
+    services = await get_services(master.id)
+
+    if services:
+        services_text = "\n".join(
+            f"• {s.name} — {s.price or '—'} ₽"
+            for s in services
+        )
+    else:
+        services_text = "Услуги не добавлены"
 
     text = (
         f"✅ Цена обновлена!\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Название: {service.name}\n"
-        f"Цена: {service.price} ₽\n"
+        f"🛠 Справочник услуг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{services_text}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4965,7 +5318,127 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=service_edit_kb(service_id)
+                reply_markup=settings_services_kb(services)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+@router.callback_query(F.data.regexp(r"^settings:services:edit:description:\d+$"))
+async def cb_services_edit_description(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start editing service description."""
+    service_id = int(callback.data.split(":")[4])
+    service = await get_service_by_id(service_id)
+
+    if not service:
+        await callback.answer("Услуга не найдена")
+        return
+
+    await state.update_data(edit_service_id=service_id)
+
+    current_desc = service.description or "—"
+    text = (
+        f"📝 Изменить описание\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"Текущее: {current_desc}\n"
+        f"━━━━━━━━━━━━━━━\n"
+        "Введите новое описание:"
+    )
+
+    from src.keyboards import InlineKeyboardMarkup, InlineKeyboardButton
+    desc_edit_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🗑 Убрать описание", callback_data=f"service:remove_description:{service_id}")],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"settings:services:edit:{service_id}"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+        ],
+    ])
+
+    await edit_home_message(callback, text, desc_edit_kb)
+    await state.set_state(ServiceEdit.description)
+    await callback.answer()
+
+
+@router.callback_query(ServiceEdit.description, F.data.startswith("service:remove_description:"))
+async def service_remove_description(callback: CallbackQuery, state: FSMContext) -> None:
+    """Remove service description."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    service_id = int(callback.data.split(":")[2])
+
+    await update_service(service_id, description=None)
+    await state.clear()
+
+    # Show services list
+    services = await get_services(master.id)
+
+    if services:
+        services_text = "\n".join(
+            f"• {s.name} — {s.price or '—'} ₽"
+            for s in services
+        )
+    else:
+        services_text = "Услуги не добавлены"
+
+    text = (
+        f"✅ Описание убрано!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🛠 Справочник услуг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{services_text}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, settings_services_kb(services))
+    await callback.answer("Описание убрано!")
+
+
+@router.message(ServiceEdit.description)
+async def service_edit_description(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Update service description."""
+    tg_id = message.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    description = message.text.strip()[:500]
+
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    service_id = data.get("edit_service_id")
+
+    await update_service(service_id, description=description)
+    await state.clear()
+
+    # Show services list
+    services = await get_services(master.id)
+
+    if services:
+        services_text = "\n".join(
+            f"• {s.name} — {s.price or '—'} ₽"
+            for s in services
+        )
+    else:
+        services_text = "Услуги не добавлены"
+
+    text = (
+        f"✅ Описание обновлено!\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"🛠 Справочник услуг\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"{services_text}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=settings_services_kb(services)
             )
         except TelegramBadRequest:
             pass
@@ -5090,6 +5563,8 @@ async def cb_settings_invite_qr(callback: CallbackQuery) -> None:
 def setup_dispatcher() -> Dispatcher:
     """Create and configure dispatcher."""
     dp = Dispatcher(storage=MemoryStorage())
+    # Outer middleware intercepts "Home" button before any filters/handlers
+    dp.message.outer_middleware(HomeButtonMiddleware())
     dp.include_router(router)
     return dp
 

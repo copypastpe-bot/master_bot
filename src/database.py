@@ -596,34 +596,56 @@ async def toggle_client_notification(master_id: int, client_id: int, field: str)
 # Orders
 # =============================================================================
 
-async def get_orders_by_date(master_id: int, target_date: date) -> list[dict]:
-    """Get orders for a specific date."""
+async def get_orders_by_date(master_id: int, target_date: date, all_statuses: bool = False) -> list[dict]:
+    """Get orders for a specific date.
+
+    Args:
+        master_id: Master ID
+        target_date: Date to get orders for
+        all_statuses: If True, return all orders including done/cancelled
+    """
     conn = await get_connection()
     try:
-        cursor = await conn.execute(
-            """
-            SELECT o.*, c.name as client_name, c.phone as client_phone,
-                   GROUP_CONCAT(oi.name, ', ') as services
-            FROM orders o
-            JOIN clients c ON o.client_id = c.id
-            LEFT JOIN order_items oi ON o.id = oi.order_id
-            WHERE o.master_id = ?
-              AND date(o.scheduled_at) = ?
-              AND o.status IN ('new', 'confirmed')
-            GROUP BY o.id
-            ORDER BY o.scheduled_at
-            """,
-            (master_id, target_date.isoformat())
-        )
+        if all_statuses:
+            cursor = await conn.execute(
+                """
+                SELECT o.*, c.name as client_name, c.phone as client_phone,
+                       GROUP_CONCAT(oi.name, ', ') as services
+                FROM orders o
+                JOIN clients c ON o.client_id = c.id
+                LEFT JOIN order_items oi ON o.id = oi.order_id
+                WHERE o.master_id = ?
+                  AND date(o.scheduled_at) = ?
+                GROUP BY o.id
+                ORDER BY o.scheduled_at
+                """,
+                (master_id, target_date.isoformat())
+            )
+        else:
+            cursor = await conn.execute(
+                """
+                SELECT o.*, c.name as client_name, c.phone as client_phone,
+                       GROUP_CONCAT(oi.name, ', ') as services
+                FROM orders o
+                JOIN clients c ON o.client_id = c.id
+                LEFT JOIN order_items oi ON o.id = oi.order_id
+                WHERE o.master_id = ?
+                  AND date(o.scheduled_at) = ?
+                  AND o.status IN ('new', 'confirmed')
+                GROUP BY o.id
+                ORDER BY o.scheduled_at
+                """,
+                (master_id, target_date.isoformat())
+            )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
     finally:
         await conn.close()
 
 
-async def get_orders_today(master_id: int) -> list[dict]:
+async def get_orders_today(master_id: int, all_statuses: bool = False) -> list[dict]:
     """Get today's orders for a master."""
-    return await get_orders_by_date(master_id, date.today())
+    return await get_orders_by_date(master_id, date.today(), all_statuses=all_statuses)
 
 
 async def get_order_by_id(order_id: int, master_id: int) -> Optional[dict]:
@@ -684,7 +706,7 @@ async def create_order(
     address: str,
     scheduled_at: datetime,
     amount_total: int,
-    status: str = "confirmed"
+    status: str = "new"
 ) -> int:
     """Create a new order. Returns order_id."""
     conn = await get_connection()
@@ -886,6 +908,7 @@ async def get_services(master_id: int, active_only: bool = True) -> list[Service
             master_id=row["master_id"],
             name=row["name"],
             price=row["price"],
+            description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
             created_at=row["created_at"],
         ) for row in rows]
@@ -907,6 +930,7 @@ async def get_archived_services(master_id: int) -> list[Service]:
             master_id=row["master_id"],
             name=row["name"],
             price=row["price"],
+            description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
             created_at=row["created_at"],
         ) for row in rows]
@@ -929,6 +953,7 @@ async def get_service_by_id(service_id: int) -> Optional[Service]:
                 master_id=row["master_id"],
                 name=row["name"],
                 price=row["price"],
+                description=row["description"] if "description" in row.keys() else None,
                 is_active=bool(row["is_active"]),
                 created_at=row["created_at"],
             )
@@ -937,13 +962,18 @@ async def get_service_by_id(service_id: int) -> Optional[Service]:
         await conn.close()
 
 
-async def create_service(master_id: int, name: str, price: Optional[int] = None) -> Service:
+async def create_service(
+    master_id: int,
+    name: str,
+    price: Optional[int] = None,
+    description: Optional[str] = None
+) -> Service:
     """Create a new service."""
     conn = await get_connection()
     try:
         cursor = await conn.execute(
-            "INSERT INTO services (master_id, name, price) VALUES (?, ?, ?)",
-            (master_id, name, price)
+            "INSERT INTO services (master_id, name, price, description) VALUES (?, ?, ?, ?)",
+            (master_id, name, price, description)
         )
         await conn.commit()
         service_id = cursor.lastrowid
@@ -953,6 +983,7 @@ async def create_service(master_id: int, name: str, price: Optional[int] = None)
             master_id=master_id,
             name=name,
             price=price,
+            description=description,
             is_active=True,
         )
     finally:
@@ -1288,6 +1319,38 @@ async def get_clients_with_birthday_today() -> list[dict]:
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def mark_order_confirmed_by_client(order_id: int) -> None:
+    """Mark order as confirmed by client."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET client_confirmed = 1 WHERE id = ?",
+            (order_id,)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def reset_order_for_reconfirmation(order_id: int) -> None:
+    """Reset order flags for new confirmation cycle (used when rescheduling >24h away)."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """
+            UPDATE orders
+            SET reminder_24h_sent = 0,
+                reminder_1h_sent = 0,
+                client_confirmed = 0
+            WHERE id = ?
+            """,
+            (order_id,)
+        )
+        await conn.commit()
     finally:
         await conn.close()
 
