@@ -322,17 +322,19 @@ async def update_client(client_id: int, **kwargs) -> None:
 
 
 async def search_clients(master_id: int, query: str) -> list[dict]:
-    """Search clients by name or phone."""
+    """Search clients by name or phone (case-insensitive for Cyrillic)."""
     conn = await get_connection()
     try:
-        search_pattern = f"%{query}%"
+        # Normalize query to lowercase for case-insensitive search
+        query_lower = query.lower()
+        search_pattern = f"%{query_lower}%"
         cursor = await conn.execute(
             """
             SELECT c.*, mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON c.id = mc.client_id
             WHERE mc.master_id = ?
-              AND (c.name LIKE ? OR c.phone LIKE ?)
+              AND (LOWER(c.name) LIKE ? OR c.phone LIKE ?)
             ORDER BY c.name
             LIMIT 10
             """,

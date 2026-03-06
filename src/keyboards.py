@@ -63,7 +63,9 @@ def orders_kb(orders: list, selected_date: date = None) -> InlineKeyboardMarkup:
 
     # Order buttons
     for order in orders:
-        time_str = order.get("scheduled_at", "")[:5] if order.get("scheduled_at") else "—"
+        # scheduled_at is ISO format: "2026-03-07T19:30:00", time is at [11:16]
+        scheduled_at = order.get("scheduled_at", "")
+        time_str = scheduled_at[11:16] if len(scheduled_at) >= 16 else "—"
         client_name = order.get("client_name", "Клиент")
         services = order.get("services", "")[:20] if order.get("services") else ""
         emoji = get_order_emoji(order)

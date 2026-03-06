@@ -171,8 +171,12 @@ async def build_home_text(master) -> str:
     orders = await get_orders_today(master.id)
 
     if orders:
+        def get_time(scheduled_at: str) -> str:
+            """Extract HH:MM from ISO datetime string."""
+            return scheduled_at[11:16] if len(scheduled_at) >= 16 else "—"
+
         orders_text = "\n".join(
-            f"• {o.get('scheduled_at', '')[:5] if o.get('scheduled_at') else '—'} — "
+            f"• {get_time(o.get('scheduled_at', ''))} — "
             f"{o.get('client_name', 'Клиент')} | {o.get('address', 'адрес не указан')[:30]}"
             for o in orders
         )
@@ -902,9 +906,9 @@ async def order_use_last_address(callback: CallbackQuery, state: FSMContext) -> 
         await callback.answer("Адрес не найден")
         return
 
+    await callback.answer()  # Answer immediately to prevent double-click issues
     await state.update_data(order_address=last_address)
     await go_to_date_step(callback, state)
-    await callback.answer()
 
 
 @router.message(CreateOrder.address)
