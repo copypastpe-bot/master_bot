@@ -162,7 +162,7 @@ def calendar_kb(year: int, month: int, active_dates: list[date]) -> InlineKeyboa
 
 
 def clients_kb(results: list = None) -> InlineKeyboardMarkup:
-    """Clients section keyboard."""
+    """Clients section keyboard (for search results)."""
     buttons = []
 
     if results:
@@ -177,6 +177,49 @@ def clients_kb(results: list = None) -> InlineKeyboardMarkup:
                 callback_data=f"clients:view:{client['id']}"
             )])
 
+    buttons.append([InlineKeyboardButton(text="+ Добавить клиента", callback_data="clients:new")])
+    buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def clients_paginated_kb(
+    clients: list,
+    page: int,
+    total_count: int,
+    per_page: int = 10
+) -> InlineKeyboardMarkup:
+    """Clients section keyboard with pagination."""
+    buttons = []
+
+    # Client buttons
+    for client in clients:
+        name = client.get("name", "Клиент")
+        phone = client.get("phone", "")
+        text = f"{name}"
+        if phone:
+            text += f" | {phone}"
+        buttons.append([InlineKeyboardButton(
+            text=text,
+            callback_data=f"clients:view:{client['id']}"
+        )])
+
+    if not clients:
+        buttons.append([InlineKeyboardButton(text="📭 Клиентов нет", callback_data="noop")])
+
+    # Pagination controls
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+
+    if total_pages > 1:
+        nav_row = []
+        if page > 1:
+            nav_row.append(InlineKeyboardButton(text="◀️", callback_data=f"clients:page:{page - 1}"))
+        nav_row.append(InlineKeyboardButton(text=f"{page}/{total_pages}", callback_data="noop"))
+        if page < total_pages:
+            nav_row.append(InlineKeyboardButton(text="▶️", callback_data=f"clients:page:{page + 1}"))
+        buttons.append(nav_row)
+
+    # Action buttons
     buttons.append([InlineKeyboardButton(text="+ Добавить клиента", callback_data="clients:new")])
     buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
 

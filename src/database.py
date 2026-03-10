@@ -322,26 +322,93 @@ async def update_client(client_id: int, **kwargs) -> None:
 
 
 async def search_clients(master_id: int, query: str) -> list[dict]:
-    """Search clients by name or phone (case-insensitive for Cyrillic)."""
+    """Search clients by name or phone (case-insensitive for Cyrillic).
+
+    SQLite's LOWER() doesn't work with Cyrillic, so we fetch more rows
+    and filter in Python for proper case-insensitive search.
+    """
     conn = await get_connection()
     try:
-        # Normalize query to lowercase for case-insensitive search
+        # First try phone search in SQL (works fine)
+        phone_pattern = f"%{query}%"
+        cursor = await conn.execute(
+            """
+            SELECT c.*, mc.bonus_balance
+            FROM clients c
+            JOIN master_clients mc ON c.id = mc.client_id
+            WHERE mc.master_id = ? AND c.phone LIKE ?
+            ORDER BY c.name
+            LIMIT 10
+            """,
+            (master_id, phone_pattern)
+        )
+        phone_results = [dict(row) for row in await cursor.fetchall()]
+
+        # Then search by name with Python filtering (for Cyrillic)
         query_lower = query.lower()
-        search_pattern = f"%{query_lower}%"
         cursor = await conn.execute(
             """
             SELECT c.*, mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON c.id = mc.client_id
             WHERE mc.master_id = ?
-              AND (LOWER(c.name) LIKE ? OR c.phone LIKE ?)
             ORDER BY c.name
-            LIMIT 10
             """,
-            (master_id, search_pattern, search_pattern)
+            (master_id,)
+        )
+        all_rows = await cursor.fetchall()
+
+        # Filter by name in Python (case-insensitive for any language)
+        name_results = [
+            dict(row) for row in all_rows
+            if query_lower in (row["name"] or "").lower()
+        ]
+
+        # Merge results, remove duplicates, limit to 10
+        seen_ids = set()
+        results = []
+        for row in phone_results + name_results:
+            if row["id"] not in seen_ids:
+                seen_ids.add(row["id"])
+                results.append(row)
+                if len(results) >= 10:
+                    break
+
+        return results
+    finally:
+        await conn.close()
+
+
+async def get_clients_paginated(master_id: int, page: int = 1, per_page: int = 10) -> tuple[list[dict], int]:
+    """Get paginated list of clients.
+
+    Returns: (clients_list, total_count)
+    """
+    conn = await get_connection()
+    try:
+        # Get total count
+        cursor = await conn.execute(
+            "SELECT COUNT(*) as cnt FROM master_clients WHERE master_id = ?",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        total_count = row["cnt"] if row else 0
+
+        # Get paginated results
+        offset = (page - 1) * per_page
+        cursor = await conn.execute(
+            """
+            SELECT c.*, mc.bonus_balance
+            FROM clients c
+            JOIN master_clients mc ON c.id = mc.client_id
+            WHERE mc.master_id = ?
+            ORDER BY c.name
+            LIMIT ? OFFSET ?
+            """,
+            (master_id, per_page, offset)
         )
         rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows], total_count
     finally:
         await conn.close()
 

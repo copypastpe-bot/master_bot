@@ -23,7 +23,7 @@ from src.states import (
 )
 from src.keyboards import (
     home_master_kb, orders_kb, order_card_kb, calendar_kb,
-    clients_kb, client_card_kb, client_history_kb, client_bonus_kb,
+    clients_kb, clients_paginated_kb, client_card_kb, client_history_kb, client_bonus_kb,
     marketing_kb, reports_kb, settings_kb, settings_profile_kb,
     settings_bonus_kb, settings_services_kb, settings_invite_kb,
     skip_kb, stub_kb, home_reply_kb,
@@ -100,6 +100,8 @@ from src.database import (
     # Confirmation functions
     mark_order_confirmed_by_client,
     reset_order_for_reconfirmation,
+    # Clients pagination
+    get_clients_paginated,
 )
 from src.utils import generate_invite_token
 from src import notifications
@@ -2521,16 +2523,48 @@ async def cancel_back(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == "clients")
 async def cb_clients(callback: CallbackQuery, state: FSMContext) -> None:
-    """Show clients section."""
-    await state.update_data(current_screen="clients")
+    """Show clients section with paginated list."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    await state.update_data(current_screen="clients", clients_page=1)
+
+    clients, total = await get_clients_paginated(master.id, page=1)
+    total_pages = max(1, (total + 9) // 10)
 
     text = (
         "👥 Клиенты\n"
         "━━━━━━━━━━━━━━━\n"
-        "🔍 Введите имя или телефон для поиска:"
+        "🔍 Введите часть имени/телефона\n"
+        "для поиска или выберите из списка.\n"
+        f"стр 1 из {total_pages}"
     )
 
-    await edit_home_message(callback, text, clients_kb())
+    await edit_home_message(callback, text, clients_paginated_kb(clients, 1, total))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("clients:page:"))
+async def cb_clients_page(callback: CallbackQuery, state: FSMContext) -> None:
+    """Handle client list pagination."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    page = int(callback.data.split(":")[2])
+    await state.update_data(clients_page=page)
+
+    clients, total = await get_clients_paginated(master.id, page=page)
+    total_pages = max(1, (total + 9) // 10)
+
+    text = (
+        "👥 Клиенты\n"
+        "━━━━━━━━━━━━━━━\n"
+        "🔍 Введите часть имени/телефона\n"
+        "для поиска или выберите из списка.\n"
+        f"стр {page} из {total_pages}"
+    )
+
+    await edit_home_message(callback, text, clients_paginated_kb(clients, page, total))
     await callback.answer()
 
 
