@@ -785,21 +785,32 @@ async def order_new_client_name(message: Message, state: FSMContext, bot: Bot) -
 @router.message(CreateClientInOrder.phone)
 async def order_new_client_phone(message: Message, state: FSMContext, bot: Bot) -> None:
     """New client phone."""
+    import asyncio
+
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
-
-    # Validate and normalize phone
-    phone = normalize_phone(message.text.strip())
-    if not phone:
-        await message.answer("❌ Неверный формат телефона.\nВведите номер в формате: +79991234567 или 89991234567")
-        return
-
-    await state.update_data(new_client_phone=phone)
 
     try:
         await message.delete()
     except:
         pass
+
+    # Validate and normalize phone
+    phone = normalize_phone(message.text.strip())
+    if not phone:
+        # Show error briefly, then delete
+        error_msg = await bot.send_message(
+            chat_id=message.chat.id,
+            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
+        )
+        await asyncio.sleep(2)
+        try:
+            await error_msg.delete()
+        except:
+            pass
+        return
+
+    await state.update_data(new_client_phone=phone)
 
     data = await state.get_data()
     name = data.get("new_client_name")
@@ -2747,21 +2758,30 @@ async def client_add_name(message: Message, state: FSMContext, bot: Bot) -> None
 @router.message(ClientAdd.phone)
 async def client_add_phone(message: Message, state: FSMContext, bot: Bot) -> None:
     """Step 2: Client phone."""
+    import asyncio
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
-
-    # Validate and normalize phone
-    phone = normalize_phone(message.text.strip())
-    if not phone:
-        await message.answer("❌ Неверный формат телефона.\nВведите номер в формате: +79991234567 или 89991234567")
-        return
-
-    await state.update_data(add_client_phone=phone)
 
     try:
         await message.delete()
     except:
         pass
+
+    # Validate and normalize phone
+    phone = normalize_phone(message.text.strip())
+    if not phone:
+        error_msg = await bot.send_message(
+            chat_id=message.chat.id,
+            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
+        )
+        await asyncio.sleep(2)
+        try:
+            await error_msg.delete()
+        except:
+            pass
+        return
+
+    await state.update_data(add_client_phone=phone)
 
     data = await state.get_data()
     name = data.get("add_client_name")

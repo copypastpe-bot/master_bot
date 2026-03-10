@@ -50,7 +50,7 @@ from src.database import (
     update_order_status,
     reset_order_for_reconfirmation,
 )
-from src.utils import format_phone, parse_date
+from src.utils import format_phone, parse_date, normalize_phone
 
 # Master bot instance for sending notifications
 master_bot: Bot = None
@@ -267,7 +267,7 @@ async def reg_name(message: Message, state: FSMContext) -> None:
 @router.message(ClientRegistration.phone, F.contact)
 async def reg_phone_contact(message: Message, state: FSMContext) -> None:
     """Step 2: Save phone from contact."""
-    phone = format_phone(message.contact.phone_number)
+    phone = normalize_phone(message.contact.phone_number) or format_phone(message.contact.phone_number)
     await state.update_data(phone=phone)
 
     await message.answer(
@@ -281,16 +281,27 @@ async def reg_phone_contact(message: Message, state: FSMContext) -> None:
 
 
 @router.message(ClientRegistration.phone)
-async def reg_phone_text(message: Message, state: FSMContext) -> None:
+async def reg_phone_text(message: Message, state: FSMContext, bot: Bot) -> None:
     """Step 2: Save phone from text."""
-    phone = format_phone(message.text.strip())
+    import asyncio
 
-    # Validate phone format
-    if not phone.startswith("+7") or len(phone) != 12:
-        await message.answer(
-            "❌ Неверный формат телефона.\n"
-            "Введите номер в формате: +79991234567 или 89991234567"
+    try:
+        await message.delete()
+    except:
+        pass
+
+    # Validate and normalize phone
+    phone = normalize_phone(message.text.strip())
+    if not phone:
+        error_msg = await bot.send_message(
+            chat_id=message.chat.id,
+            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
         )
+        await asyncio.sleep(2)
+        try:
+            await error_msg.delete()
+        except:
+            pass
         return
 
     await state.update_data(phone=phone)
