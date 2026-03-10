@@ -284,6 +284,15 @@ async def reg_phone_contact(message: Message, state: FSMContext) -> None:
 async def reg_phone_text(message: Message, state: FSMContext) -> None:
     """Step 2: Save phone from text."""
     phone = format_phone(message.text.strip())
+
+    # Validate phone format
+    if not phone.startswith("+7") or len(phone) != 12:
+        await message.answer(
+            "❌ Неверный формат телефона.\n"
+            "Введите номер в формате: +79991234567 или 89991234567"
+        )
+        return
+
     await state.update_data(phone=phone)
 
     await message.answer(

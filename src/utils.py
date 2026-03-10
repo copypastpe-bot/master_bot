@@ -11,8 +11,22 @@ def generate_invite_token() -> str:
     return secrets.token_urlsafe(16)
 
 
-def format_phone(phone: str) -> str:
-    """Normalize phone number to +7XXXXXXXXXX format."""
+def normalize_phone(phone: str) -> Optional[str]:
+    """Normalize phone number to +79991234567 format.
+
+    Returns normalized phone or None if invalid.
+
+    Accepts formats:
+    - +79991234567
+    - 89991234567
+    - 79991234567
+    - 9991234567
+    - +7 999 123-45-67
+    - 8 (999) 123-45-67
+    """
+    if not phone:
+        return None
+
     # Remove all non-digit characters
     digits = re.sub(r"\D", "", phone)
 
@@ -22,10 +36,28 @@ def format_phone(phone: str) -> str:
             digits = "7" + digits[1:]
         elif digits.startswith("7"):
             pass
+        else:
+            return None  # Invalid 11-digit number
     elif len(digits) == 10:
+        # Assume Russian number without country code
         digits = "7" + digits
+    else:
+        return None  # Invalid length
 
-    return "+" + digits if digits else phone
+    # Validate: must be 11 digits starting with 7
+    if len(digits) != 11 or not digits.startswith("7"):
+        return None
+
+    return "+" + digits
+
+
+def format_phone(phone: str) -> str:
+    """Normalize phone number to +7XXXXXXXXXX format.
+
+    Legacy function - use normalize_phone() for validation.
+    """
+    result = normalize_phone(phone)
+    return result if result else phone
 
 
 def parse_date(date_str: str) -> Optional[date]:

@@ -103,7 +103,7 @@ from src.database import (
     # Clients pagination
     get_clients_paginated,
 )
-from src.utils import generate_invite_token
+from src.utils import generate_invite_token, normalize_phone
 from src import notifications
 from src import google_calendar
 
@@ -788,7 +788,12 @@ async def order_new_client_phone(message: Message, state: FSMContext, bot: Bot) 
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    phone = message.text.strip()[:50]
+    # Validate and normalize phone
+    phone = normalize_phone(message.text.strip())
+    if not phone:
+        await message.answer("❌ Неверный формат телефона.\nВведите номер в формате: +79991234567 или 89991234567")
+        return
+
     await state.update_data(new_client_phone=phone)
 
     try:
@@ -2745,7 +2750,12 @@ async def client_add_phone(message: Message, state: FSMContext, bot: Bot) -> Non
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
-    phone = message.text.strip()[:50]
+    # Validate and normalize phone
+    phone = normalize_phone(message.text.strip())
+    if not phone:
+        await message.answer("❌ Неверный формат телефона.\nВведите номер в формате: +79991234567 или 89991234567")
+        return
+
     await state.update_data(add_client_phone=phone)
 
     try:
@@ -2947,6 +2957,23 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
         await message.delete()
     except:
         pass
+
+    # Validate phone if needed
+    if field == "phone":
+        normalized = normalize_phone(value)
+        if not normalized:
+            if master.home_message_id:
+                try:
+                    await bot.edit_message_text(
+                        chat_id=message.chat.id,
+                        message_id=master.home_message_id,
+                        text="❌ Неверный формат телефона.\nВведите: +79991234567 или 89991234567",
+                        reply_markup=stub_kb(f"clients:edit:{client_id}")
+                    )
+                except TelegramBadRequest:
+                    pass
+            return
+        value = normalized
 
     # Parse birthday if needed
     if field == "birthday":
