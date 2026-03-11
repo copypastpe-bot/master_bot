@@ -5656,14 +5656,24 @@ def setup_dispatcher() -> Dispatcher:
 
 async def main() -> None:
     """Main entry point."""
+    from src.oauth_server import run_oauth_server, set_master_bot
+
     await init_db()
     logger.info("Database initialized")
 
     bot = Bot(token=MASTER_BOT_TOKEN)
     dp = setup_dispatcher()
 
+    # Set bot instance for OAuth server notifications
+    set_master_bot(bot)
+
     logger.info("Starting master bot...")
-    await dp.start_polling(bot)
+
+    # Run bot polling and OAuth server concurrently
+    await asyncio.gather(
+        dp.start_polling(bot),
+        run_oauth_server(),
+    )
 
 
 if __name__ == "__main__":
