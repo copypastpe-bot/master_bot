@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # OAuth scopes
 SCOPES = [
-    "https://www.googleapis.com/auth/calendar",  # Full calendar access (configured in GC Console)
+    "https://www.googleapis.com/auth/calendar.events",  # Events only (create, read, update, delete)
     "https://www.googleapis.com/auth/userinfo.email",
     "openid",
 ]
