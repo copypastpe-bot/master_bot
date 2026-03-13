@@ -1449,6 +1449,53 @@ async def mark_reminder_sent(order_id: int, reminder_type: str) -> None:
         await conn.close()
 
 
+async def accrue_welcome_bonus(master_id: int, client_id: int) -> int:
+    """Accrue welcome bonus to client. Returns new balance."""
+    conn = await get_connection()
+    try:
+        # Get master settings
+        cursor = await conn.execute(
+            "SELECT bonus_welcome, bonus_enabled FROM masters WHERE id = ?",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        if not row or not row["bonus_enabled"] or row["bonus_welcome"] <= 0:
+            # Get current balance
+            cursor = await conn.execute(
+                "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+                (master_id, client_id)
+            )
+            row = await cursor.fetchone()
+            return row["bonus_balance"] if row else 0
+
+        bonus_amount = row["bonus_welcome"]
+
+        # Update balance
+        await conn.execute(
+            "UPDATE master_clients SET bonus_balance = bonus_balance + ? WHERE master_id = ? AND client_id = ?",
+            (bonus_amount, master_id, client_id)
+        )
+
+        # Log bonus
+        await conn.execute(
+            """INSERT INTO bonus_log (master_id, client_id, type, amount, comment)
+               VALUES (?, ?, 'welcome', ?, 'Приветственный бонус')""",
+            (master_id, client_id, bonus_amount)
+        )
+
+        await conn.commit()
+
+        # Get new balance
+        cursor = await conn.execute(
+            "SELECT bonus_balance FROM master_clients WHERE master_id = ? AND client_id = ?",
+            (master_id, client_id)
+        )
+        row = await cursor.fetchone()
+        return row["bonus_balance"] if row else 0
+    finally:
+        await conn.close()
+
+
 async def accrue_birthday_bonus(master_id: int, client_id: int) -> int:
     """Accrue birthday bonus to client. Returns new balance.
 
