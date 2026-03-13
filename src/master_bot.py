@@ -18,14 +18,14 @@ from src.states import (
     MasterRegistration, CreateOrder, CreateClientInOrder,
     CompleteOrder, MoveOrder, CancelOrder,
     ClientAdd, ServiceAdd, ServiceEdit,
-    ProfileEdit, BonusSettingsEdit, ClientEdit, ClientNote, BonusManual,
+    ProfileEdit, BonusSettingsEdit, BonusMessageEdit, ClientEdit, ClientNote, BonusManual,
     BroadcastFSM, PromoFSM, ReportPeriodFSM,
 )
 from src.keyboards import (
     home_master_kb, orders_kb, order_card_kb, calendar_kb,
     clients_kb, clients_paginated_kb, client_card_kb, client_history_kb, client_bonus_kb,
     marketing_kb, reports_kb, settings_kb, settings_profile_kb,
-    settings_bonus_kb, settings_services_kb, settings_invite_kb,
+    settings_bonus_kb, settings_services_kb, settings_invite_kb, bonus_message_kb,
     skip_kb, stub_kb, home_reply_kb,
     # Order keyboards
     client_search_results_kb, order_address_kb, order_calendar_kb,
@@ -102,8 +102,13 @@ from src.database import (
     reset_order_for_reconfirmation,
     # Clients pagination
     get_clients_paginated,
+    # Bonus settings
+    update_master_bonus_setting,
 )
-from src.utils import generate_invite_token, normalize_phone
+from src.utils import (
+    generate_invite_token, normalize_phone,
+    render_bonus_message, DEFAULT_WELCOME_MESSAGE, DEFAULT_BIRTHDAY_MESSAGE,
+)
 from src import notifications
 from src import google_calendar
 
@@ -4793,13 +4798,17 @@ async def cb_settings_bonus(callback: CallbackQuery) -> None:
 
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
 
+    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+
     text = (
         "🎁 Бонусная программа\n"
         "━━━━━━━━━━━━━━━\n"
         f"Статус: {status}\n"
         f"Начисление: {master.bonus_rate}% от суммы заказа\n"
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
-        f"Бонус на ДР: {master.bonus_birthday} ₽\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"🎉 Приветственный: {welcome_str}\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4820,13 +4829,17 @@ async def cb_bonus_toggle(callback: CallbackQuery) -> None:
     master = await get_master_by_tg_id(tg_id)
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
 
+    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+
     text = (
         "🎁 Бонусная программа\n"
         "━━━━━━━━━━━━━━━\n"
         f"Статус: {status}\n"
         f"Начисление: {master.bonus_rate}% от суммы заказа\n"
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
-        f"Бонус на ДР: {master.bonus_birthday} ₽\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"🎉 Приветственный: {welcome_str}\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4904,6 +4917,7 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
     # Refresh and show updated screen
     master = await get_master_by_tg_id(tg_id)
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
+    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
 
     text = (
         "🎁 Бонусная программа\n"
@@ -4911,7 +4925,9 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
         f"Статус: {status}\n"
         f"Начисление: {master.bonus_rate}% от суммы заказа\n"
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
-        f"Бонус на ДР: {master.bonus_birthday} ₽\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"🎉 Приветственный: {welcome_str}\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4922,6 +4938,376 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
                 message_id=master.home_message_id,
                 text=text,
                 reply_markup=settings_bonus_kb(master.bonus_enabled)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+# =============================================================================
+# Welcome & Birthday Bonus Message Settings
+# =============================================================================
+
+@router.callback_query(F.data == "bonus:welcome")
+async def cb_bonus_welcome(callback: CallbackQuery) -> None:
+    """Show welcome bonus settings."""
+    await callback.answer()
+    master = await get_master_by_tg_id(callback.from_user.id)
+
+    amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+    text_str = "свой" if master.welcome_message else "стандартный"
+    photo_str = "есть" if master.welcome_photo_id else "нет"
+
+    text = (
+        "🎉 Приветственный бонус\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Сумма: {amount_str}\n"
+        f"Текст: {text_str}\n"
+        f"Картинка: {photo_str}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, bonus_message_kb("welcome"))
+
+
+@router.callback_query(F.data == "bonus:birthday")
+async def cb_bonus_birthday(callback: CallbackQuery) -> None:
+    """Show birthday bonus settings."""
+    await callback.answer()
+    master = await get_master_by_tg_id(callback.from_user.id)
+
+    text_str = "свой" if master.birthday_message else "стандартный"
+    photo_str = "есть" if master.birthday_photo_id else "нет"
+
+    text = (
+        "🎂 Бонус на день рождения\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Сумма: {master.bonus_birthday} ₽\n"
+        f"Текст: {text_str}\n"
+        f"Картинка: {photo_str}\n"
+        "━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, bonus_message_kb("birthday"))
+
+
+@router.callback_query(F.data.regexp(r"^bonus:(welcome|birthday):amount$"))
+async def cb_bonus_message_amount(callback: CallbackQuery, state: FSMContext) -> None:
+    """Prompt for bonus amount."""
+    await callback.answer()
+    bonus_type = callback.data.split(":")[1]
+
+    await state.update_data(bonus_type=bonus_type)
+    await state.set_state(BonusMessageEdit.waiting_amount)
+
+    text = "💰 Введите сумму бонуса (0 = выключить):"
+    await edit_home_message(callback, text, stub_kb(f"bonus:{bonus_type}"))
+
+
+@router.callback_query(F.data.regexp(r"^bonus:(welcome|birthday):text$"))
+async def cb_bonus_message_text(callback: CallbackQuery, state: FSMContext) -> None:
+    """Prompt for custom message text."""
+    await callback.answer()
+    bonus_type = callback.data.split(":")[1]
+
+    await state.update_data(bonus_type=bonus_type)
+    await state.set_state(BonusMessageEdit.waiting_text)
+
+    variables = "{имя}, {мастер}, {бонус}" + (", {баланс}" if bonus_type == "birthday" else "")
+    text = (
+        f"✏️ Введите текст сообщения.\n\n"
+        f"Переменные: {variables}\n\n"
+        f"Отправьте «сброс» для возврата к стандартному."
+    )
+    await edit_home_message(callback, text, stub_kb(f"bonus:{bonus_type}"))
+
+
+@router.callback_query(F.data.regexp(r"^bonus:(welcome|birthday):photo$"))
+async def cb_bonus_message_photo(callback: CallbackQuery, state: FSMContext) -> None:
+    """Prompt for photo upload."""
+    await callback.answer()
+    bonus_type = callback.data.split(":")[1]
+
+    await state.update_data(bonus_type=bonus_type)
+    await state.set_state(BonusMessageEdit.waiting_photo)
+
+    text = "🖼 Отправьте картинку или «удалить» для удаления."
+    await edit_home_message(callback, text, stub_kb(f"bonus:{bonus_type}"))
+
+
+@router.callback_query(F.data.regexp(r"^bonus:(welcome|birthday):preview$"))
+async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
+    """Send preview of bonus message."""
+    await callback.answer("Отправляю предпросмотр...")
+    bonus_type = callback.data.split(":")[1]
+    master = await get_master_by_tg_id(callback.from_user.id)
+
+    if bonus_type == "welcome":
+        template = master.welcome_message
+        default = DEFAULT_WELCOME_MESSAGE
+        amount = master.bonus_welcome
+        photo_id = master.welcome_photo_id
+        balance = 0
+    else:
+        template = master.birthday_message
+        default = DEFAULT_BIRTHDAY_MESSAGE
+        amount = master.bonus_birthday
+        photo_id = master.birthday_photo_id
+        balance = 1500
+
+    text = render_bonus_message(
+        template=template,
+        default=default,
+        client_name="Анна",
+        master_name=master.name,
+        bonus_amount=amount,
+        balance=balance,
+    )
+
+    try:
+        if photo_id:
+            await bot.send_photo(callback.from_user.id, photo_id, caption=text)
+        else:
+            await bot.send_message(callback.from_user.id, text)
+    except Exception as e:
+        await bot.send_message(callback.from_user.id, f"❌ Ошибка: {e}")
+
+
+@router.message(BonusMessageEdit.waiting_amount)
+async def on_bonus_message_amount(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save bonus amount."""
+    import asyncio
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    bonus_type = data.get("bonus_type")
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    try:
+        amount = int(message.text.strip())
+        if amount < 0:
+            raise ValueError()
+    except ValueError:
+        error_msg = await bot.send_message(message.chat.id, "❌ Введите число >= 0")
+        await asyncio.sleep(2)
+        try:
+            await error_msg.delete()
+        except:
+            pass
+        return
+
+    field = "bonus_welcome" if bonus_type == "welcome" else "bonus_birthday"
+    await update_master_bonus_setting(master.id, field, amount)
+    await state.clear()
+
+    # Return to bonus submenu
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    if bonus_type == "welcome":
+        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        text_str = "свой" if master.welcome_message else "стандартный"
+        photo_str = "есть" if master.welcome_photo_id else "нет"
+        text = (
+            "🎉 Приветственный бонус\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {amount_str}\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+    else:
+        text_str = "свой" if master.birthday_message else "стандартный"
+        photo_str = "есть" if master.birthday_photo_id else "нет"
+        text = (
+            "🎂 Бонус на день рождения\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=bonus_message_kb(bonus_type)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+@router.message(BonusMessageEdit.waiting_text)
+async def on_bonus_message_text(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save custom message text."""
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    bonus_type = data.get("bonus_type")
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    text_input = message.text.strip()
+    value = None if text_input.lower() == "сброс" else text_input
+
+    field = "welcome_message" if bonus_type == "welcome" else "birthday_message"
+    await update_master_bonus_setting(master.id, field, value)
+    await state.clear()
+
+    # Return to bonus submenu
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    if bonus_type == "welcome":
+        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        text_str = "свой" if master.welcome_message else "стандартный"
+        photo_str = "есть" if master.welcome_photo_id else "нет"
+        text = (
+            "🎉 Приветственный бонус\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {amount_str}\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+    else:
+        text_str = "свой" if master.birthday_message else "стандартный"
+        photo_str = "есть" if master.birthday_photo_id else "нет"
+        text = (
+            "🎂 Бонус на день рождения\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=bonus_message_kb(bonus_type)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+@router.message(BonusMessageEdit.waiting_photo, F.photo)
+async def on_bonus_message_photo(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Save photo file_id."""
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    bonus_type = data.get("bonus_type")
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    photo_id = message.photo[-1].file_id
+
+    field = "welcome_photo_id" if bonus_type == "welcome" else "birthday_photo_id"
+    await update_master_bonus_setting(master.id, field, photo_id)
+    await state.clear()
+
+    # Return to bonus submenu
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    if bonus_type == "welcome":
+        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        text_str = "свой" if master.welcome_message else "стандартный"
+        photo_str = "есть" if master.welcome_photo_id else "нет"
+        text = (
+            "🎉 Приветственный бонус\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {amount_str}\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+    else:
+        text_str = "свой" if master.birthday_message else "стандартный"
+        photo_str = "есть" if master.birthday_photo_id else "нет"
+        text = (
+            "🎂 Бонус на день рождения\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=bonus_message_kb(bonus_type)
+            )
+        except TelegramBadRequest:
+            pass
+
+
+@router.message(BonusMessageEdit.waiting_photo)
+async def on_bonus_message_photo_text(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Handle text in photo state (for 'удалить')."""
+    try:
+        await message.delete()
+    except:
+        pass
+
+    data = await state.get_data()
+    bonus_type = data.get("bonus_type")
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    if message.text and message.text.strip().lower() == "удалить":
+        field = "welcome_photo_id" if bonus_type == "welcome" else "birthday_photo_id"
+        await update_master_bonus_setting(master.id, field, None)
+
+    await state.clear()
+
+    # Return to bonus submenu
+    master = await get_master_by_tg_id(message.from_user.id)
+
+    if bonus_type == "welcome":
+        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        text_str = "свой" if master.welcome_message else "стандартный"
+        photo_str = "есть" if master.welcome_photo_id else "нет"
+        text = (
+            "🎉 Приветственный бонус\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {amount_str}\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+    else:
+        text_str = "свой" if master.birthday_message else "стандартный"
+        photo_str = "есть" if master.birthday_photo_id else "нет"
+        text = (
+            "🎂 Бонус на день рождения\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master.home_message_id,
+                text=text,
+                reply_markup=bonus_message_kb(bonus_type)
             )
         except TelegramBadRequest:
             pass
