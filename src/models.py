@@ -20,6 +20,12 @@ class Master:
     bonus_rate: float = 5.0
     bonus_max_spend: float = 50.0
     bonus_birthday: int = 300
+    bonus_welcome: int = 0
+    timezone: str = "Europe/Moscow"
+    welcome_message: Optional[str] = None
+    welcome_photo_id: Optional[str] = None
+    birthday_message: Optional[str] = None
+    birthday_photo_id: Optional[str] = None
     gc_connected: bool = False
     gc_credentials: Optional[str] = None
     home_message_id: Optional[int] = None
