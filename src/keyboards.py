@@ -4,6 +4,8 @@ import calendar
 from datetime import date
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
+from src.utils import TIMEZONES
+
 MONTHS_RU = [
     "", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
     "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
@@ -489,11 +491,43 @@ def settings_bonus_kb(bonus_enabled: bool) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="✏️ % начисления", callback_data="bonus:edit:rate"),
             InlineKeyboardButton(text="✏️ % списания", callback_data="bonus:edit:max_spend"),
         ],
-        [InlineKeyboardButton(text="✏️ Бонус на ДР", callback_data="bonus:edit:birthday")],
+        [
+            InlineKeyboardButton(text="🎉 Приветственный", callback_data="bonus:welcome"),
+            InlineKeyboardButton(text="🎂 День рождения", callback_data="bonus:birthday"),
+        ],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
         ],
+    ])
+
+
+def timezone_kb(back_to: str = "settings:profile") -> InlineKeyboardMarkup:
+    """Keyboard for timezone selection."""
+    buttons = []
+    for code, name, utc in TIMEZONES:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{name} ({utc})",
+                callback_data=f"set_timezone:{code}"
+            )
+        ])
+    buttons.append([InlineKeyboardButton(text="← Назад", callback_data=back_to)])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def bonus_message_kb(bonus_type: str, back_to: str = "settings:bonus") -> InlineKeyboardMarkup:
+    """Keyboard for welcome/birthday bonus submenu."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="💰 Сумма", callback_data=f"bonus:{bonus_type}:amount"),
+            InlineKeyboardButton(text="✏️ Текст", callback_data=f"bonus:{bonus_type}:text"),
+        ],
+        [
+            InlineKeyboardButton(text="🖼 Картинка", callback_data=f"bonus:{bonus_type}:photo"),
+            InlineKeyboardButton(text="👁 Просмотр", callback_data=f"bonus:{bonus_type}:preview"),
+        ],
+        [InlineKeyboardButton(text="← Назад", callback_data=back_to)],
     ])
 
 
