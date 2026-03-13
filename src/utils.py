@@ -51,6 +51,40 @@ def normalize_phone(phone: str) -> Optional[str]:
     return "+" + digits
 
 
+# Дефолтные тексты бонусных сообщений
+DEFAULT_WELCOME_MESSAGE = """👋 Добро пожаловать, {имя}!
+
+Ваш мастер {мастер} дарит вам приветственный бонус 🎁 {бонус} ₽
+
+Используйте его при следующем заказе!"""
+
+DEFAULT_BIRTHDAY_MESSAGE = """🎂 С днём рождения, {имя}!
+
+Ваш мастер {мастер} дарит вам 🎁 {бонус} бонусов!
+
+💰 Ваш баланс: {баланс} ₽
+
+Используйте бонусы при следующем заказе."""
+
+
+def render_bonus_message(
+    template: Optional[str],
+    default: str,
+    client_name: str,
+    master_name: str,
+    bonus_amount: int,
+    balance: int = 0,
+) -> str:
+    """Render bonus message with variable substitution."""
+    text = template if template else default
+    return text.format(
+        имя=client_name,
+        мастер=master_name,
+        бонус=bonus_amount,
+        баланс=balance,
+    )
+
+
 # Часовые пояса для выбора
 TIMEZONES = [
     ("Europe/Kaliningrad", "Калининград", "UTC+2"),
