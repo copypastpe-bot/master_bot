@@ -51,6 +51,25 @@ def normalize_phone(phone: str) -> Optional[str]:
     return "+" + digits
 
 
+# Часовые пояса для выбора
+TIMEZONES = [
+    ("Europe/Kaliningrad", "Калининград", "UTC+2"),
+    ("Europe/Moscow", "Москва", "UTC+3"),
+    ("Europe/Samara", "Самара", "UTC+4"),
+    ("Asia/Yekaterinburg", "Екатеринбург", "UTC+5"),
+    ("Asia/Novosibirsk", "Новосибирск", "UTC+7"),
+    ("Asia/Vladivostok", "Владивосток", "UTC+10"),
+]
+
+
+def get_timezone_display(tz_code: str) -> str:
+    """Get display name for timezone code."""
+    for code, name, utc in TIMEZONES:
+        if code == tz_code:
+            return f"{name} ({utc})"
+    return tz_code
+
+
 def format_phone(phone: str) -> str:
     """Normalize phone number to +7XXXXXXXXXX format.
 
