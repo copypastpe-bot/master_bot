@@ -1449,6 +1449,27 @@ async def mark_reminder_sent(order_id: int, reminder_type: str) -> None:
         await conn.close()
 
 
+async def update_master_bonus_setting(master_id: int, field: str, value) -> None:
+    """Update a single bonus setting field."""
+    allowed_fields = [
+        "bonus_welcome", "timezone",
+        "welcome_message", "welcome_photo_id",
+        "birthday_message", "birthday_photo_id",
+    ]
+    if field not in allowed_fields:
+        raise ValueError(f"Invalid field: {field}")
+
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            f"UPDATE masters SET {field} = ? WHERE id = ?",
+            (value, master_id)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
 async def accrue_welcome_bonus(master_id: int, client_id: int) -> int:
     """Accrue welcome bonus to client. Returns new balance."""
     conn = await get_connection()
