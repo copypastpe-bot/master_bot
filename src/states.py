@@ -7,9 +7,10 @@ class MasterRegistration(StatesGroup):
     """Master registration flow states."""
     name = State()        # Step 1: Name/nickname
     sphere = State()      # Step 2: Field of activity
-    contacts = State()    # Step 3: Contact info for clients
-    socials = State()     # Step 4: Social networks and channels
-    work_hours = State()  # Step 5: Working hours
+    timezone = State()    # Step 3: Timezone selection
+    contacts = State()    # Step 4: Contact info for clients
+    socials = State()     # Step 5: Social networks and channels
+    work_hours = State()  # Step 6: Working hours
 
 
 class ClientRegistration(StatesGroup):
@@ -94,6 +95,13 @@ class ProfileEdit(StatesGroup):
 class BonusSettingsEdit(StatesGroup):
     """Edit bonus program settings."""
     waiting_value = State()  # Waiting for new setting value
+
+
+class BonusMessageEdit(StatesGroup):
+    """Edit bonus message settings (welcome/birthday)."""
+    waiting_amount = State()  # Waiting for bonus amount
+    waiting_text = State()    # Waiting for custom text
+    waiting_photo = State()   # Waiting for photo upload
 
 
 class ClientEdit(StatesGroup):
