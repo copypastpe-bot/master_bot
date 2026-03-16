@@ -5137,11 +5137,15 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
         balance=balance,
     )
 
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Вернуться", callback_data=f"bonus:{bonus_type}")]
+    ])
+
     try:
         if photo_id:
-            await bot.send_photo(callback.from_user.id, photo_id, caption=text)
+            await bot.send_photo(callback.from_user.id, photo_id, caption=text, reply_markup=back_kb)
         else:
-            await bot.send_message(callback.from_user.id, text)
+            await bot.send_message(callback.from_user.id, text, reply_markup=back_kb)
     except Exception as e:
         await bot.send_message(callback.from_user.id, f"❌ Ошибка: {e}")
 

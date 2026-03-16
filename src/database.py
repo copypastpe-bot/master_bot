@@ -1457,7 +1457,7 @@ async def mark_reminder_sent(order_id: int, reminder_type: str) -> None:
 async def update_master_bonus_setting(master_id: int, field: str, value) -> None:
     """Update a single bonus setting field."""
     allowed_fields = [
-        "bonus_welcome", "timezone",
+        "bonus_welcome", "bonus_birthday", "timezone",
         "welcome_message", "welcome_photo_id",
         "birthday_message", "birthday_photo_id",
     ]
