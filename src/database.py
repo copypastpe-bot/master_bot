@@ -1384,6 +1384,9 @@ async def get_clients_with_birthday_today() -> list[dict]:
                 m.tg_id as master_tg_id,
                 m.name as master_name,
                 m.bonus_birthday,
+                m.timezone,
+                m.birthday_message,
+                m.birthday_photo_id,
                 mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON mc.client_id = c.id

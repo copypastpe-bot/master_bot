@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime
+import pytz
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import Bot
@@ -15,6 +16,7 @@ from src.database import (
     mark_reminder_sent,
     accrue_birthday_bonus,
 )
+from src.utils import render_bonus_message, DEFAULT_BIRTHDAY_MESSAGE
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +149,7 @@ async def send_reminders_1h(client_bot: Bot) -> None:
 
 
 async def send_birthday_bonuses(client_bot: Bot) -> None:
-    """Send birthday bonuses to clients."""
+    """Send birthday bonuses to clients at 13:00 in master's timezone."""
     logger.info("Running birthday bonus task")
 
     try:
@@ -156,13 +158,26 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
 
         for client in clients:
             try:
-                # Accrue bonus (with duplicate protection)
+                # Check if it's 13:00 in master's timezone
+                master_tz_str = client.get("timezone") or "Europe/Moscow"
+                try:
+                    master_tz = pytz.timezone(master_tz_str)
+                except Exception:
+                    master_tz = pytz.timezone("Europe/Moscow")
+
+                now_in_master_tz = datetime.now(master_tz)
+
+                # Only send at 13:XX (between 13:00 and 13:59)
+                if now_in_master_tz.hour != 13:
+                    continue
+
+                # Accrue bonus (with duplicate protection via bonus_log)
                 new_balance = await accrue_birthday_bonus(
                     client["master_id"],
                     client["client_id"]
                 )
 
-                # If balance didn't change, bonus was already accrued
+                # If balance didn't change, bonus was already accrued today
                 if new_balance == client["bonus_balance"]:
                     logger.info(f"Birthday bonus already accrued for client {client['client_id']}")
                     continue
@@ -171,18 +186,29 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
                 client_name = client.get("client_name") or "—"
                 master_name = client.get("master_name") or "—"
 
-                text = (
-                    f"🎂 С днём рождения, {client_name}!\n\n"
-                    f"Ваш мастер {master_name} дарит вам\n"
-                    f"🎁 {bonus_amount} бонусов!\n\n"
-                    f"💰 Ваш баланс: {new_balance} ₽\n\n"
-                    f"Используйте бонусы при следующем заказе."
+                # Use custom message template if set
+                text = render_bonus_message(
+                    template=client.get("birthday_message"),
+                    default=DEFAULT_BIRTHDAY_MESSAGE,
+                    client_name=client_name,
+                    master_name=master_name,
+                    bonus_amount=bonus_amount,
+                    balance=new_balance,
                 )
 
-                await client_bot.send_message(
-                    chat_id=client["client_tg_id"],
-                    text=text
-                )
+                # Send with photo if set
+                birthday_photo_id = client.get("birthday_photo_id")
+                if birthday_photo_id:
+                    await client_bot.send_photo(
+                        chat_id=client["client_tg_id"],
+                        photo=birthday_photo_id,
+                        caption=text
+                    )
+                else:
+                    await client_bot.send_message(
+                        chat_id=client["client_tg_id"],
+                        text=text
+                    )
 
                 logger.info(f"Sent birthday bonus to client {client['client_id']}: +{bonus_amount}")
 
@@ -219,12 +245,11 @@ def setup_scheduler(client_bot: Bot) -> None:
         replace_existing=True
     )
 
-    # Birthday bonuses - daily at 10:00
+    # Birthday bonuses - every 30 minutes to check timezone-aware 13:00
     scheduler.add_job(
         send_birthday_bonuses,
-        "cron",
-        hour=10,
-        minute=0,
+        "interval",
+        minutes=30,
         args=[client_bot],
         id="birthday_bonus",
         replace_existing=True
