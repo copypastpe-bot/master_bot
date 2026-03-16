@@ -148,16 +148,17 @@ async def create_master(
     contacts: Optional[str] = None,
     socials: Optional[str] = None,
     work_hours: Optional[str] = None,
+    timezone: str = "Europe/Moscow",
 ) -> Master:
     """Create a new master."""
     conn = await get_connection()
     try:
         cursor = await conn.execute(
             """
-            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tg_id, name, invite_token, sphere, contacts, socials, work_hours)
+            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone)
         )
         await conn.commit()
         master_id = cursor.lastrowid
@@ -171,6 +172,7 @@ async def create_master(
             contacts=contacts,
             socials=socials,
             work_hours=work_hours,
+            timezone=timezone,
         )
     finally:
         await conn.close()

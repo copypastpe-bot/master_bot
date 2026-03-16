@@ -444,6 +444,7 @@ def settings_profile_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="✏️ Соцсети", callback_data="profile:edit:socials"),
         ],
         [InlineKeyboardButton(text="✏️ Режим работы", callback_data="profile:edit:work_hours")],
+        [InlineKeyboardButton(text="🕐 Часовой пояс", callback_data="profile:timezone")],
         [InlineKeyboardButton(text="📅 Google Calendar", callback_data="profile:gc")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings"),
@@ -502,7 +503,7 @@ def settings_bonus_kb(bonus_enabled: bool) -> InlineKeyboardMarkup:
     ])
 
 
-def timezone_kb(back_to: str = "settings:profile") -> InlineKeyboardMarkup:
+def timezone_kb(back_to: Optional[str] = "settings:profile") -> InlineKeyboardMarkup:
     """Keyboard for timezone selection."""
     buttons = []
     for code, name, utc in TIMEZONES:
@@ -512,7 +513,8 @@ def timezone_kb(back_to: str = "settings:profile") -> InlineKeyboardMarkup:
                 callback_data=f"set_timezone:{code}"
             )
         ])
-    buttons.append([InlineKeyboardButton(text="← Назад", callback_data=back_to)])
+    if back_to:
+        buttons.append([InlineKeyboardButton(text="← Назад", callback_data=back_to)])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 

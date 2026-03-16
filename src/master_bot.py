@@ -25,7 +25,7 @@ from src.keyboards import (
     home_master_kb, orders_kb, order_card_kb, calendar_kb,
     clients_kb, clients_paginated_kb, client_card_kb, client_history_kb, client_bonus_kb,
     marketing_kb, reports_kb, settings_kb, settings_profile_kb,
-    settings_bonus_kb, settings_services_kb, settings_invite_kb, bonus_message_kb,
+    settings_bonus_kb, settings_services_kb, settings_invite_kb, bonus_message_kb, timezone_kb,
     skip_kb, stub_kb, home_reply_kb,
     # Order keyboards
     client_search_results_kb, order_address_kb, order_calendar_kb,
@@ -106,7 +106,7 @@ from src.database import (
     update_master_bonus_setting,
 )
 from src.utils import (
-    generate_invite_token, normalize_phone,
+    generate_invite_token, normalize_phone, get_timezone_display,
     render_bonus_message, DEFAULT_WELCOME_MESSAGE, DEFAULT_BIRTHDAY_MESSAGE,
 )
 from src import notifications
@@ -317,11 +317,11 @@ async def reg_sphere(message: Message, state: FSMContext) -> None:
     await state.update_data(sphere=sphere)
 
     await message.answer(
-        "📞 Введите контакты для клиентов:\n"
-        "(телефон, мессенджеры, email)",
-        reply_markup=skip_kb()
+        "🕐 Выберите ваш часовой пояс:\n"
+        "(для отправки поздравлений клиентам)",
+        reply_markup=timezone_kb(back_to=None)
     )
-    await state.set_state(MasterRegistration.contacts)
+    await state.set_state(MasterRegistration.timezone)
 
 
 @router.callback_query(MasterRegistration.sphere, F.data == "skip")
@@ -329,17 +329,35 @@ async def reg_sphere_skip(callback: CallbackQuery, state: FSMContext) -> None:
     """Step 2: Skip sphere."""
     await state.update_data(sphere=None)
     await callback.message.edit_text(
-        "📞 Введите контакты для клиентов:\n"
-        "(телефон, мессенджеры, email)"
+        "🕐 Выберите ваш часовой пояс:\n"
+        "(для отправки поздравлений клиентам)"
     )
-    await callback.message.answer("Или пропустите:", reply_markup=skip_kb())
+    await callback.message.answer("Выберите:", reply_markup=timezone_kb(back_to=None))
+    await state.set_state(MasterRegistration.timezone)
+    await callback.answer()
+
+
+@router.callback_query(MasterRegistration.timezone, F.data.startswith("set_timezone:"))
+async def reg_timezone(callback: CallbackQuery, state: FSMContext) -> None:
+    """Step 3: Save timezone."""
+    tz_code = callback.data.split(":")[1]
+    await state.update_data(timezone=tz_code)
+
+    tz_display = get_timezone_display(tz_code)
+    await callback.message.edit_text(f"✅ Часовой пояс: {tz_display}")
+
+    await callback.message.answer(
+        "📞 Введите контакты для клиентов:\n"
+        "(телефон, мессенджеры, email)",
+        reply_markup=skip_kb()
+    )
     await state.set_state(MasterRegistration.contacts)
     await callback.answer()
 
 
 @router.message(MasterRegistration.contacts)
 async def reg_contacts(message: Message, state: FSMContext) -> None:
-    """Step 3: Save contacts."""
+    """Step 4: Save contacts."""
     contacts = message.text.strip()[:500]
     await state.update_data(contacts=contacts)
 
@@ -422,6 +440,7 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
         contacts=data.get("contacts"),
         socials=data.get("socials"),
         work_hours=data.get("work_hours"),
+        timezone=data.get("timezone", "Europe/Moscow"),
     )
 
     await state.clear()
@@ -4597,6 +4616,8 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
 
+    tz_display = get_timezone_display(master.timezone)
+
     text = (
         "👤 Профиль\n"
         "━━━━━━━━━━━━━━━\n"
@@ -4605,11 +4626,64 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
         f"Контакты: {master.contacts or 'не указано'}\n"
         f"Соцсети: {master.socials or 'не указано'}\n"
         f"Режим работы: {master.work_hours or 'не указано'}\n"
+        f"Часовой пояс: {tz_display}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
     await edit_home_message(callback, text, settings_profile_kb())
     await callback.answer()
+
+
+@router.callback_query(F.data == "profile:timezone")
+async def cb_profile_timezone(callback: CallbackQuery) -> None:
+    """Show timezone selection."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    tz_display = get_timezone_display(master.timezone)
+
+    text = (
+        "🕐 Часовой пояс\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Текущий: {tz_display}\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Выберите ваш часовой пояс:"
+    )
+
+    await edit_home_message(callback, text, timezone_kb("settings:profile"))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("set_timezone:"))
+async def cb_set_timezone(callback: CallbackQuery) -> None:
+    """Set master timezone."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    tz_code = callback.data.split(":")[1]
+    tz_display = get_timezone_display(tz_code)
+
+    await update_master_bonus_setting(master.id, "timezone", tz_code)
+
+    await callback.answer(f"✅ Часовой пояс: {tz_display}")
+
+    # Return to profile
+    master = await get_master_by_tg_id(tg_id)
+    new_tz_display = get_timezone_display(master.timezone)
+
+    text = (
+        "👤 Профиль\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Имя: {master.name or 'не указано'}\n"
+        f"Сфера: {master.sphere or 'не указано'}\n"
+        f"Контакты: {master.contacts or 'не указано'}\n"
+        f"Соцсети: {master.socials or 'не указано'}\n"
+        f"Режим работы: {master.work_hours or 'не указано'}\n"
+        f"Часовой пояс: {new_tz_display}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, settings_profile_kb())
 
 
 # =============================================================================
