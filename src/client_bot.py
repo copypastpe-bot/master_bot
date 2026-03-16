@@ -49,8 +49,12 @@ from src.database import (
     update_order_schedule,
     update_order_status,
     reset_order_for_reconfirmation,
+    accrue_welcome_bonus,
 )
-from src.utils import format_phone, parse_date, normalize_phone
+from src.utils import (
+    format_phone, parse_date, normalize_phone,
+    render_bonus_message, DEFAULT_WELCOME_MESSAGE,
+)
 
 # Master bot instance for sending notifications
 master_bot: Bot = None
@@ -376,6 +380,31 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
         await message.edit_text(success_text)
     else:
         await message.answer(success_text)
+
+    # Send welcome bonus if configured
+    if master.bonus_welcome and master.bonus_welcome > 0:
+        bonus_amount = await accrue_welcome_bonus(master.id, client.id)
+        if bonus_amount > 0:
+            # Refresh master_client to get updated balance
+            master_client = await get_master_client(master.id, client.id)
+
+            welcome_text = render_bonus_message(
+                template=master.welcome_message,
+                default=DEFAULT_WELCOME_MESSAGE,
+                client_name=client.name,
+                master_name=master.name,
+                bonus_amount=bonus_amount,
+                balance=master_client.bonus_balance,
+            )
+
+            if master.welcome_photo_id:
+                await bot.send_photo(
+                    message.chat.id,
+                    photo=master.welcome_photo_id,
+                    caption=welcome_text
+                )
+            else:
+                await bot.send_message(message.chat.id, welcome_text)
 
     # Send reply keyboard
     await bot.send_message(message.chat.id, "🏠", reply_markup=home_reply_kb())
