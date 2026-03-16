@@ -5138,7 +5138,7 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
     )
 
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ Вернуться", callback_data=f"bonus:{bonus_type}")]
+        [InlineKeyboardButton(text="◀️ Вернуться", callback_data=f"bonus:{bonus_type}:back")]
     ])
 
     try:
@@ -5148,6 +5148,59 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
             await bot.send_message(callback.from_user.id, text, reply_markup=back_kb)
     except Exception as e:
         await bot.send_message(callback.from_user.id, f"❌ Ошибка: {e}")
+
+
+@router.callback_query(F.data.regexp(r"^bonus:(welcome|birthday):back$"))
+async def cb_bonus_message_back(callback: CallbackQuery, bot: Bot) -> None:
+    """Return from preview to bonus menu - delete preview message."""
+    bonus_type = callback.data.split(":")[1]
+
+    # Delete the preview message
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    # Show bonus submenu in home message
+    master = await get_master_by_tg_id(callback.from_user.id)
+
+    if bonus_type == "welcome":
+        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        text_str = "свой" if master.welcome_message else "стандартный"
+        photo_str = "есть" if master.welcome_photo_id else "нет"
+        text = (
+            "🎉 Приветственный бонус\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {amount_str}\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+    else:
+        text_str = "свой" if master.birthday_message else "стандартный"
+        photo_str = "есть" if master.birthday_photo_id else "нет"
+        text = (
+            "🎂 Бонус на день рождения\n"
+            "━━━━━━━━━━━━━━━\n"
+            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Текст: {text_str}\n"
+            f"Картинка: {photo_str}\n"
+            "━━━━━━━━━━━━━━━"
+        )
+
+    # Edit home message
+    if master.home_message_id:
+        try:
+            await bot.edit_message_text(
+                text,
+                chat_id=callback.from_user.id,
+                message_id=master.home_message_id,
+                reply_markup=bonus_message_kb(bonus_type)
+            )
+        except:
+            pass
+
+    await callback.answer()
 
 
 @router.message(BonusMessageEdit.waiting_amount)
