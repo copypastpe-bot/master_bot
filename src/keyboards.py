@@ -2,6 +2,7 @@
 
 import calendar
 from datetime import date
+from typing import Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 from src.utils import TIMEZONES
