@@ -6155,10 +6155,82 @@ async def cb_settings_invite(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == "settings:invite:qr")
-async def cb_settings_invite_qr(callback: CallbackQuery) -> None:
-    """QR code stub."""
-    text = "🚧 QR-код — в разработке"
-    await edit_home_message(callback, text, stub_kb("settings:invite"))
+async def cb_settings_invite_qr(callback: CallbackQuery, bot: Bot) -> None:
+    """Generate and send QR code for invite link."""
+    import qrcode
+    import io
+
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    invite_url = f"https://t.me/{CLIENT_BOT_USERNAME}?start={master.invite_token}"
+
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(invite_url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Save to bytes
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='PNG')
+    img_bytes.seek(0)
+
+    from aiogram.types import BufferedInputFile
+
+    back_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="◀️ Вернуться", callback_data="settings:invite:qr:back")]
+    ])
+
+    await bot.send_photo(
+        chat_id=callback.from_user.id,
+        photo=BufferedInputFile(img_bytes.read(), filename="qr_invite.png"),
+        caption=f"📱 QR-код для приглашения клиентов\n\nПокажите клиенту для быстрой регистрации",
+        reply_markup=back_kb
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "settings:invite:qr:back")
+async def cb_settings_invite_qr_back(callback: CallbackQuery, bot: Bot) -> None:
+    """Return from QR code to invite settings."""
+    # Delete QR message
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    # Show invite settings in home message
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    invite_url = f"https://t.me/{CLIENT_BOT_USERNAME}?start={master.invite_token}"
+    text = (
+        "🔗 Инвайт-ссылка\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"{invite_url}\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Отправьте клиентам для регистрации"
+    )
+
+    if master.home_message_id:
+        try:
+            from src.keyboards import settings_invite_kb
+            await bot.edit_message_text(
+                text,
+                chat_id=callback.from_user.id,
+                message_id=master.home_message_id,
+                reply_markup=settings_invite_kb()
+            )
+        except:
+            pass
+
     await callback.answer()
 
 
