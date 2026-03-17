@@ -4017,8 +4017,12 @@ async def promo_date_to_input(message: Message, state: FSMContext, bot: Bot) -> 
 
     data = await state.get_data()
     date_from = data.get("promo_date_from")
+    today = date.today().isoformat()
 
-    # Validate: end date must be after start date (ISO strings compare correctly)
+    # Validate: end date must be >= today and >= start date
+    if date_to < today:
+        await message.answer("Дата окончания не может быть в прошлом")
+        return
     if date_to < date_from:
         await message.answer("Дата окончания должна быть позже даты начала")
         return
