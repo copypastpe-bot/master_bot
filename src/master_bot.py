@@ -825,7 +825,7 @@ async def order_new_client_phone(message: Message, state: FSMContext, bot: Bot) 
         # Show error briefly, then delete
         error_msg = await bot.send_message(
             chat_id=message.chat.id,
-            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
+            text="❌ Неверный формат номера. Введите с кодом страны: +7..., +995..., +380..."
         )
         await asyncio.sleep(2)
         try:
@@ -2796,7 +2796,7 @@ async def client_add_phone(message: Message, state: FSMContext, bot: Bot) -> Non
     if not phone:
         error_msg = await bot.send_message(
             chat_id=message.chat.id,
-            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
+            text="❌ Неверный формат номера. Введите с кодом страны: +7..., +995..., +380..."
         )
         await asyncio.sleep(2)
         try:
@@ -3011,7 +3011,7 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
                     await bot.edit_message_text(
                         chat_id=message.chat.id,
                         message_id=master.home_message_id,
-                        text="❌ Неверный формат телефона.\nВведите: +79991234567 или 89991234567",
+                        text="❌ Неверный формат номера.\nВведите с кодом страны: +7..., +995..., +380...",
                         reply_markup=stub_kb(f"clients:edit:{client_id}")
                     )
                 except TelegramBadRequest:

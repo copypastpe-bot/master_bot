@@ -299,7 +299,7 @@ async def reg_phone_text(message: Message, state: FSMContext, bot: Bot) -> None:
     if not phone:
         error_msg = await bot.send_message(
             chat_id=message.chat.id,
-            text="❌ Неверный формат. Введите: +79991234567 или 89991234567"
+            text="❌ Неверный формат номера. Введите с кодом страны: +7..., +995..., +380..."
         )
         await asyncio.sleep(2)
         try:
