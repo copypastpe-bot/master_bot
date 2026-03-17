@@ -11,44 +11,38 @@ def generate_invite_token() -> str:
     return secrets.token_urlsafe(16)
 
 
-def normalize_phone(phone: str) -> Optional[str]:
-    """Normalize phone number to +79991234567 format.
+def normalize_phone(phone: str, default_region: str = "RU") -> Optional[str]:
+    """Normalize phone number to E.164 format (+XXXXXXXXXXX).
 
     Returns normalized phone or None if invalid.
 
-    Accepts formats:
-    - +79991234567
-    - 89991234567
-    - 79991234567
-    - 9991234567
-    - +7 999 123-45-67
-    - 8 (999) 123-45-67
+    Supports international formats:
+    - +79991234567 (Russia)
+    - 89991234567 (Russia with 8)
+    - +995591234567 (Georgia)
+    - +380501234567 (Ukraine)
+    - +1234567890 (any country)
+    - And any format with spaces, dashes, parentheses
     """
     if not phone:
         return None
 
-    # Remove all non-digit characters
-    digits = re.sub(r"\D", "", phone)
+    try:
+        import phonenumbers
 
-    # Handle different formats
-    if len(digits) == 11:
-        if digits.startswith("8"):
-            digits = "7" + digits[1:]
-        elif digits.startswith("7"):
-            pass
-        else:
-            return None  # Invalid 11-digit number
-    elif len(digits) == 10:
-        # Assume Russian number without country code
-        digits = "7" + digits
-    else:
-        return None  # Invalid length
+        # Try to parse with default region
+        parsed = phonenumbers.parse(phone, default_region)
 
-    # Validate: must be 11 digits starting with 7
-    if len(digits) != 11 or not digits.startswith("7"):
+        # Validate the number
+        if not phonenumbers.is_valid_number(parsed):
+            return None
+
+        # Return in E.164 format (+XXXXXXXXXXX)
+        return phonenumbers.format_number(
+            parsed, phonenumbers.PhoneNumberFormat.E164
+        )
+    except Exception:
         return None
-
-    return "+" + digits
 
 
 # Дефолтные тексты бонусных сообщений
