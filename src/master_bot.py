@@ -25,7 +25,7 @@ from src.keyboards import (
     home_master_kb, orders_kb, order_card_kb, calendar_kb,
     clients_kb, clients_paginated_kb, client_card_kb, client_history_kb, client_bonus_kb,
     marketing_kb, reports_kb, settings_kb, settings_profile_kb,
-    settings_bonus_kb, settings_services_kb, settings_invite_kb, bonus_message_kb, timezone_kb,
+    settings_bonus_kb, settings_services_kb, settings_invite_kb, bonus_message_kb, timezone_kb, currency_kb,
     skip_kb, stub_kb, home_reply_kb,
     # Order keyboards
     client_search_results_kb, order_address_kb, order_calendar_kb,
@@ -106,8 +106,8 @@ from src.database import (
     update_master_bonus_setting,
 )
 from src.utils import (
-    generate_invite_token, normalize_phone, get_timezone_display,
-    render_bonus_message, DEFAULT_WELCOME_MESSAGE, DEFAULT_BIRTHDAY_MESSAGE,
+    generate_invite_token, normalize_phone, get_timezone_display, get_currency_display,
+    get_currency_symbol, render_bonus_message, DEFAULT_WELCOME_MESSAGE, DEFAULT_BIRTHDAY_MESSAGE,
 )
 from src import notifications
 from src import google_calendar
@@ -525,6 +525,7 @@ async def cb_order_view(callback: CallbackQuery, state: FSMContext) -> None:
     """View order card."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     order_id = int(callback.data.split(":")[2])
     order = await get_order_by_id(order_id, master.id)
@@ -567,7 +568,7 @@ async def cb_order_view(callback: CallbackQuery, state: FSMContext) -> None:
         f"📍 {order.get('address', '—')}\n"
         f"🕐 {time_str} | {date_str}\n"
         f"🛠 {order.get('services', '—')}\n"
-        f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
+        f"💰 Итого: {order.get('amount_total', 0) or '—'} {curr}\n"
         f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -1107,6 +1108,7 @@ async def order_select_minutes(callback: CallbackQuery, state: FSMContext) -> No
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     # Go to services selection
     services = await get_services(master.id)
@@ -1135,7 +1137,7 @@ async def order_select_minutes(callback: CallbackQuery, state: FSMContext) -> No
         "🛠 Выберите услуги:"
     )
 
-    await edit_home_message(callback, text, order_services_kb(services_list, [], []))
+    await edit_home_message(callback, text, order_services_kb(services_list, [], [], curr))
     await state.set_state(CreateOrder.services)
     await callback.answer()
 
@@ -1143,6 +1145,10 @@ async def order_select_minutes(callback: CallbackQuery, state: FSMContext) -> No
 @router.callback_query(CreateOrder.services, F.data.startswith("order:service:"))
 async def order_select_service(callback: CallbackQuery, state: FSMContext) -> None:
     """Select or toggle a service."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     service_data = callback.data.split(":")[2]
 
     if service_data == "custom":
@@ -1205,7 +1211,7 @@ async def order_select_service(callback: CallbackQuery, state: FSMContext) -> No
         "Выберите услуги:"
     )
 
-    await edit_home_message(callback, text, order_services_kb(services_list, selected, custom_services))
+    await edit_home_message(callback, text, order_services_kb(services_list, selected, custom_services, curr))
     await callback.answer()
 
 
@@ -1214,6 +1220,7 @@ async def order_enter_custom_service(message: Message, state: FSMContext, bot: B
     """Enter custom service name."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     custom_name = message.text.strip()[:200]
 
@@ -1262,7 +1269,7 @@ async def order_enter_custom_service(message: Message, state: FSMContext, bot: B
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=order_services_kb(services_list, selected, custom_services)
+                reply_markup=order_services_kb(services_list, selected, custom_services, curr)
             )
         except TelegramBadRequest:
             pass
@@ -1273,6 +1280,10 @@ async def order_enter_custom_service(message: Message, state: FSMContext, bot: B
 @router.callback_query(CreateOrder.services, F.data == "order:services:done")
 async def order_services_done(callback: CallbackQuery, state: FSMContext) -> None:
     """Finish services selection, go to amount."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     data = await state.get_data()
     selected = data.get("order_services", [])
     custom_services = data.get("order_custom_services", [])
@@ -1308,7 +1319,7 @@ async def order_services_done(callback: CallbackQuery, state: FSMContext) -> Non
         f"📅 {day} {month} в {time_str}\n"
         f"🛠 {services_text}\n"
         "━━━━━━━━━━━━━━━\n"
-        f"💰 Введите сумму{' (предлагаем ' + str(suggested_amount) + ' ₽)' if suggested_amount else ''}:"
+        f"💰 Введите сумму{' (предлагаем ' + str(suggested_amount) + ' ' + curr + ')' if suggested_amount else ''}:"
     )
 
     await edit_home_message(callback, text, stub_kb("order:cancel"))
@@ -1336,6 +1347,7 @@ async def order_enter_amount(message: Message, state: FSMContext, bot: Bot) -> N
         pass
 
     await state.update_data(order_amount=amount)
+    curr = get_currency_symbol(master.currency)
 
     # Show confirmation screen
     data = await state.get_data()
@@ -1364,7 +1376,7 @@ async def order_enter_amount(message: Message, state: FSMContext, bot: Bot) -> N
         f"📍 Адрес: {address}\n"
         f"📅 Дата: {day} {month} в {time_str}\n"
         f"🛠 Услуги: {services_text}\n"
-        f"💰 Сумма: {amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
         "━━━━━━━━━━━━━━━\n"
         "Всё верно?"
     )
@@ -1388,6 +1400,7 @@ async def order_confirm_create(callback: CallbackQuery, state: FSMContext, bot: 
     """Create the order."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     client_id = data.get("order_client_id")
@@ -1434,7 +1447,8 @@ async def order_confirm_create(callback: CallbackQuery, state: FSMContext, bot: 
             services=services_text,
             address=address,
             amount=amount,
-            scheduled_at=scheduled_at
+            scheduled_at=scheduled_at,
+            currency=curr
         )
 
         if gc_event_id:
@@ -1493,6 +1507,10 @@ async def order_edit_fields(callback: CallbackQuery, state: FSMContext) -> None:
 @router.callback_query(CreateOrder.edit_field, F.data == "order:back_to_confirm")
 async def order_back_to_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     """Return to confirmation screen."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     data = await state.get_data()
     client_name = data.get("order_client_name")
     address = data.get("order_address")
@@ -1520,7 +1538,7 @@ async def order_back_to_confirm(callback: CallbackQuery, state: FSMContext) -> N
         f"📍 Адрес: {address}\n"
         f"📅 Дата: {day} {month} в {time_str}\n"
         f"🛠 Услуги: {services_text}\n"
-        f"💰 Сумма: {amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
         "━━━━━━━━━━━━━━━\n"
         "Всё верно?"
     )
@@ -1573,6 +1591,7 @@ async def order_edit_specific_field(callback: CallbackQuery, state: FSMContext) 
     elif field == "services":
         tg_id = callback.from_user.id
         master = await get_master_by_tg_id(tg_id)
+        curr = get_currency_symbol(master.currency)
         services = await get_services(master.id)
         services_list = [{"id": s.id, "name": s.name, "price": s.price} for s in services]
         data = await state.get_data()
@@ -1585,7 +1604,7 @@ async def order_edit_specific_field(callback: CallbackQuery, state: FSMContext) 
             "🛠 Выберите услуги:"
         )
         await state.update_data(available_services=services_list)
-        await edit_home_message(callback, text, order_services_kb(services_list, selected, custom_services))
+        await edit_home_message(callback, text, order_services_kb(services_list, selected, custom_services, curr))
         await state.set_state(CreateOrder.services)
     elif field == "amount":
         text = (
@@ -1642,6 +1661,7 @@ async def cb_orders_complete(callback: CallbackQuery, state: FSMContext) -> None
         await callback.answer("Заказ не найден")
         return
 
+    curr = get_currency_symbol(master.currency)
     await state.update_data(
         complete_order_id=order_id,
         complete_amount=order.get("amount_total", 0),
@@ -1657,11 +1677,11 @@ async def cb_orders_complete(callback: CallbackQuery, state: FSMContext) -> None
         f"👤 {order.get('client_name', '—')}\n"
         f"🛠 {order.get('services', '—')}\n"
         "━━━━━━━━━━━━━━━\n"
-        f"💰 Сумма: {amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
         "Подтвердите или измените:"
     )
 
-    await edit_home_message(callback, text, complete_amount_kb(amount))
+    await edit_home_message(callback, text, complete_amount_kb(amount, curr))
     await state.set_state(CompleteOrder.confirm_amount)
     await callback.answer()
 
@@ -1742,6 +1762,7 @@ async def complete_select_payment(callback: CallbackQuery, state: FSMContext) ->
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     order_id = data.get("complete_order_id")
@@ -1761,12 +1782,12 @@ async def complete_select_payment(callback: CallbackQuery, state: FSMContext) ->
                 text = (
                     "✅ Провести заказ\n"
                     "━━━━━━━━━━━━━━━\n"
-                    f"💰 Сумма: {amount} ₽\n"
+                    f"💰 Сумма: {amount} {curr}\n"
                     "━━━━━━━━━━━━━━━\n"
                     "🎁 Списать бонусы?"
                 )
 
-                await edit_home_message(callback, text, bonus_use_kb(mc.bonus_balance, max_can_use))
+                await edit_home_message(callback, text, bonus_use_kb(mc.bonus_balance, max_can_use, curr))
                 await state.update_data(complete_max_bonus=max_can_use)
                 await state.set_state(CompleteOrder.use_bonus)
                 await callback.answer()
@@ -1780,13 +1801,17 @@ async def complete_select_payment(callback: CallbackQuery, state: FSMContext) ->
 @router.callback_query(CompleteOrder.use_bonus, F.data == "complete:bonus:yes")
 async def complete_use_bonus(callback: CallbackQuery, state: FSMContext) -> None:
     """Use bonus points."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     data = await state.get_data()
     max_bonus = data.get("complete_max_bonus", 0)
 
     text = (
         "✅ Провести заказ\n"
         "━━━━━━━━━━━━━━━\n"
-        f"🎁 Введите сумму бонусов (макс. {max_bonus} ₽):"
+        f"🎁 Введите сумму бонусов (макс. {max_bonus} {curr}):"
     )
 
     await edit_home_message(callback, text, stub_kb("complete:cancel"))
@@ -1807,6 +1832,7 @@ async def complete_enter_bonus_amount(message: Message, state: FSMContext, bot: 
     """Enter bonus amount to use."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     max_bonus = data.get("complete_max_bonus", 0)
@@ -1843,11 +1869,11 @@ async def complete_enter_bonus_amount(message: Message, state: FSMContext, bot: 
     text = (
         "✅ Провести заказ — Подтверждение\n"
         "━━━━━━━━━━━━━━━\n"
-        f"💰 Сумма: {amount} ₽\n"
-        f"🎁 Списано бонусов: {bonus} ₽\n"
-        f"💵 К оплате: {final_amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
+        f"🎁 Списано бонусов: {bonus} {curr}\n"
+        f"💵 К оплате: {final_amount} {curr}\n"
         f"💳 Оплата: {payment_names.get(payment_type, payment_type)}\n"
-        f"⭐ Будет начислено: +{bonus_accrued} ₽\n"
+        f"⭐ Будет начислено: +{bonus_accrued} {curr}\n"
         "━━━━━━━━━━━━━━━"
     )
 
@@ -1869,6 +1895,7 @@ async def go_to_complete_confirm(callback: CallbackQuery, state: FSMContext) -> 
     """Go to completion confirmation."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     amount = data.get("complete_amount")
@@ -1888,17 +1915,17 @@ async def go_to_complete_confirm(callback: CallbackQuery, state: FSMContext) -> 
     text = (
         "✅ Провести заказ — Подтверждение\n"
         "━━━━━━━━━━━━━━━\n"
-        f"💰 Сумма: {amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
     )
 
     if bonus_spent > 0:
-        text += f"🎁 Списано бонусов: {bonus_spent} ₽\n"
-        text += f"💵 К оплате: {final_amount} ₽\n"
+        text += f"🎁 Списано бонусов: {bonus_spent} {curr}\n"
+        text += f"💵 К оплате: {final_amount} {curr}\n"
 
     text += f"💳 Оплата: {payment_names.get(payment_type, payment_type)}\n"
 
     if master.bonus_enabled:
-        text += f"⭐ Будет начислено: +{bonus_accrued} ₽\n"
+        text += f"⭐ Будет начислено: +{bonus_accrued} {curr}\n"
 
     text += "━━━━━━━━━━━━━━━"
 
@@ -1911,6 +1938,7 @@ async def complete_order_final(callback: CallbackQuery, state: FSMContext, bot: 
     """Complete the order."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     order_id = data.get("complete_order_id")
@@ -1986,12 +2014,12 @@ async def complete_order_final(callback: CallbackQuery, state: FSMContext, bot: 
         f"📋 Заказ #{order_id}\n"
         f"👤 {updated_order.get('client_name', '—')}\n"
         f"🕐 {time_str} | {date_str}\n"
-        f"💰 Сумма: {amount} ₽\n"
+        f"💰 Сумма: {amount} {curr}\n"
     )
     if bonus_spent > 0:
-        text += f"🎁 Списано: {bonus_spent} ₽\n"
+        text += f"🎁 Списано: {bonus_spent} {curr}\n"
     if bonus_accrued > 0:
-        text += f"⭐ Начислено: +{bonus_accrued} ₽\n"
+        text += f"⭐ Начислено: +{bonus_accrued} {curr}\n"
     text += f"📊 Статус: ✅ выполнен\n"
     text += "━━━━━━━━━━━━━━━"
 
@@ -2009,6 +2037,7 @@ async def complete_cancel(callback: CallbackQuery, state: FSMContext) -> None:
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     # Show order card
     order = await get_order_by_id(order_id, master.id)
@@ -2042,7 +2071,7 @@ async def complete_cancel(callback: CallbackQuery, state: FSMContext) -> None:
         f"📍 {order.get('address', '—')}\n"
         f"🕐 {time_str} | {date_str}\n"
         f"🛠 {order.get('services', '—')}\n"
-        f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
+        f"💰 Итого: {order.get('amount_total', 0) or '—'} {curr}\n"
         f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -2210,6 +2239,7 @@ async def move_order_final(callback: CallbackQuery, state: FSMContext, bot: Bot)
     """Execute order move."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     order_id = data.get("move_order_id")
@@ -2280,7 +2310,7 @@ async def move_order_final(callback: CallbackQuery, state: FSMContext, bot: Bot)
         f"📍 {updated_order.get('address', '—')}\n"
         f"🕐 {new_time} | {new_day} {new_month}\n"
         f"🛠 {updated_order.get('services', '—')}\n"
-        f"💰 Итого: {updated_order.get('amount_total', 0) or '—'} ₽\n"
+        f"💰 Итого: {updated_order.get('amount_total', 0) or '—'} {curr}\n"
         f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -2299,6 +2329,7 @@ async def move_cancel(callback: CallbackQuery, state: FSMContext) -> None:
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     # Show order card
     order = await get_order_by_id(order_id, master.id)
@@ -2332,7 +2363,7 @@ async def move_cancel(callback: CallbackQuery, state: FSMContext) -> None:
         f"📍 {order.get('address', '—')}\n"
         f"🕐 {time_str} | {date_str}\n"
         f"🛠 {order.get('services', '—')}\n"
-        f"💰 Итого: {order.get('amount_total', 0) or '—'} ₽\n"
+        f"💰 Итого: {order.get('amount_total', 0) or '—'} {curr}\n"
         f"📊 Статус: {status_emoji.get(status, '')} {status_map.get(status, status)}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -2613,6 +2644,7 @@ async def cb_client_view(callback: CallbackQuery, state: FSMContext) -> None:
     """View client card."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     client_id = int(callback.data.split(":")[2])
     client = await get_client_with_stats(master.id, client_id)
@@ -2635,8 +2667,8 @@ async def cb_client_view(callback: CallbackQuery, state: FSMContext) -> None:
         f"👤 {client.get('name', '—')}\n"
         f"📞 {client.get('phone', '—')}\n"
         f"🎂 {birthday_text}\n"
-        f"💰 Бонусов: {client.get('bonus_balance', 0)} ₽\n"
-        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} ₽\n"
+        f"💰 Бонусов: {client.get('bonus_balance', 0)} {curr}\n"
+        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} {curr}\n"
         f"📝 {client.get('note') or '—'}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -2660,6 +2692,7 @@ async def cb_client_history(callback: CallbackQuery, state: FSMContext) -> None:
     """View client history with status icons."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     client_id = int(callback.data.split(":")[2])
     client = await get_client_with_stats(master.id, client_id)
@@ -2672,7 +2705,7 @@ async def cb_client_history(callback: CallbackQuery, state: FSMContext) -> None:
             scheduled = o.get("scheduled_at", "")[:10] if o.get("scheduled_at") else "—"
             services = o.get("services", "—")[:25] if o.get("services") else "—"
             amount = o.get("amount_total", 0)
-            return f"{icon} {scheduled} — {services} | {amount} ₽"
+            return f"{icon} {scheduled} — {services} | {amount} {curr}"
 
         orders_text = "\n".join(format_order(o) for o in orders)
     else:
@@ -2694,6 +2727,7 @@ async def cb_client_bonus(callback: CallbackQuery, state: FSMContext) -> None:
     """View client bonus log with order references."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     client_id = int(callback.data.split(":")[2])
     client = await get_client_with_stats(master.id, client_id)
@@ -2716,7 +2750,7 @@ async def cb_client_bonus(callback: CallbackQuery, state: FSMContext) -> None:
 
     text = (
         f"🎁 Бонусы — {client.get('name', 'Клиент')}\n"
-        f"Баланс: {client.get('bonus_balance', 0)} ₽\n"
+        f"Баланс: {client.get('bonus_balance', 0)} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"{log_text}\n"
         f"━━━━━━━━━━━━━━━"
@@ -3045,6 +3079,7 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
 
     # Show updated client card
     client = await get_client_with_stats(master.id, client_id)
+    curr = get_currency_symbol(master.currency)
 
     birthday_str = client.get("birthday", "")
     if birthday_str:
@@ -3062,8 +3097,8 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
         f"👤 {client.get('name', '—')}\n"
         f"📞 {client.get('phone', '—')}\n"
         f"🎂 {birthday_text}\n"
-        f"💰 Бонусов: {client.get('bonus_balance', 0)} ₽\n"
-        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} ₽\n"
+        f"💰 Бонусов: {client.get('bonus_balance', 0)} {curr}\n"
+        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} {curr}\n"
         f"📝 {client.get('note') or '—'}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -3141,6 +3176,7 @@ async def client_note_value(message: Message, state: FSMContext, bot: Bot) -> No
 
     # Show updated client card
     client = await get_client_with_stats(master.id, client_id)
+    curr = get_currency_symbol(master.currency)
 
     birthday_str = client.get("birthday", "")
     if birthday_str:
@@ -3158,8 +3194,8 @@ async def client_note_value(message: Message, state: FSMContext, bot: Bot) -> No
         f"👤 {client.get('name', '—')}\n"
         f"📞 {client.get('phone', '—')}\n"
         f"🎂 {birthday_text}\n"
-        f"💰 Бонусов: {client.get('bonus_balance', 0)} ₽\n"
-        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} ₽\n"
+        f"💰 Бонусов: {client.get('bonus_balance', 0)} {curr}\n"
+        f"🛒 Заказов: {client.get('order_count', 0)} | Потрачено: {client.get('total_spent', 0)} {curr}\n"
         f"📝 {client.get('note') or '—'}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -3192,6 +3228,7 @@ async def cb_clients_bonus_add(callback: CallbackQuery, state: FSMContext) -> No
         await callback.answer("Клиент не найден")
         return
 
+    curr = get_currency_symbol(master.currency)
     await state.update_data(
         bonus_client_id=client_id,
         bonus_operation="add"
@@ -3200,7 +3237,7 @@ async def cb_clients_bonus_add(callback: CallbackQuery, state: FSMContext) -> No
     text = (
         f"➕ Начисление бонусов — {client.get('name', 'Клиент')}\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Баланс: {client.get('bonus_balance', 0)} ₽\n"
+        f"Баланс: {client.get('bonus_balance', 0)} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Введите сумму для начисления:"
     )
@@ -3222,6 +3259,7 @@ async def cb_clients_bonus_sub(callback: CallbackQuery, state: FSMContext) -> No
         await callback.answer("Клиент не найден")
         return
 
+    curr = get_currency_symbol(master.currency)
     await state.update_data(
         bonus_client_id=client_id,
         bonus_operation="sub"
@@ -3230,7 +3268,7 @@ async def cb_clients_bonus_sub(callback: CallbackQuery, state: FSMContext) -> No
     text = (
         f"➖ Списание бонусов — {client.get('name', 'Клиент')}\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Баланс: {client.get('bonus_balance', 0)} ₽\n"
+        f"Баланс: {client.get('bonus_balance', 0)} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Введите сумму для списания:"
     )
@@ -3266,13 +3304,14 @@ async def bonus_manual_amount(message: Message, state: FSMContext, bot: Bot) -> 
     await state.update_data(bonus_amount=amount)
 
     client = await get_client_with_stats(master.id, client_id)
+    curr = get_currency_symbol(master.currency)
     op_text = "начисления" if operation == "add" else "списания"
     sign = "+" if operation == "add" else "-"
 
     text = (
         f"💬 Комментарий к {op_text}\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Сумма: {sign}{amount} ₽\n"
+        f"Сумма: {sign}{amount} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"Введите комментарий или пропустите:"
     )
@@ -3336,6 +3375,7 @@ async def finish_manual_bonus(state: FSMContext, master, bot: Bot, chat_id: int,
     # Show bonus log
     client = await get_client_with_stats(master.id, client_id)
     bonus_log = await get_client_bonus_log(master.id, client_id)
+    curr = get_currency_symbol(master.currency)
 
     op_text = "начислено" if operation == "add" else "списано"
 
@@ -3350,7 +3390,7 @@ async def finish_manual_bonus(state: FSMContext, master, bot: Bot, chat_id: int,
 
     text = (
         f"✅ Бонусы {op_text}!\n"
-        f"🎁 Баланс: {new_balance} ₽\n"
+        f"🎁 Баланс: {new_balance} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         f"{log_text}\n"
         f"━━━━━━━━━━━━━━━"
@@ -4410,6 +4450,7 @@ async def fsm_report_date_to(message: Message, state: FSMContext, bot: Bot) -> N
     # Get master and show report
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
     home_message_id = data.get("home_message_id")
 
     # Build report text inline since we can't use show_reports (no callback)
@@ -4442,7 +4483,7 @@ async def fsm_report_date_to(message: Message, state: FSMContext, bot: Bot) -> N
         lines = []
         for o in report_data["top_orders"]:
             order_date = datetime.fromisoformat(o["date"]).strftime("%d.%m")
-            lines.append(f"- {o['amount']:,} ₽ — {o['client_name']} ({order_date})".replace(",", " "))
+            lines.append(f"- {o['amount']:,} {curr} — {o['client_name']} ({order_date})".replace(",", " "))
         top_orders_text = "\n".join(lines)
 
     # Build report text
@@ -4452,11 +4493,11 @@ async def fsm_report_date_to(message: Message, state: FSMContext, bot: Bot) -> N
             f"━━━━━━━━━━━━━━━\n"
             f"За этот период заказов нет.\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"💰 Выручка: 0 ₽\n"
+            f"💰 Выручка: 0 {curr}\n"
             f"🛒 Заказов выполнено: 0\n"
             f"👥 Новых клиентов: {report_data['new_clients']}\n"
             f"🔄 Повторных клиентов: 0\n"
-            f"🧾 Средний чек: 0 ₽\n"
+            f"🧾 Средний чек: 0 {curr}\n"
             f"📋 Всего клиентов в базе: {report_data['total_clients']}\n"
             f"━━━━━━━━━━━━━━━"
         )
@@ -4464,11 +4505,11 @@ async def fsm_report_date_to(message: Message, state: FSMContext, bot: Bot) -> N
         text = (
             f"📊 Отчёты — {period_text}\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"💰 Выручка: {report_data['revenue']:,} ₽\n"
+            f"💰 Выручка: {report_data['revenue']:,} {curr}\n"
             f"🛒 Заказов выполнено: {report_data['order_count']}\n"
             f"👥 Новых клиентов: {report_data['new_clients']}\n"
             f"🔄 Повторных клиентов: {report_data['repeat_clients']}\n"
-            f"🧾 Средний чек: {report_data['avg_check']:,} ₽\n"
+            f"🧾 Средний чек: {report_data['avg_check']:,} {curr}\n"
             f"📋 Всего клиентов в базе: {report_data['total_clients']}\n"
             f"━━━━━━━━━━━━━━━\n"
             f"🏆 Топ услуг по популярности:\n"
@@ -4506,6 +4547,7 @@ async def show_reports(
     """Show reports for a period."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     today = date.today()
 
@@ -4555,7 +4597,7 @@ async def show_reports(
         lines = []
         for o in data["top_orders"]:
             order_date = datetime.fromisoformat(o["date"]).strftime("%d.%m")
-            lines.append(f"- {o['amount']:,} ₽ — {o['client_name']} ({order_date})".replace(",", " "))
+            lines.append(f"- {o['amount']:,} {curr} — {o['client_name']} ({order_date})".replace(",", " "))
         top_orders_text = "\n".join(lines)
 
     # Build the report text
@@ -4565,11 +4607,11 @@ async def show_reports(
             f"━━━━━━━━━━━━━━━\n"
             f"За этот период заказов нет.\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"💰 Выручка: 0 ₽\n"
+            f"💰 Выручка: 0 {curr}\n"
             f"🛒 Заказов выполнено: 0\n"
             f"👥 Новых клиентов: {data['new_clients']}\n"
             f"🔄 Повторных клиентов: 0\n"
-            f"🧾 Средний чек: 0 ₽\n"
+            f"🧾 Средний чек: 0 {curr}\n"
             f"📋 Всего клиентов в базе: {data['total_clients']}\n"
             f"━━━━━━━━━━━━━━━"
         )
@@ -4577,11 +4619,11 @@ async def show_reports(
         text = (
             f"📊 Отчёты — {period_text}\n"
             f"━━━━━━━━━━━━━━━\n"
-            f"💰 Выручка: {data['revenue']:,} ₽\n"
+            f"💰 Выручка: {data['revenue']:,} {curr}\n"
             f"🛒 Заказов выполнено: {data['order_count']}\n"
             f"👥 Новых клиентов: {data['new_clients']}\n"
             f"🔄 Повторных клиентов: {data['repeat_clients']}\n"
-            f"🧾 Средний чек: {data['avg_check']:,} ₽\n"
+            f"🧾 Средний чек: {data['avg_check']:,} {curr}\n"
             f"📋 Всего клиентов в базе: {data['total_clients']}\n"
             f"━━━━━━━━━━━━━━━\n"
             f"🏆 Топ услуг по популярности:\n"
@@ -4621,6 +4663,7 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
     master = await get_master_by_tg_id(tg_id)
 
     tz_display = get_timezone_display(master.timezone)
+    curr_display = get_currency_display(master.currency)
 
     text = (
         "👤 Профиль\n"
@@ -4631,6 +4674,7 @@ async def cb_settings_profile(callback: CallbackQuery) -> None:
         f"Соцсети: {master.socials or 'не указано'}\n"
         f"Режим работы: {master.work_hours or 'не указано'}\n"
         f"Часовой пояс: {tz_display}\n"
+        f"Валюта: {curr_display}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4674,6 +4718,7 @@ async def cb_set_timezone(callback: CallbackQuery) -> None:
     # Return to profile
     master = await get_master_by_tg_id(tg_id)
     new_tz_display = get_timezone_display(master.timezone)
+    curr_display = get_currency_display(master.currency)
 
     text = (
         "👤 Профиль\n"
@@ -4684,6 +4729,61 @@ async def cb_set_timezone(callback: CallbackQuery) -> None:
         f"Соцсети: {master.socials or 'не указано'}\n"
         f"Режим работы: {master.work_hours or 'не указано'}\n"
         f"Часовой пояс: {new_tz_display}\n"
+        f"Валюта: {curr_display}\n"
+        f"━━━━━━━━━━━━━━━"
+    )
+
+    await edit_home_message(callback, text, settings_profile_kb())
+
+
+@router.callback_query(F.data == "profile:currency")
+async def cb_profile_currency(callback: CallbackQuery) -> None:
+    """Show currency selection."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    curr_display = get_currency_display(master.currency)
+
+    text = (
+        "💰 Валюта\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Текущая: {curr_display}\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Выберите валюту:"
+    )
+
+    await edit_home_message(callback, text, currency_kb("settings:profile"))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("set_currency:"))
+async def cb_set_currency(callback: CallbackQuery) -> None:
+    """Set master currency."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+
+    curr_code = callback.data.split(":")[1]
+    curr_display = get_currency_display(curr_code)
+
+    await update_master(master.id, currency=curr_code)
+
+    await callback.answer(f"✅ Валюта: {curr_display}")
+
+    # Return to profile
+    master = await get_master_by_tg_id(tg_id)
+    new_curr_display = get_currency_display(master.currency)
+    tz_display = get_timezone_display(master.timezone)
+
+    text = (
+        "👤 Профиль\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Имя: {master.name or 'не указано'}\n"
+        f"Сфера: {master.sphere or 'не указано'}\n"
+        f"Контакты: {master.contacts or 'не указано'}\n"
+        f"Соцсети: {master.socials or 'не указано'}\n"
+        f"Режим работы: {master.work_hours or 'не указано'}\n"
+        f"Часовой пояс: {tz_display}\n"
+        f"Валюта: {new_curr_display}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4873,10 +4973,11 @@ async def cb_settings_bonus(callback: CallbackQuery) -> None:
     """Show bonus program settings."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
 
-    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+    welcome_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
 
     text = (
         "🎁 Бонусная программа\n"
@@ -4886,7 +4987,7 @@ async def cb_settings_bonus(callback: CallbackQuery) -> None:
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
         "━━━━━━━━━━━━━━━\n"
         f"🎉 Приветственный: {welcome_str}\n"
-        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} {curr}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4905,9 +5006,10 @@ async def cb_bonus_toggle(callback: CallbackQuery) -> None:
 
     # Refresh and show updated screen
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
 
-    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+    welcome_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
 
     text = (
         "🎁 Бонусная программа\n"
@@ -4917,7 +5019,7 @@ async def cb_bonus_toggle(callback: CallbackQuery) -> None:
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
         "━━━━━━━━━━━━━━━\n"
         f"🎉 Приветственный: {welcome_str}\n"
-        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} {curr}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -4994,8 +5096,9 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
 
     # Refresh and show updated screen
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
     status = "✅ Включена" if master.bonus_enabled else "❌ Выключена"
-    welcome_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+    welcome_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
 
     text = (
         "🎁 Бонусная программа\n"
@@ -5005,7 +5108,7 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
         f"Макс. списание: {master.bonus_max_spend}% суммы заказа\n"
         "━━━━━━━━━━━━━━━\n"
         f"🎉 Приветственный: {welcome_str}\n"
-        f"🎂 Бонус на ДР: {master.bonus_birthday} ₽\n"
+        f"🎂 Бонус на ДР: {master.bonus_birthday} {curr}\n"
         f"━━━━━━━━━━━━━━━"
     )
 
@@ -5030,8 +5133,9 @@ async def cb_bonus_welcome(callback: CallbackQuery) -> None:
     """Show welcome bonus settings."""
     await callback.answer()
     master = await get_master_by_tg_id(callback.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
-    amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+    amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
     text_str = "свой" if master.welcome_message else "стандартный"
     photo_str = "есть" if master.welcome_photo_id else "нет"
 
@@ -5052,6 +5156,7 @@ async def cb_bonus_birthday(callback: CallbackQuery) -> None:
     """Show birthday bonus settings."""
     await callback.answer()
     master = await get_master_by_tg_id(callback.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     text_str = "свой" if master.birthday_message else "стандартный"
     photo_str = "есть" if master.birthday_photo_id else "нет"
@@ -5059,7 +5164,7 @@ async def cb_bonus_birthday(callback: CallbackQuery) -> None:
     text = (
         "🎂 Бонус на день рождения\n"
         "━━━━━━━━━━━━━━━\n"
-        f"Сумма: {master.bonus_birthday} ₽\n"
+        f"Сумма: {master.bonus_birthday} {curr}\n"
         f"Текст: {text_str}\n"
         f"Картинка: {photo_str}\n"
         "━━━━━━━━━━━━━━━"
@@ -5139,6 +5244,7 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
         master_name=master.name,
         bonus_amount=amount,
         balance=balance,
+        currency=get_currency_symbol(master.currency),
     )
 
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -5167,9 +5273,10 @@ async def cb_bonus_message_back(callback: CallbackQuery, bot: Bot) -> None:
 
     # Show bonus submenu in home message
     master = await get_master_by_tg_id(callback.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     if bonus_type == "welcome":
-        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
         text_str = "свой" if master.welcome_message else "стандартный"
         photo_str = "есть" if master.welcome_photo_id else "нет"
         text = (
@@ -5186,7 +5293,7 @@ async def cb_bonus_message_back(callback: CallbackQuery, bot: Bot) -> None:
         text = (
             "🎂 Бонус на день рождения\n"
             "━━━━━━━━━━━━━━━\n"
-            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Сумма: {master.bonus_birthday} {curr}\n"
             f"Текст: {text_str}\n"
             f"Картинка: {photo_str}\n"
             "━━━━━━━━━━━━━━━"
@@ -5239,9 +5346,10 @@ async def on_bonus_message_amount(message: Message, state: FSMContext, bot: Bot)
 
     # Return to bonus submenu
     master = await get_master_by_tg_id(message.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     if bonus_type == "welcome":
-        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
         text_str = "свой" if master.welcome_message else "стандартный"
         photo_str = "есть" if master.welcome_photo_id else "нет"
         text = (
@@ -5258,7 +5366,7 @@ async def on_bonus_message_amount(message: Message, state: FSMContext, bot: Bot)
         text = (
             "🎂 Бонус на день рождения\n"
             "━━━━━━━━━━━━━━━\n"
-            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Сумма: {master.bonus_birthday} {curr}\n"
             f"Текст: {text_str}\n"
             f"Картинка: {photo_str}\n"
             "━━━━━━━━━━━━━━━"
@@ -5297,9 +5405,10 @@ async def on_bonus_message_text(message: Message, state: FSMContext, bot: Bot) -
 
     # Return to bonus submenu
     master = await get_master_by_tg_id(message.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     if bonus_type == "welcome":
-        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
         text_str = "свой" if master.welcome_message else "стандартный"
         photo_str = "есть" if master.welcome_photo_id else "нет"
         text = (
@@ -5316,7 +5425,7 @@ async def on_bonus_message_text(message: Message, state: FSMContext, bot: Bot) -
         text = (
             "🎂 Бонус на день рождения\n"
             "━━━━━━━━━━━━━━━\n"
-            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Сумма: {master.bonus_birthday} {curr}\n"
             f"Текст: {text_str}\n"
             f"Картинка: {photo_str}\n"
             "━━━━━━━━━━━━━━━"
@@ -5354,9 +5463,10 @@ async def on_bonus_message_photo(message: Message, state: FSMContext, bot: Bot) 
 
     # Return to bonus submenu
     master = await get_master_by_tg_id(message.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     if bonus_type == "welcome":
-        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
         text_str = "свой" if master.welcome_message else "стандартный"
         photo_str = "есть" if master.welcome_photo_id else "нет"
         text = (
@@ -5373,7 +5483,7 @@ async def on_bonus_message_photo(message: Message, state: FSMContext, bot: Bot) 
         text = (
             "🎂 Бонус на день рождения\n"
             "━━━━━━━━━━━━━━━\n"
-            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Сумма: {master.bonus_birthday} {curr}\n"
             f"Текст: {text_str}\n"
             f"Картинка: {photo_str}\n"
             "━━━━━━━━━━━━━━━"
@@ -5411,9 +5521,10 @@ async def on_bonus_message_photo_text(message: Message, state: FSMContext, bot: 
 
     # Return to bonus submenu
     master = await get_master_by_tg_id(message.from_user.id)
+    curr = get_currency_symbol(master.currency)
 
     if bonus_type == "welcome":
-        amount_str = f"{master.bonus_welcome} ₽" if master.bonus_welcome > 0 else "выкл"
+        amount_str = f"{master.bonus_welcome} {curr}" if master.bonus_welcome > 0 else "выкл"
         text_str = "свой" if master.welcome_message else "стандартный"
         photo_str = "есть" if master.welcome_photo_id else "нет"
         text = (
@@ -5430,7 +5541,7 @@ async def on_bonus_message_photo_text(message: Message, state: FSMContext, bot: 
         text = (
             "🎂 Бонус на день рождения\n"
             "━━━━━━━━━━━━━━━\n"
-            f"Сумма: {master.bonus_birthday} ₽\n"
+            f"Сумма: {master.bonus_birthday} {curr}\n"
             f"Текст: {text_str}\n"
             f"Картинка: {photo_str}\n"
             "━━━━━━━━━━━━━━━"
@@ -5453,12 +5564,13 @@ async def cb_settings_services(callback: CallbackQuery) -> None:
     """Show services catalog."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     services = await get_services(master.id)
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5471,7 +5583,7 @@ async def cb_settings_services(callback: CallbackQuery) -> None:
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, settings_services_kb(services))
+    await edit_home_message(callback, text, settings_services_kb(services, currency=curr))
     await callback.answer()
 
 
@@ -5591,12 +5703,13 @@ async def service_add_price(message: Message, state: FSMContext, bot: Bot) -> No
 
     data = await state.get_data()
     name = data.get("service_name")
+    curr = get_currency_symbol(master.currency)
 
     text = (
         "🛠 Новая услуга — Шаг 3/3\n"
         "━━━━━━━━━━━━━━━\n"
         f"Название: {name}\n"
-        f"Цена: {price} ₽\n"
+        f"Цена: {price} {curr}\n"
         "━━━━━━━━━━━━━━━\n"
         "📝 Введите описание услуги или нажмите «Пропустить»:"
     )
@@ -5629,6 +5742,7 @@ async def service_add_skip_description(callback: CallbackQuery, state: FSMContex
     """Step 3: Skip description - save service."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     data = await state.get_data()
     name = data.get("service_name")
@@ -5642,7 +5756,7 @@ async def service_add_skip_description(callback: CallbackQuery, state: FSMContex
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5655,7 +5769,7 @@ async def service_add_skip_description(callback: CallbackQuery, state: FSMContex
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, settings_services_kb(services))
+    await edit_home_message(callback, text, settings_services_kb(services, currency=curr))
     await callback.answer("Услуга добавлена!")
 
 
@@ -5681,10 +5795,11 @@ async def service_add_description(message: Message, state: FSMContext, bot: Bot)
 
     # Show updated services list
     services = await get_services(master.id)
+    curr = get_currency_symbol(master.currency)
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5703,7 +5818,7 @@ async def service_add_description(message: Message, state: FSMContext, bot: Bot)
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=settings_services_kb(services)
+                reply_markup=settings_services_kb(services, currency=curr)
             )
         except TelegramBadRequest:
             pass
@@ -5719,10 +5834,14 @@ async def cb_services_edit(callback: CallbackQuery) -> None:
         await callback.answer("Услуга не найдена")
         return
 
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     description_line = f"📝 {service.description}\n" if service.description else ""
     text = (
         f"🛠 {service.name}\n"
-        f"💰 {service.price or '—'} ₽\n"
+        f"💰 {service.price or '—'} {curr}\n"
         f"{description_line}"
         f"━━━━━━━━━━━━━━━"
     )
@@ -5761,6 +5880,7 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
     """Update service name."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     name = message.text.strip()[:200]
 
@@ -5780,7 +5900,7 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5801,7 +5921,7 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=settings_services_kb(services)
+                reply_markup=settings_services_kb(services, currency=curr)
             )
         except TelegramBadRequest:
             pass
@@ -5810,6 +5930,10 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
 @router.callback_query(F.data.regexp(r"^settings:services:edit:price:\d+$"))
 async def cb_services_edit_price(callback: CallbackQuery, state: FSMContext) -> None:
     """Start editing service price."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     service_id = int(callback.data.split(":")[4])
     service = await get_service_by_id(service_id)
 
@@ -5822,7 +5946,7 @@ async def cb_services_edit_price(callback: CallbackQuery, state: FSMContext) -> 
     text = (
         f"💰 Изменить цену\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"Текущая: {service.price or '—'} ₽\n"
+        f"Текущая: {service.price or '—'} {curr}\n"
         f"━━━━━━━━━━━━━━━\n"
         "Введите новую цену (число):"
     )
@@ -5844,6 +5968,10 @@ async def cb_services_edit_price(callback: CallbackQuery, state: FSMContext) -> 
 @router.callback_query(ServiceEdit.price, F.data.startswith("service:remove_price:"))
 async def service_remove_price(callback: CallbackQuery, state: FSMContext) -> None:
     """Remove service price."""
+    tg_id = callback.from_user.id
+    master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
+
     service_id = int(callback.data.split(":")[2])
 
     await update_service(service_id, price=None)
@@ -5854,7 +5982,7 @@ async def service_remove_price(callback: CallbackQuery, state: FSMContext) -> No
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5869,7 +5997,7 @@ async def service_remove_price(callback: CallbackQuery, state: FSMContext) -> No
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, settings_services_kb(services))
+    await edit_home_message(callback, text, settings_services_kb(services, currency=curr))
     await callback.answer("Цена убрана!")
 
 
@@ -5878,6 +6006,7 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
     """Update service price."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     try:
         price = int(message.text.strip())
@@ -5903,7 +6032,7 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5924,7 +6053,7 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=settings_services_kb(services)
+                reply_markup=settings_services_kb(services, currency=curr)
             )
         except TelegramBadRequest:
             pass
@@ -5970,6 +6099,7 @@ async def service_remove_description(callback: CallbackQuery, state: FSMContext)
     """Remove service description."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
     service_id = int(callback.data.split(":")[2])
 
     await update_service(service_id, description=None)
@@ -5980,7 +6110,7 @@ async def service_remove_description(callback: CallbackQuery, state: FSMContext)
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -5995,7 +6125,7 @@ async def service_remove_description(callback: CallbackQuery, state: FSMContext)
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, settings_services_kb(services))
+    await edit_home_message(callback, text, settings_services_kb(services, currency=curr))
     await callback.answer("Описание убрано!")
 
 
@@ -6004,6 +6134,7 @@ async def service_edit_description(message: Message, state: FSMContext, bot: Bot
     """Update service description."""
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     description = message.text.strip()[:500]
 
@@ -6023,7 +6154,7 @@ async def service_edit_description(message: Message, state: FSMContext, bot: Bot
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -6044,7 +6175,7 @@ async def service_edit_description(message: Message, state: FSMContext, bot: Bot
                 chat_id=message.chat.id,
                 message_id=master.home_message_id,
                 text=text,
-                reply_markup=settings_services_kb(services)
+                reply_markup=settings_services_kb(services, currency=curr)
             )
         except TelegramBadRequest:
             pass
@@ -6064,13 +6195,14 @@ async def cb_services_archive(callback: CallbackQuery) -> None:
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     # Show updated services list
     services = await get_services(master.id)
 
     if services:
         services_text = "\n".join(
-            f"• {s.name} — {s.price or '—'} ₽"
+            f"• {s.name} — {s.price or '—'} {curr}"
             for s in services
         )
     else:
@@ -6083,7 +6215,7 @@ async def cb_services_archive(callback: CallbackQuery) -> None:
         f"━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, settings_services_kb(services))
+    await edit_home_message(callback, text, settings_services_kb(services, currency=curr))
     await callback.answer("Услуга в архиве")
 
 
@@ -6092,6 +6224,7 @@ async def cb_services_show_archive(callback: CallbackQuery) -> None:
     """Show archived services."""
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     services = await get_archived_services(master.id)
 
@@ -6101,7 +6234,7 @@ async def cb_services_show_archive(callback: CallbackQuery) -> None:
         "Нажмите на услугу, чтобы восстановить:"
     )
 
-    await edit_home_message(callback, text, service_archived_kb(services))
+    await edit_home_message(callback, text, service_archived_kb(services, curr))
     await callback.answer()
 
 
@@ -6119,6 +6252,7 @@ async def cb_services_restore(callback: CallbackQuery) -> None:
 
     tg_id = callback.from_user.id
     master = await get_master_by_tg_id(tg_id)
+    curr = get_currency_symbol(master.currency)
 
     # Show updated archive
     services = await get_archived_services(master.id)
@@ -6129,7 +6263,7 @@ async def cb_services_restore(callback: CallbackQuery) -> None:
         "📦 Архив услуг:"
     )
 
-    await edit_home_message(callback, text, service_archived_kb(services))
+    await edit_home_message(callback, text, service_archived_kb(services, curr))
     await callback.answer("Услуга восстановлена!")
 
 

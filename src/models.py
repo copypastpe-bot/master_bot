@@ -22,6 +22,7 @@ class Master:
     bonus_birthday: int = 300
     bonus_welcome: int = 0
     timezone: str = "Europe/Moscow"
+    currency: str = "RUB"
     welcome_message: Optional[str] = None
     welcome_photo_id: Optional[str] = None
     birthday_message: Optional[str] = None

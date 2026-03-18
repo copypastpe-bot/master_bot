@@ -5,7 +5,7 @@ from datetime import date
 from typing import Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
-from src.utils import TIMEZONES
+from src.utils import TIMEZONES, CURRENCIES
 
 MONTHS_RU = [
     "", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -445,7 +445,10 @@ def settings_profile_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="✏️ Соцсети", callback_data="profile:edit:socials"),
         ],
         [InlineKeyboardButton(text="✏️ Режим работы", callback_data="profile:edit:work_hours")],
-        [InlineKeyboardButton(text="🕐 Часовой пояс", callback_data="profile:timezone")],
+        [
+            InlineKeyboardButton(text="🕐 Часовой пояс", callback_data="profile:timezone"),
+            InlineKeyboardButton(text="💱 Валюта", callback_data="profile:currency"),
+        ],
         [InlineKeyboardButton(text="📅 Google Calendar", callback_data="profile:gc")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="settings"),
@@ -519,6 +522,21 @@ def timezone_kb(back_to: Optional[str] = "settings:profile") -> InlineKeyboardMa
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
+def currency_kb(back_to: Optional[str] = "settings:profile") -> InlineKeyboardMarkup:
+    """Keyboard for currency selection."""
+    buttons = []
+    for code, symbol, name in CURRENCIES:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{symbol} {name}",
+                callback_data=f"set_currency:{code}"
+            )
+        ])
+    if back_to:
+        buttons.append([InlineKeyboardButton(text="← Назад", callback_data=back_to)])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
 def bonus_message_kb(bonus_type: str, back_to: str = "settings:bonus") -> InlineKeyboardMarkup:
     """Keyboard for welcome/birthday bonus submenu."""
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -534,12 +552,12 @@ def bonus_message_kb(bonus_type: str, back_to: str = "settings:bonus") -> Inline
     ])
 
 
-def settings_services_kb(services: list, show_archive_btn: bool = True) -> InlineKeyboardMarkup:
+def settings_services_kb(services: list, show_archive_btn: bool = True, currency: str = "₽") -> InlineKeyboardMarkup:
     """Services catalog keyboard."""
     buttons = []
 
     for service in services:
-        price_str = f"{service.price} ₽" if service.price else "—"
+        price_str = f"{service.price} {currency}" if service.price else "—"
         buttons.append([InlineKeyboardButton(
             text=f"{service.name} — {price_str} ✏️",
             callback_data=f"settings:services:edit:{service.id}"
@@ -574,12 +592,12 @@ def service_edit_kb(service_id: int) -> InlineKeyboardMarkup:
     ])
 
 
-def service_archived_kb(services: list) -> InlineKeyboardMarkup:
+def service_archived_kb(services: list, currency: str = "₽") -> InlineKeyboardMarkup:
     """Archived services keyboard."""
     buttons = []
 
     for service in services:
-        price_str = f"{service.price} ₽" if service.price else "—"
+        price_str = f"{service.price} {currency}" if service.price else "—"
         buttons.append([InlineKeyboardButton(
             text=f"📦 {service.name} — {price_str}",
             callback_data=f"settings:services:restore:{service.id}"
@@ -925,13 +943,14 @@ def order_minutes_kb(hour: int) -> InlineKeyboardMarkup:
     ])
 
 
-def order_services_kb(services: list, selected: list = None, custom_services: list = None) -> InlineKeyboardMarkup:
+def order_services_kb(services: list, selected: list = None, custom_services: list = None, currency: str = "₽") -> InlineKeyboardMarkup:
     """Services selection keyboard.
 
     Args:
         services: list of available services from catalog
         selected: list of selected service IDs
         custom_services: list of custom service names
+        currency: currency symbol to display
     """
     buttons = []
     selected = selected or []
@@ -940,7 +959,7 @@ def order_services_kb(services: list, selected: list = None, custom_services: li
     for service in services:
         is_selected = service["id"] in selected
         prefix = "✓ " if is_selected else ""
-        price_str = f" — {service['price']} ₽" if service.get("price") else ""
+        price_str = f" — {service['price']} {currency}" if service.get("price") else ""
         buttons.append([InlineKeyboardButton(
             text=f"{prefix}{service['name']}{price_str}",
             callback_data=f"order:service:{service['id']}"
@@ -1003,11 +1022,11 @@ def order_edit_field_kb() -> InlineKeyboardMarkup:
 # Order Completion Keyboards
 # =============================================================================
 
-def complete_amount_kb(amount: int) -> InlineKeyboardMarkup:
+def complete_amount_kb(amount: int, currency: str = "₽") -> InlineKeyboardMarkup:
     """Amount confirmation keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(
-            text=f"✅ Подтвердить {amount} ₽",
+            text=f"✅ Подтвердить {amount} {currency}",
             callback_data="complete:amount:confirm"
         )],
         [InlineKeyboardButton(
@@ -1033,9 +1052,9 @@ def payment_type_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def bonus_use_kb(bonus_balance: int, max_can_use: int) -> InlineKeyboardMarkup:
+def bonus_use_kb(bonus_balance: int, max_can_use: int, currency: str = "₽") -> InlineKeyboardMarkup:
     """Bonus usage keyboard."""
-    text = f"Списать до {max_can_use} ₽ (баланс: {bonus_balance} ₽)"
+    text = f"Списать до {max_can_use} {currency} (баланс: {bonus_balance} {currency})"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text=f"✅ {text}", callback_data="complete:bonus:yes")],
         [InlineKeyboardButton(text="❌ Не списывать", callback_data="complete:bonus:no")],

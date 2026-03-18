@@ -57,6 +57,7 @@ def _parse_master_row(row) -> Master:
         bonus_birthday=row["bonus_birthday"],
         bonus_welcome=row["bonus_welcome"] if "bonus_welcome" in row.keys() else 0,
         timezone=row["timezone"] if "timezone" in row.keys() else "Europe/Moscow",
+        currency=row["currency"] if "currency" in row.keys() else "RUB",
         welcome_message=row["welcome_message"] if "welcome_message" in row.keys() else None,
         welcome_photo_id=row["welcome_photo_id"] if "welcome_photo_id" in row.keys() else None,
         birthday_message=row["birthday_message"] if "birthday_message" in row.keys() else None,
@@ -149,16 +150,17 @@ async def create_master(
     socials: Optional[str] = None,
     work_hours: Optional[str] = None,
     timezone: str = "Europe/Moscow",
+    currency: str = "RUB",
 ) -> Master:
     """Create a new master."""
     conn = await get_connection()
     try:
         cursor = await conn.execute(
             """
-            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone)
+            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency)
         )
         await conn.commit()
         master_id = cursor.lastrowid
@@ -173,6 +175,7 @@ async def create_master(
             socials=socials,
             work_hours=work_hours,
             timezone=timezone,
+            currency=currency,
         )
     finally:
         await conn.close()
@@ -1385,6 +1388,7 @@ async def get_clients_with_birthday_today() -> list[dict]:
                 m.name as master_name,
                 m.bonus_birthday,
                 m.timezone,
+                m.currency,
                 m.birthday_message,
                 m.birthday_photo_id,
                 mc.bonus_balance

@@ -54,6 +54,7 @@ from src.database import (
 from src.utils import (
     format_phone, parse_date, normalize_phone,
     render_bonus_message, DEFAULT_WELCOME_MESSAGE,
+    get_currency_symbol,
 )
 
 # Master bot instance for sending notifications
@@ -81,9 +82,10 @@ MONTHS_RU = [
 
 async def build_home_text(client, master, master_client) -> str:
     """Build home screen text."""
+    curr = get_currency_symbol(master.currency)
     return (
         f"👋 Привет, {client.name}!\n\n"
-        f"💰 Ваши бонусы: {master_client.bonus_balance} ₽\n"
+        f"💰 Ваши бонусы: {master_client.bonus_balance} {curr}\n"
         f"Мастер: {master.name}\n"
         f"━━━━━━━━━━━━━━━"
     )
@@ -395,6 +397,7 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
                 master_name=master.name,
                 bonus_amount=bonus_amount,
                 balance=master_client.bonus_balance,
+                currency=get_currency_symbol(master.currency),
             )
 
             if master.welcome_photo_id:
@@ -447,6 +450,7 @@ async def cb_bonuses(callback: CallbackQuery) -> None:
         await callback.answer("Ошибка")
         return
 
+    curr = get_currency_symbol(master.currency)
     bonus_log = await get_client_bonus_log(master.id, client.id, limit=10)
 
     if bonus_log:
@@ -462,7 +466,7 @@ async def cb_bonuses(callback: CallbackQuery) -> None:
     text = (
         "💰 Мои бонусы\n"
         "━━━━━━━━━━━━━━━\n"
-        f"Баланс: {master_client.bonus_balance} ₽\n\n"
+        f"Баланс: {master_client.bonus_balance} {curr}\n\n"
         f"{log_text}\n"
         "━━━━━━━━━━━━━━━"
     )
@@ -485,12 +489,13 @@ async def cb_history(callback: CallbackQuery) -> None:
         await callback.answer("Ошибка")
         return
 
+    curr = get_currency_symbol(master.currency)
     orders = await get_client_orders(master.id, client.id, limit=20)
 
     if orders:
         orders_text = "\n".join(
             f"• {o.get('scheduled_at', '')[:10] if o.get('scheduled_at') else '—'} — "
-            f"{o.get('services', '—')[:25]} | {o.get('amount_total', 0)} ₽"
+            f"{o.get('services', '—')[:25]} | {o.get('amount_total', 0)} {curr}"
             for o in orders
             if o.get('status') == 'done'
         )

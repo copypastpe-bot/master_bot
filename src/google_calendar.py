@@ -121,7 +121,8 @@ async def create_event(
     services: str,
     address: str,
     amount: int,
-    scheduled_at: datetime
+    scheduled_at: datetime,
+    currency: str = "₽"
 ) -> Optional[str]:
     """Create calendar event for order.
 
@@ -140,7 +141,7 @@ async def create_event(
                 f"📞 {client_phone or '—'}\n"
                 f"📍 {address or '—'}\n"
                 f"🛠 {services}\n"
-                f"💰 {amount} ₽"
+                f"💰 {amount} {currency}"
             ),
             "start": {
                 "dateTime": scheduled_at.isoformat(),

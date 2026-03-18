@@ -48,7 +48,7 @@ def normalize_phone(phone: str, default_region: str = "RU") -> Optional[str]:
 # Дефолтные тексты бонусных сообщений
 DEFAULT_WELCOME_MESSAGE = """👋 Добро пожаловать, {имя}!
 
-Ваш мастер {мастер} дарит вам приветственный бонус 🎁 {бонус} ₽
+Ваш мастер {мастер} дарит вам приветственный бонус 🎁 {бонус} {валюта}
 
 Используйте его при следующем заказе!"""
 
@@ -56,7 +56,7 @@ DEFAULT_BIRTHDAY_MESSAGE = """🎂 С днём рождения, {имя}!
 
 Ваш мастер {мастер} дарит вам 🎁 {бонус} бонусов!
 
-💰 Ваш баланс: {баланс} ₽
+💰 Ваш баланс: {баланс} {валюта}
 
 Используйте бонусы при следующем заказе."""
 
@@ -68,6 +68,7 @@ def render_bonus_message(
     master_name: str,
     bonus_amount: int,
     balance: int = 0,
+    currency: str = "₽",
 ) -> str:
     """Render bonus message with variable substitution."""
     text = template if template else default
@@ -76,6 +77,7 @@ def render_bonus_message(
         мастер=master_name,
         бонус=bonus_amount,
         баланс=balance,
+        валюта=currency,
     )
 
 
@@ -88,6 +90,31 @@ TIMEZONES = [
     ("Asia/Novosibirsk", "Новосибирск", "UTC+7"),
     ("Asia/Vladivostok", "Владивосток", "UTC+10"),
 ]
+
+# Валюты
+CURRENCIES = [
+    ("RUB", "₽", "Рубль"),
+    ("GEL", "₾", "Лари"),
+    ("USD", "$", "Доллар"),
+    ("EUR", "€", "Евро"),
+    ("RSD", "дин.", "Динар"),
+]
+
+
+def get_currency_symbol(currency_code: str) -> str:
+    """Get currency symbol by code."""
+    for code, symbol, name in CURRENCIES:
+        if code == currency_code:
+            return symbol
+    return "₽"
+
+
+def get_currency_display(currency_code: str) -> str:
+    """Get display name for currency code."""
+    for code, symbol, name in CURRENCIES:
+        if code == currency_code:
+            return f"{symbol} {name}"
+    return currency_code
 
 
 def get_timezone_display(tz_code: str) -> str:

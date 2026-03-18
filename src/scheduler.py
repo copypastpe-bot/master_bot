@@ -16,7 +16,7 @@ from src.database import (
     mark_reminder_sent,
     accrue_birthday_bonus,
 )
-from src.utils import render_bonus_message, DEFAULT_BIRTHDAY_MESSAGE
+from src.utils import render_bonus_message, DEFAULT_BIRTHDAY_MESSAGE, get_currency_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +185,7 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
                 bonus_amount = client["bonus_birthday"]
                 client_name = client.get("client_name") or "—"
                 master_name = client.get("master_name") or "—"
+                currency = get_currency_symbol(client.get("currency") or "RUB")
 
                 # Use custom message template if set
                 text = render_bonus_message(
@@ -194,6 +195,7 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
                     master_name=master_name,
                     bonus_amount=bonus_amount,
                     balance=new_balance,
+                    currency=currency,
                 )
 
                 # Send with photo if set

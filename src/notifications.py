@@ -7,6 +7,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 from src.config import CLIENT_BOT_TOKEN
 from src.models import Client, Order, Master
+from src.utils import get_currency_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ async def notify_order_created(
 
         services_text = ", ".join(s["name"] for s in services)
         amount = order.get("amount_total", 0)
+        curr = get_currency_symbol(master.currency)
 
         text = (
             "📋 Новая запись!\n"
@@ -48,7 +50,7 @@ async def notify_order_created(
             f"📅 {format_datetime(scheduled_at)}\n"
             f"📍 {order.get('address', '—')}\n"
             f"🛠 {services_text}\n"
-            f"💰 Сумма: {amount} ₽\n"
+            f"💰 Сумма: {amount} {curr}\n"
             "━━━━━━━━━━━━━━━\n"
             f"Мастер: {master.name}\n"
             f"📞 {master.contacts or '—'}"
@@ -173,22 +175,23 @@ async def notify_order_done(
         services = order.get("services", "—")
         amount = order.get("amount_total", 0)
         bonus_spent = order.get("bonus_spent", 0)
+        curr = get_currency_symbol(master.currency)
 
         text = (
             "✅ Заказ выполнен!\n"
             "━━━━━━━━━━━━━━━\n"
             f"🛠 {services}\n"
-            f"💰 Сумма: {amount} ₽\n"
+            f"💰 Сумма: {amount} {curr}\n"
         )
 
         if bonus_spent > 0:
-            text += f"🎁 Списано бонусов: {bonus_spent} ₽\n"
+            text += f"🎁 Списано бонусов: {bonus_spent} {curr}\n"
 
         if bonus_accrued > 0:
-            text += f"⭐ Начислено бонусов: +{bonus_accrued} ₽\n"
+            text += f"⭐ Начислено бонусов: +{bonus_accrued} {curr}\n"
 
         text += (
-            f"💳 Ваш баланс: {new_balance} ₽\n"
+            f"💳 Ваш баланс: {new_balance} {curr}\n"
             "━━━━━━━━━━━━━━━\n"
             "Спасибо, что выбираете нас!"
         )
