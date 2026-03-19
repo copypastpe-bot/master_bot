@@ -246,34 +246,67 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.set_state(ClientRegistration.consent)
 
 
-@router.message(Command("home"))
-async def cmd_home(message: Message, state: FSMContext, bot: Bot) -> None:
-    """Handle /home command."""
+@router.message(Command("support"))
+async def cmd_support(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Handle /support command."""
+    # Delete command message
+    try:
+        await message.delete()
+    except TelegramBadRequest:
+        pass
+
+    tg_id = message.from_user.id
+    client, master, master_client = await get_client_context(tg_id)
+
+    if not client or not master or not master_client:
+        await message.answer("Вы не зарегистрированы. Перейдите по ссылке от мастера.")
+        return
+
+    text = (
+        "📞 <b>Поддержка</b>\n\n"
+        "По вопросам технической поддержки и разработки ботов:\n\n"
+        "Telegram: @pastushenko12\n"
+        "E-mail: copypast.pe@gmail.com"
+    )
+
+    # Edit home message
+    if master_client.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master_client.home_message_id,
+                text=text,
+                reply_markup=client_home_kb(),
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest:
+            msg = await bot.send_message(message.chat.id, text, reply_markup=client_home_kb(), parse_mode="HTML")
+            await save_client_home_message_id(master.id, client.id, msg.message_id)
+    else:
+        msg = await bot.send_message(message.chat.id, text, reply_markup=client_home_kb(), parse_mode="HTML")
+        await save_client_home_message_id(master.id, client.id, msg.message_id)
+
+
+@router.message(Command("delete_me"))
+async def cmd_delete_me(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Handle /delete_me command - request data deletion."""
+    # Delete command message
+    try:
+        await message.delete()
+    except TelegramBadRequest:
+        pass
+
     tg_id = message.from_user.id
 
     client, master, master_client = await get_client_context(tg_id)
     if not client or not master or not master_client:
-        await message.answer("Вы ещё не зарегистрированы. Перейдите по ссылке от мастера.")
-        return
-
-    await state.clear()
-    await show_home(bot, client, master, master_client, message.chat.id)
-
-
-@router.message(Command("delete_me"))
-async def cmd_delete_me(message: Message, state: FSMContext) -> None:
-    """Handle /delete_me command - request data deletion."""
-    tg_id = message.from_user.id
-
-    client, master, master_client = await get_client_context(tg_id)
-    if not client or not master:
-        await message.answer("Вы не зарегистрированы в системе.")
+        await bot.send_message(message.chat.id, "Вы не зарегистрированы в системе.")
         return
 
     await state.set_state(ClientDeletion.confirm)
     await state.update_data(client_id=client.id)
 
-    await message.answer(
+    text = (
         "⚠️ <b>Удаление данных</b>\n\n"
         "Вы уверены, что хотите удалить свои персональные данные?\n\n"
         "Будут удалены:\n"
@@ -282,10 +315,25 @@ async def cmd_delete_me(message: Message, state: FSMContext) -> None:
         "• Дата рождения\n"
         "• Привязка к Telegram\n\n"
         "История заказов сохранится в анонимизированном виде для учёта мастера.\n\n"
-        "Это действие необратимо!",
-        reply_markup=delete_confirm_kb(),
-        parse_mode="HTML",
+        "Это действие необратимо!"
     )
+
+    # Edit home message
+    if master_client.home_message_id:
+        try:
+            await bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=master_client.home_message_id,
+                text=text,
+                reply_markup=delete_confirm_kb(),
+                parse_mode="HTML"
+            )
+        except TelegramBadRequest:
+            msg = await bot.send_message(message.chat.id, text, reply_markup=delete_confirm_kb(), parse_mode="HTML")
+            await save_client_home_message_id(master.id, client.id, msg.message_id)
+    else:
+        msg = await bot.send_message(message.chat.id, text, reply_markup=delete_confirm_kb(), parse_mode="HTML")
+        await save_client_home_message_id(master.id, client.id, msg.message_id)
 
 
 @router.callback_query(ClientDeletion.confirm, F.data == "delete:confirm")
@@ -1909,7 +1957,7 @@ async def main() -> None:
     # Set bot commands for menu
     await bot.set_my_commands([
         BotCommand(command="start", description="Начать"),
-        BotCommand(command="home", description="Главное меню"),
+        BotCommand(command="support", description="Поддержка"),
         BotCommand(command="delete_me", description="Удалить мои данные"),
     ])
 
