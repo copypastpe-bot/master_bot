@@ -197,6 +197,12 @@ class HomeButtonMiddleware(BaseMiddleware):
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     """Handle /start command."""
+    # Delete command message
+    try:
+        await message.delete()
+    except TelegramBadRequest:
+        pass
+
     tg_id = message.from_user.id
 
     # Check if already registered
@@ -210,7 +216,8 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     # Extract invite token
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer(
+        await bot.send_message(
+            message.chat.id,
             "👋 Добро пожаловать!\n\n"
             "Для регистрации нужна ссылка от вашего мастера.\n"
             "Попросите мастера отправить вам персональную ссылку.",
@@ -223,7 +230,8 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     # Find master
     master = await get_master_by_invite_token(invite_token)
     if not master:
-        await message.answer(
+        await bot.send_message(
+            message.chat.id,
             "❌ Ссылка недействительна.\n\n"
             "Попросите мастера отправить вам актуальную ссылку."
         )
@@ -233,7 +241,8 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.update_data(master_id=master.id)
 
     # Show consent screen
-    await message.answer(
+    await bot.send_message(
+        message.chat.id,
         f"👋 Привет! Вы переходите к мастеру: {master.name}\n\n"
         "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
         "Мы собираем: имя, телефон, дату рождения (опционально).\n"
