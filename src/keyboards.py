@@ -629,6 +629,22 @@ def settings_invite_kb() -> InlineKeyboardMarkup:
 # Client Bot Keyboards
 # =============================================================================
 
+def consent_kb() -> InlineKeyboardMarkup:
+    """Consent buttons for client registration."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Соглашаюсь и продолжаю", callback_data="consent:agree")],
+        [InlineKeyboardButton(text="❌ Отказаться", callback_data="consent:decline")],
+    ])
+
+
+def delete_confirm_kb() -> InlineKeyboardMarkup:
+    """Confirmation buttons for data deletion."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🗑 Да, удалить мои данные", callback_data="delete:confirm")],
+        [InlineKeyboardButton(text="← Отмена", callback_data="delete:cancel")],
+    ])
+
+
 def home_client_kb() -> InlineKeyboardMarkup:
     """Main menu keyboard for client."""
     return InlineKeyboardMarkup(inline_keyboard=[

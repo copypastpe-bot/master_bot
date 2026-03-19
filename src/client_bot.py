@@ -13,7 +13,7 @@ from typing import Callable, Dict, Any, Awaitable
 
 from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL
 from src.states import (
-    ClientRegistration, OrderRequestFSM, QuestionFSM, MediaFSM,
+    ClientRegistration, ClientDeletion, OrderRequestFSM, QuestionFSM, MediaFSM,
     ClientRescheduleOrder, ClientCancelOrder,
 )
 from src.keyboards import (
@@ -25,6 +25,7 @@ from src.keyboards import (
     client_reschedule_calendar_kb, client_reschedule_hour_kb,
     client_reschedule_minutes_kb, client_reschedule_confirm_kb,
     client_cancel_reason_kb, client_cancel_confirm_kb,
+    consent_kb, delete_confirm_kb,
 )
 from src.database import (
     init_db,
@@ -50,6 +51,8 @@ from src.database import (
     update_order_status,
     reset_order_for_reconfirmation,
     accrue_welcome_bonus,
+    anonymize_client,
+    update_client_consent,
 )
 from src.utils import (
     format_phone, parse_date, normalize_phone,
@@ -229,12 +232,18 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     # Store master_id for registration
     await state.update_data(master_id=master.id)
 
+    # Show consent screen
     await message.answer(
         f"👋 Привет! Вы переходите к мастеру: {master.name}\n\n"
-        "Давайте познакомимся.\n\n"
-        "📝 Как вас зовут?"
+        "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
+        "Мы собираем: имя, телефон, дату рождения (опционально).\n"
+        "Данные используются только для записи и бонусной программы.\n\n"
+        '📜 <a href="https://crmfit.ru/privacy">Политика конфиденциальности</a>',
+        reply_markup=consent_kb(),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
     )
-    await state.set_state(ClientRegistration.name)
+    await state.set_state(ClientRegistration.consent)
 
 
 @router.message(Command("home"))
@@ -249,6 +258,98 @@ async def cmd_home(message: Message, state: FSMContext, bot: Bot) -> None:
 
     await state.clear()
     await show_home(bot, client, master, master_client, message.chat.id)
+
+
+@router.message(Command("delete_me"))
+async def cmd_delete_me(message: Message, state: FSMContext) -> None:
+    """Handle /delete_me command - request data deletion."""
+    tg_id = message.from_user.id
+
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master:
+        await message.answer("Вы не зарегистрированы в системе.")
+        return
+
+    await state.set_state(ClientDeletion.confirm)
+    await state.update_data(client_id=client.id)
+
+    await message.answer(
+        "⚠️ <b>Удаление данных</b>\n\n"
+        "Вы уверены, что хотите удалить свои персональные данные?\n\n"
+        "Будут удалены:\n"
+        "• Имя\n"
+        "• Телефон\n"
+        "• Дата рождения\n"
+        "• Привязка к Telegram\n\n"
+        "История заказов сохранится в анонимизированном виде для учёта мастера.\n\n"
+        "Это действие необратимо!",
+        reply_markup=delete_confirm_kb(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(ClientDeletion.confirm, F.data == "delete:confirm")
+async def delete_confirm(callback: CallbackQuery, state: FSMContext) -> None:
+    """Confirm data deletion."""
+    data = await state.get_data()
+    client_id = data.get("client_id")
+
+    if client_id:
+        await anonymize_client(client_id)
+
+    await state.clear()
+    await callback.message.edit_text(
+        "✅ Ваши данные удалены.\n\n"
+        "Спасибо, что были с нами!"
+    )
+    await callback.answer()
+
+
+@router.callback_query(ClientDeletion.confirm, F.data == "delete:cancel")
+async def delete_cancel(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    """Cancel data deletion."""
+    await state.clear()
+
+    tg_id = callback.from_user.id
+    client, master, master_client = await get_client_context(tg_id)
+
+    if client and master and master_client:
+        text = await build_home_text(client, master, master_client)
+        await callback.message.edit_text(text, reply_markup=home_client_kb())
+    else:
+        await callback.message.edit_text("Отменено.")
+
+    await callback.answer()
+
+
+# =============================================================================
+# Consent Handlers
+# =============================================================================
+
+@router.callback_query(ClientRegistration.consent, F.data == "consent:agree")
+async def consent_agree(callback: CallbackQuery, state: FSMContext) -> None:
+    """User agreed to privacy policy."""
+    # Store consent timestamp
+    await state.update_data(consent_given_at=datetime.now().isoformat())
+
+    await callback.message.edit_text(
+        "✅ Спасибо за согласие!\n\n"
+        "📝 Как вас зовут?"
+    )
+    await state.set_state(ClientRegistration.name)
+    await callback.answer()
+
+
+@router.callback_query(ClientRegistration.consent, F.data == "consent:decline")
+async def consent_decline(callback: CallbackQuery, state: FSMContext) -> None:
+    """User declined privacy policy."""
+    await state.clear()
+    await callback.message.edit_text(
+        "❌ Вы отказались от обработки данных.\n\n"
+        "К сожалению, без согласия регистрация невозможна.\n"
+        "Если передумаете — просто перейдите по ссылке от мастера снова."
+    )
+    await callback.answer()
 
 
 # =============================================================================
@@ -369,6 +470,10 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
             birthday=data.get("birthday"),
             registered_via=master_id,
         )
+
+    # Save consent timestamp
+    if data.get("consent_given_at"):
+        await update_client_consent(client.id, data["consent_given_at"])
 
     # Link to master
     master_client = await link_client_to_master(master_id, client.id)
@@ -1792,6 +1897,7 @@ def setup_dispatcher() -> Dispatcher:
 async def main() -> None:
     """Main entry point."""
     global master_bot
+    from aiogram.types import BotCommand
 
     await init_db()
     logger.info("Database initialized")
@@ -1799,6 +1905,13 @@ async def main() -> None:
     # Create bot instances
     bot = Bot(token=CLIENT_BOT_TOKEN)
     master_bot = Bot(token=MASTER_BOT_TOKEN)
+
+    # Set bot commands for menu
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Начать"),
+        BotCommand(command="home", description="Главное меню"),
+        BotCommand(command="delete_me", description="Удалить мои данные"),
+    ])
 
     # Setup scheduler
     from src.scheduler import setup_scheduler, start_scheduler

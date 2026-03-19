@@ -1936,3 +1936,43 @@ async def save_gc_event_id(order_id: int, event_id: str) -> None:
         await conn.commit()
     finally:
         await conn.close()
+
+
+async def anonymize_client(client_id: int) -> bool:
+    """Anonymize client data (GDPR /delete_me).
+
+    Sets name to 'Удалённый клиент', clears phone, birthday, and tg_id.
+    Order history is kept for master's records but becomes anonymized.
+
+    Returns True if successful.
+    """
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """
+            UPDATE clients
+            SET name = 'Удалённый клиент',
+                phone = NULL,
+                birthday = NULL,
+                tg_id = NULL
+            WHERE id = ?
+            """,
+            (client_id,)
+        )
+        await conn.commit()
+        return True
+    finally:
+        await conn.close()
+
+
+async def update_client_consent(client_id: int, consent_given_at: str) -> None:
+    """Update client consent timestamp."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE clients SET consent_given_at = ? WHERE id = ?",
+            (consent_given_at, client_id)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()

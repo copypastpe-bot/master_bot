@@ -15,9 +15,15 @@ class MasterRegistration(StatesGroup):
 
 class ClientRegistration(StatesGroup):
     """Client registration flow states."""
+    consent = State()   # Step 0: Privacy policy consent
     name = State()      # Step 1: Name
     phone = State()     # Step 2: Phone number
     birthday = State()  # Step 3: Birthday (optional)
+
+
+class ClientDeletion(StatesGroup):
+    """Client data deletion flow states."""
+    confirm = State()  # Waiting for confirmation
 
 
 class CreateOrder(StatesGroup):
