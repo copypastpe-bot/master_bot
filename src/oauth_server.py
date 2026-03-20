@@ -150,9 +150,7 @@ async def health_check(request: web.Request) -> web.Response:
 @web.middleware
 async def security_headers_middleware(request: web.Request, handler):
     """Add security headers to all responses."""
-    logger.info(f"Middleware called for {request.path}")
     response = await handler(request)
-    logger.info(f"Adding security headers to response, prepared={response.prepared}")
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
