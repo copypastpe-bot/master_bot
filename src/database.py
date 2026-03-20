@@ -14,6 +14,49 @@ from src.config import DATABASE_URL
 DB_PATH = DATABASE_URL.replace("sqlite:///", "") if DATABASE_URL.startswith("sqlite:///") else "db.sqlite3"
 MIGRATIONS_DIR = Path(__file__).parent.parent / "migrations"
 
+# =============================================================================
+# Field Whitelists (SQL Injection Protection)
+# =============================================================================
+
+ALLOWED_MASTER_FIELDS = frozenset({
+    "name", "sphere", "socials", "contacts", "work_hours", "invite_token",
+    "bonus_enabled", "bonus_rate", "bonus_max_spend", "bonus_birthday",
+    "gc_connected", "gc_credentials",
+    "bonus_welcome", "timezone", "welcome_message", "welcome_photo_id",
+    "birthday_message", "birthday_photo_id", "home_message_id", "currency",
+})
+
+ALLOWED_CLIENT_FIELDS = frozenset({
+    "tg_id", "name", "phone", "birthday", "registered_via", "consent_given_at",
+})
+
+ALLOWED_MASTER_CLIENT_FIELDS = frozenset({
+    "bonus_balance", "total_spent", "note", "first_visit", "last_visit",
+    "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
+    "home_message_id",
+})
+
+ALLOWED_SERVICE_FIELDS = frozenset({
+    "name", "price", "is_active", "description",
+})
+
+ALLOWED_ORDER_FIELDS = frozenset({
+    "address", "scheduled_at", "status", "payment_type", "amount_total",
+    "bonus_accrued", "bonus_spent", "cancel_reason", "gc_event_id", "done_at",
+    "reminder_24h_sent", "reminder_1h_sent", "client_confirmed",
+})
+
+ALLOWED_NOTIFICATION_FIELDS = frozenset({
+    "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
+})
+
+
+def _validate_fields(fields: set, allowed: frozenset, table: str) -> None:
+    """Validate field names against whitelist. Raises ValueError if invalid."""
+    invalid = fields - allowed
+    if invalid:
+        raise ValueError(f"Invalid fields for {table}: {invalid}")
+
 
 async def get_connection() -> aiosqlite.Connection:
     """Get a database connection."""
@@ -186,6 +229,9 @@ async def update_master(master_id: int, **kwargs) -> None:
     if not kwargs:
         return
 
+    # Validate field names against whitelist
+    _validate_fields(set(kwargs.keys()), ALLOWED_MASTER_FIELDS, "masters")
+
     conn = await get_connection()
     try:
         set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
@@ -317,6 +363,9 @@ async def update_client(client_id: int, **kwargs) -> None:
     """Update client fields."""
     if not kwargs:
         return
+
+    # Validate field names against whitelist
+    _validate_fields(set(kwargs.keys()), ALLOWED_CLIENT_FIELDS, "clients")
 
     conn = await get_connection()
     try:
@@ -631,6 +680,9 @@ async def update_master_client(master_id: int, client_id: int, **kwargs) -> None
     if not kwargs:
         return
 
+    # Validate field names against whitelist
+    _validate_fields(set(kwargs.keys()), ALLOWED_MASTER_CLIENT_FIELDS, "master_clients")
+
     conn = await get_connection()
     try:
         set_clause = ", ".join(f"{k} = ?" for k in kwargs.keys())
@@ -652,6 +704,10 @@ async def save_client_home_message_id(master_id: int, client_id: int, message_id
 
 async def toggle_client_notification(master_id: int, client_id: int, field: str) -> bool:
     """Toggle a notification setting and return new value."""
+    # Validate field name against whitelist
+    if field not in ALLOWED_NOTIFICATION_FIELDS:
+        raise ValueError(f"Invalid notification field: {field}")
+
     conn = await get_connection()
     try:
         cursor = await conn.execute(
@@ -823,6 +879,9 @@ async def create_order_items(order_id: int, services: list[dict]) -> None:
 
 async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
     """Update order status and optional fields."""
+    # Validate field names against whitelist
+    _validate_fields(set(kwargs.keys()) | {"status"}, ALLOWED_ORDER_FIELDS, "orders")
+
     conn = await get_connection()
     try:
         fields = {"status": status, **kwargs}
@@ -1074,6 +1133,9 @@ async def update_service(service_id: int, **kwargs) -> None:
     """Update service fields."""
     if not kwargs:
         return
+
+    # Validate field names against whitelist
+    _validate_fields(set(kwargs.keys()), ALLOWED_SERVICE_FIELDS, "services")
 
     conn = await get_connection()
     try:
