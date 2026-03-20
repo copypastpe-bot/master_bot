@@ -451,7 +451,7 @@ async def reg_phone_text(message: Message, state: FSMContext, bot: Bot) -> None:
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Validate and normalize phone
@@ -464,7 +464,7 @@ async def reg_phone_text(message: Message, state: FSMContext, bot: Bot) -> None:
         await asyncio.sleep(2)
         try:
             await error_msg.delete()
-        except:
+        except TelegramBadRequest:
             pass
         return
 
@@ -701,7 +701,7 @@ async def cb_promos(callback: CallbackQuery) -> None:
                 try:
                     d = date.fromisoformat(str(active_to))
                     until_text = f"До {d.day} {MONTHS_RU[d.month]}"
-                except:
+                except Exception:
                     until_text = ""
             else:
                 until_text = ""

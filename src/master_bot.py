@@ -686,7 +686,7 @@ async def order_search_client(message: Message, state: FSMContext, bot: Bot) -> 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     if results:
@@ -782,7 +782,7 @@ async def order_new_client_name(message: Message, state: FSMContext, bot: Bot) -
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     text = (
@@ -817,7 +817,7 @@ async def order_new_client_phone(message: Message, state: FSMContext, bot: Bot) 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Validate and normalize phone
@@ -831,7 +831,7 @@ async def order_new_client_phone(message: Message, state: FSMContext, bot: Bot) 
         await asyncio.sleep(2)
         try:
             await error_msg.delete()
-        except:
+        except TelegramBadRequest:
             pass
         return
 
@@ -876,12 +876,12 @@ async def order_new_client_birthday(message: Message, state: FSMContext, bot: Bo
     try:
         from src.utils import parse_date
         birthday = parse_date(birthday_text)
-    except:
+    except (ValueError, AttributeError):
         pass
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await finish_new_client_creation(state, master, bot, message.chat.id, birthday)
@@ -965,7 +965,7 @@ async def order_enter_address(message: Message, state: FSMContext, bot: Bot) -> 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Create a fake callback-like context for go_to_date_step
@@ -1226,7 +1226,7 @@ async def order_enter_custom_service(message: Message, state: FSMContext, bot: B
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -1343,7 +1343,7 @@ async def order_enter_amount(message: Message, state: FSMContext, bot: Bot) -> N
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await state.update_data(order_amount=amount)
@@ -1729,7 +1729,7 @@ async def complete_enter_new_amount(message: Message, state: FSMContext, bot: Bo
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await state.update_data(complete_amount=amount)
@@ -1847,7 +1847,7 @@ async def complete_enter_bonus_amount(message: Message, state: FSMContext, bot: 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await state.update_data(complete_bonus_spent=bonus)
@@ -2449,7 +2449,7 @@ async def cancel_enter_custom_reason(message: Message, state: FSMContext, bot: B
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -2658,7 +2658,7 @@ async def cb_client_view(callback: CallbackQuery, state: FSMContext) -> None:
         try:
             bd = date.fromisoformat(birthday_str)
             birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
-        except:
+        except Exception:
             birthday_text = "не указана"
     else:
         birthday_text = "не указана"
@@ -2788,7 +2788,7 @@ async def client_add_name(message: Message, state: FSMContext, bot: Bot) -> None
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     text = (
@@ -2822,7 +2822,7 @@ async def client_add_phone(message: Message, state: FSMContext, bot: Bot) -> Non
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Validate and normalize phone
@@ -2835,7 +2835,7 @@ async def client_add_phone(message: Message, state: FSMContext, bot: Bot) -> Non
         await asyncio.sleep(2)
         try:
             await error_msg.delete()
-        except:
+        except TelegramBadRequest:
             pass
         return
 
@@ -2879,12 +2879,12 @@ async def client_add_birthday(message: Message, state: FSMContext, bot: Bot) -> 
     try:
         from src.utils import parse_date
         birthday = parse_date(birthday_text)
-    except:
+    except (ValueError, AttributeError):
         pass
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await finish_client_add(state, master, bot, message.chat.id, birthday)
@@ -3033,7 +3033,7 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Validate phone if needed
@@ -3058,7 +3058,7 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
         try:
             from src.utils import parse_date
             value = parse_date(value)
-        except:
+        except (ValueError, AttributeError):
             # Invalid date format - show error
             if master.home_message_id:
                 try:
@@ -3086,7 +3086,7 @@ async def client_edit_value(message: Message, state: FSMContext, bot: Bot) -> No
         try:
             bd = date.fromisoformat(birthday_str)
             birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
-        except:
+        except Exception:
             birthday_text = "не указана"
     else:
         birthday_text = "не указана"
@@ -3162,7 +3162,7 @@ async def client_note_value(message: Message, state: FSMContext, bot: Bot) -> No
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Delete note if "-"
@@ -3183,7 +3183,7 @@ async def client_note_value(message: Message, state: FSMContext, bot: Bot) -> No
         try:
             bd = date.fromisoformat(birthday_str)
             birthday_text = f"{bd.day} {MONTHS_RU[bd.month]}"
-        except:
+        except Exception:
             birthday_text = "не указана"
     else:
         birthday_text = "не указана"
@@ -3294,7 +3294,7 @@ async def bonus_manual_amount(message: Message, state: FSMContext, bot: Bot) -> 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -3340,7 +3340,7 @@ async def bonus_manual_comment(message: Message, state: FSMContext, bot: Bot) ->
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await finish_manual_bonus(state, master, bot, message.chat.id, comment)
@@ -3485,7 +3485,7 @@ async def handle_text(message: Message, state: FSMContext, bot: Bot) -> None:
         # Delete search message
         try:
             await message.delete()
-        except:
+        except TelegramBadRequest:
             pass
 
         if results:
@@ -3583,7 +3583,7 @@ async def broadcast_text(message: Message, state: FSMContext, bot: Bot) -> None:
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     text = (
@@ -3618,7 +3618,7 @@ async def broadcast_media_photo(message: Message, state: FSMContext, bot: Bot) -
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await show_broadcast_segment_step(bot, master, message.chat.id, state)
@@ -3635,7 +3635,7 @@ async def broadcast_media_video(message: Message, state: FSMContext, bot: Bot) -
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await show_broadcast_segment_step(bot, master, message.chat.id, state)
@@ -3900,7 +3900,7 @@ async def promo_title(message: Message, state: FSMContext, bot: Bot) -> None:
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     text = (
@@ -3937,7 +3937,7 @@ async def promo_description(message: Message, state: FSMContext, bot: Bot) -> No
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -4002,7 +4002,7 @@ async def promo_date_from_input(message: Message, state: FSMContext, bot: Bot) -
         if not date_from_obj:
             raise ValueError("Invalid date")
         date_from = date_from_obj.isoformat()
-    except:
+    except (ValueError, AttributeError):
         await message.answer("Неверный формат даты. Используйте ДД.ММ.ГГГГ")
         return
 
@@ -4010,7 +4010,7 @@ async def promo_date_from_input(message: Message, state: FSMContext, bot: Bot) -
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -4051,7 +4051,7 @@ async def promo_date_to_input(message: Message, state: FSMContext, bot: Bot) -> 
         if not date_to_obj:
             raise ValueError("Invalid date")
         date_to = date_to_obj.isoformat()
-    except:
+    except (ValueError, AttributeError):
         await message.answer("Неверный формат даты. Используйте ДД.ММ.ГГГГ")
         return
 
@@ -4071,7 +4071,7 @@ async def promo_date_to_input(message: Message, state: FSMContext, bot: Bot) -> 
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     title = data.get("promo_title")
@@ -4141,7 +4141,7 @@ async def promo_confirm_broadcast(callback: CallbackQuery, state: FSMContext, bo
             )
             sent += 1
             await asyncio.sleep(0.05)
-        except:
+        except Exception:
             pass
 
     await client_bot.session.close()
@@ -4846,7 +4846,7 @@ async def profile_edit_value(message: Message, state: FSMContext, bot: Bot) -> N
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await update_master(master.id, **{db_field: value})
@@ -5088,7 +5088,7 @@ async def bonus_edit_value(message: Message, state: FSMContext, bot: Bot) -> Non
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await update_master(master.id, **{db_field: value})
@@ -5268,7 +5268,7 @@ async def cb_bonus_message_back(callback: CallbackQuery, bot: Bot) -> None:
     # Delete the preview message
     try:
         await callback.message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Show bonus submenu in home message
@@ -5308,7 +5308,7 @@ async def cb_bonus_message_back(callback: CallbackQuery, bot: Bot) -> None:
                 message_id=master.home_message_id,
                 reply_markup=bonus_message_kb(bonus_type)
             )
-        except:
+        except Exception:
             pass
 
     await callback.answer()
@@ -5320,7 +5320,7 @@ async def on_bonus_message_amount(message: Message, state: FSMContext, bot: Bot)
     import asyncio
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -5336,7 +5336,7 @@ async def on_bonus_message_amount(message: Message, state: FSMContext, bot: Bot)
         await asyncio.sleep(2)
         try:
             await error_msg.delete()
-        except:
+        except TelegramBadRequest:
             pass
         return
 
@@ -5389,7 +5389,7 @@ async def on_bonus_message_text(message: Message, state: FSMContext, bot: Bot) -
     """Save custom message text."""
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -5448,7 +5448,7 @@ async def on_bonus_message_photo(message: Message, state: FSMContext, bot: Bot) 
     """Save photo file_id."""
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -5506,7 +5506,7 @@ async def on_bonus_message_photo_text(message: Message, state: FSMContext, bot: 
     """Handle text in photo state (for 'удалить')."""
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -5615,7 +5615,7 @@ async def service_add_name(message: Message, state: FSMContext, bot: Bot) -> Non
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     text = (
@@ -5696,7 +5696,7 @@ async def service_add_price(message: Message, state: FSMContext, bot: Bot) -> No
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     await state.update_data(service_price=price)
@@ -5783,7 +5783,7 @@ async def service_add_description(message: Message, state: FSMContext, bot: Bot)
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -5886,7 +5886,7 @@ async def service_edit_name(message: Message, state: FSMContext, bot: Bot) -> No
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -6018,7 +6018,7 @@ async def service_edit_price(message: Message, state: FSMContext, bot: Bot) -> N
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -6140,7 +6140,7 @@ async def service_edit_description(message: Message, state: FSMContext, bot: Bot
 
     try:
         await message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     data = await state.get_data()
@@ -6337,7 +6337,7 @@ async def cb_settings_invite_qr_back(callback: CallbackQuery, bot: Bot) -> None:
     # Delete QR message
     try:
         await callback.message.delete()
-    except:
+    except TelegramBadRequest:
         pass
 
     # Show invite settings in home message
@@ -6362,7 +6362,7 @@ async def cb_settings_invite_qr_back(callback: CallbackQuery, bot: Bot) -> None:
                 message_id=master.home_message_id,
                 reply_markup=settings_invite_kb()
             )
-        except:
+        except Exception:
             pass
 
     await callback.answer()
