@@ -4,7 +4,7 @@ import logging
 from aiohttp import web
 
 from src.config import OAUTH_SERVER_PORT, MASTER_BOT_TOKEN
-from src.google_calendar import exchange_code
+from src.google_calendar import exchange_code, validate_oauth_state
 from src.database import get_master_by_id
 
 logger = logging.getLogger(__name__)
@@ -22,10 +22,10 @@ def set_master_bot(bot):
 async def handle_oauth_callback(request: web.Request) -> web.Response:
     """Handle OAuth callback from Google."""
     code = request.rel_url.query.get("code")
-    state = request.rel_url.query.get("state")  # contains master_id
+    state = request.rel_url.query.get("state")  # CSRF token
     error = request.rel_url.query.get("error")
 
-    logger.info(f"OAuth callback: state={state}, error={error}, has_code={bool(code)}")
+    logger.info(f"OAuth callback: has_state={bool(state)}, error={error}, has_code={bool(code)}")
 
     if not state:
         return web.Response(
@@ -33,11 +33,18 @@ async def handle_oauth_callback(request: web.Request) -> web.Response:
             content_type="text/html"
         )
 
-    try:
-        master_id = int(state)
-    except ValueError:
+    # Validate CSRF token and get master_id
+    master_id = validate_oauth_state(state)
+    if master_id is None:
+        logger.warning(f"Invalid or expired OAuth state token")
         return web.Response(
-            text="<h1>Ошибка</h1><p>Некорректный state параметр.</p>",
+            text=(
+                "<html><head><meta charset='utf-8'></head><body>"
+                "<h1>Ошибка</h1>"
+                "<p>Ссылка недействительна или истекла.</p>"
+                "<p>Попробуйте снова в боте.</p>"
+                "</body></html>"
+            ),
             content_type="text/html"
         )
 
@@ -140,9 +147,21 @@ async def health_check(request: web.Request) -> web.Response:
     return web.Response(text="OK")
 
 
+@web.middleware
+async def security_headers_middleware(request: web.Request, handler):
+    """Add security headers to all responses."""
+    response = await handler(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    return response
+
+
 def create_app() -> web.Application:
-    """Create aiohttp application."""
-    app = web.Application()
+    """Create aiohttp application with security middleware."""
+    app = web.Application(middlewares=[security_headers_middleware])
     app.router.add_get("/auth/google/callback", handle_oauth_callback)
     app.router.add_get("/health", health_check)
     return app

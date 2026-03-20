@@ -2,6 +2,8 @@
 
 import json
 import logging
+import secrets
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -13,6 +15,41 @@ from googleapiclient.discovery import build
 from src.config import GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# CSRF Token Storage (in-memory with TTL)
+# =============================================================================
+
+# Format: {token: (master_id, created_at)}
+_oauth_states: dict[str, tuple[int, float]] = {}
+_STATE_TTL_SECONDS = 600  # 10 minutes
+
+
+def _cleanup_expired_states() -> None:
+    """Remove expired OAuth states."""
+    now = time.time()
+    expired = [k for k, (_, created) in _oauth_states.items() if now - created > _STATE_TTL_SECONDS]
+    for k in expired:
+        del _oauth_states[k]
+
+
+def create_oauth_state(master_id: int) -> str:
+    """Create CSRF-protected OAuth state token."""
+    _cleanup_expired_states()
+    token = secrets.token_urlsafe(32)
+    _oauth_states[token] = (master_id, time.time())
+    return token
+
+
+def validate_oauth_state(token: str) -> Optional[int]:
+    """Validate OAuth state and return master_id if valid. Returns None if invalid/expired."""
+    _cleanup_expired_states()
+    if token not in _oauth_states:
+        return None
+    master_id, created = _oauth_states[token]
+    # Remove used token (one-time use)
+    del _oauth_states[token]
+    return master_id
 
 # OAuth scopes
 SCOPES = [
@@ -36,15 +73,18 @@ CLIENT_CONFIG = {
 async def get_oauth_url(master_id: int) -> str:
     """Generate OAuth URL for Google Calendar authorization.
 
-    state = str(master_id) for identifying master in callback.
+    Uses CSRF-protected state token instead of plain master_id.
     """
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=SCOPES)
     flow.redirect_uri = GOOGLE_REDIRECT_URI
 
+    # Create CSRF-protected state token
+    state_token = create_oauth_state(master_id)
+
     url, _ = flow.authorization_url(
         access_type="offline",
         prompt="consent",
-        state=str(master_id)
+        state=state_token
     )
 
     logger.info(f"Generated OAuth URL for master {master_id}")
