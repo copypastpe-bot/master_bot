@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TelegramBots — Privacy Policy & App Info</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #141720;
+      --border: #1e2330;
+      --accent: #4f8ef7;
+      --accent2: #7c5cfc;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --green: #34d399;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* NAV */
+    nav {
+      padding: 28px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.25rem;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-logo span {
+      color: var(--accent);
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 400;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--text); }
+
+    /* HERO */
+    .hero {
+      padding: 96px 0 80px;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(79,142,247,0.08);
+      border: 1px solid rgba(79,142,247,0.2);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-weight: 500;
+      margin-bottom: 32px;
+    }
+
+    .hero-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #e8eaf0 0%, #9ba3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto;
+      font-weight: 400;
+    }
+
+    /* BOTS SECTION */
+    .section {
+      padding: 64px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      font-weight: 500;
+      margin-bottom: 40px;
+    }
+
+    .bot-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.3s;
+    }
+
+    .bot-card:hover {
+      border-color: rgba(79,142,247,0.3);
+    }
+
+    .bot-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .bot-card:hover::before { opacity: 1; }
+
+    .bot-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .bot-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .bot-icon.blue { background: rgba(79,142,247,0.12); }
+    .bot-icon.purple { background: rgba(124,92,252,0.12); }
+
+    .bot-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .bot-tag {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .bot-description {
+      color: #9ba3b8;
+      font-size: 0.975rem;
+      margin-bottom: 28px;
+      line-height: 1.75;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .feature::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* GOOGLE OAUTH SECTION */
+    .oauth-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+    }
+
+    .oauth-box h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .oauth-box p {
+      color: #9ba3b8;
+      margin-bottom: 16px;
+      font-size: 0.975rem;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+      font-size: 0.9rem;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 10px 16px;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(30,35,48,0.6);
+      color: #9ba3b8;
+      vertical-align: top;
+    }
+
+    .data-table td:first-child {
+      color: var(--text);
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    /* PRIVACY POLICY */
+    .privacy-section h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .privacy-section .updated {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    .privacy-block {
+      margin-bottom: 36px;
+    }
+
+    .privacy-block h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      padding-left: 16px;
+      border-left: 2px solid var(--accent);
+    }
+
+    .privacy-block p, .privacy-block li {
+      color: #9ba3b8;
+      font-size: 0.95rem;
+      margin-bottom: 8px;
+    }
+
+    .privacy-block ul {
+      list-style: none;
+      padding-left: 16px;
+    }
+
+    .privacy-block li::before {
+      content: '— ';
+      color: var(--muted);
+    }
+
+    /* CONTACT */
+    .contact-section {
+      padding: 48px 0 80px;
+      border-top: 1px solid var(--border);
+    }
+
+    .contact-section h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .contact-section p {
+      color: #9ba3b8;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+    }
+
+    .contact-section a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .contact-section a:hover {
+      text-decoration: underline;
+    }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: gap;
+      gap: 12px;
+    }
+
+    footer p {
+      font-size: 0.825rem;
+      color: var(--muted);
+    }
+
+    footer a {
+      font-size: 0.825rem;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .bot-header { flex-direction: column; }
+      .features { grid-template-columns: 1fr; }
+      footer { flex-direction: column; text-align: center; }
+      .hero { padding: 64px 0 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- NAV -->
+  <nav>
+    <a href="#" class="nav-logo">Telegram<span>Bots</span></a>
+    <a href="https://crmfit.ru/privacy">Privacy Policy</a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">Production Bots</div>
+    <h1>Smart Telegram Bots<br/>for Service Professionals</h1>
+    <p>Automation tools that help independent masters and fitness trainers manage clients, bookings, and loyalty programs — directly in Telegram.</p>
+  </div>
+
+  <!-- BOTS -->
+  <div class="section">
+    <div class="section-label">Our Applications</div>
+
+    <div class="bot-card">
+      <div class="bot-header">
+        <div class="bot-icon blue">🔧</div>
+        <div>
+          <div class="bot-name">Master CRM Bot</div>
+          <div class="bot-tag">For independent service masters</div>
+        </div>
+      </div>
+      <p class="bot-description">
+        A Telegram-based CRM for private masters — cleaners, plumbers, hairdressers, and other service professionals. Helps manage client base, schedule orders, run loyalty programs, send automated reminders, and view business reports. Integrates with Google Calendar to keep all bookings in sync.
+      </p>
+      <div class="features">
+        <div class="feature">Client database management</div>
+        <div class="feature">Order scheduling & tracking</div>
+        <div class="feature">Bonus loyalty program</div>
+        <div class="feature">Automated reminders</div>
+        <div class="feature">Marketing broadcasts</div>
+        <div class="feature">Business analytics</div>
+        <div class="feature">Google Calendar sync</div>
+        <div class="feature">Client Telegram bot</div>
+      </div>
+    </div>
+
+    <div class="bot-card">
+      <div class="bot-header">
+        <div class="bot-icon purple">💪</div>
+        <div>
+          <div class="bot-name">Fitness CRM Bot</div>
+          <div class="bot-tag">For personal trainers</div>
+        </div>
+      </div>
+      <p class="bot-description">
+        A CRM solution for personal trainers built in Telegram. Enables trainers to manage their client roster, track training sessions, handle payments, and maintain ongoing communication with clients — all without leaving the messenger.
+      </p>
+      <div class="features">
+        <div class="feature">Client & session management</div>
+        <div class="feature">Training schedule tracking</div>
+        <div class="feature">Payment records</div>
+        <div class="feature">Progress monitoring</div>
+        <div class="feature">Automated notifications</div>
+        <div class="feature">Google Calendar sync</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOOGLE OAUTH -->
+  <div class="section">
+    <div class="section-label">Google Integration</div>
+    <div class="oauth-box">
+      <h2>Google Calendar Integration</h2>
+      <p>
+        Both bots offer optional Google Calendar integration. When a master or trainer connects their Google account, the bot can automatically create, update, and delete calendar events to reflect their booking schedule.
+      </p>
+      <p>
+        This integration uses OAuth 2.0 and requests only the minimum permissions required to manage calendar events on behalf of the user.
+      </p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Permission (Scope)</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>calendar.events</td>
+            <td>Create, update, and delete calendar events corresponding to booked client appointments</td>
+          </tr>
+          <tr>
+            <td>userinfo.email</td>
+            <td>Display the connected Google account email in bot settings so the user can verify which account is linked</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY -->
+  <div class="section privacy-section" id="privacy">
+    <div class="section-label">Legal</div>
+    <h2>Privacy Policy</h2>
+    <p class="updated">Last updated: March 2026</p>
+
+    <div class="privacy-block">
+      <h3>1. Overview</h3>
+      <p>This Privacy Policy describes how our Telegram bots (Master CRM Bot and Fitness CRM Bot) collect, use, and protect user data. By using these bots, you agree to the practices described in this policy.</p>
+    </div>
+
+    <div class="privacy-block">
+      <h3>2. Data We Collect</h3>
+      <p>We collect only the data necessary to provide the service:</p>
+      <ul>
+        <li>Telegram user ID, username, and first name (provided by Telegram upon bot interaction)</li>
+        <li>Contact information entered voluntarily: phone number, name, date of birth</li>
+        <li>Order and session data created by the master/trainer</li>
+        <li>Google account email address (only when Google Calendar integration is enabled)</li>
+        <li>Google OAuth tokens (stored securely to maintain Calendar access)</li>
+      </ul>
+    </div>
+
+    <div class="privacy-block">
+      <h3>3. How We Use Your Data</h3>
+      <ul>
+        <li>To operate the bot's core functionality (scheduling, reminders, client management)</li>
+        <li>To sync appointments with Google Calendar when the user has enabled this feature</li>
+        <li>To send automated notifications (appointment reminders, loyalty bonuses)</li>
+        <li>We do not sell, rent, or share personal data with third parties</li>
+      </ul>
+    </div>
+
+    <div class="privacy-block">
+      <h3>4. Google API Data Usage</h3>
+      <p>Our use of data obtained via Google APIs complies with the <a href="https://developers.google.com/terms/api-services-user-data-policy" style="color:var(--accent);text-decoration:none;">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+      <ul>
+        <li>Google OAuth tokens are used solely to create, update, and delete calendar events on behalf of the authenticated user</li>
+        <li>We do not use Google user data for advertising or to train machine learning models</li>
+        <li>Access tokens are stored encrypted and are never shared with third parties</li>
+        <li>Users can revoke Google Calendar access at any time via bot settings or through their Google Account security page</li>
+      </ul>
+    </div>
+
+    <div class="privacy-block">
+      <h3>5. Data Storage & Security</h3>
+      <ul>
+        <li>All data is stored on a private server with restricted access</li>
+        <li>OAuth tokens and credentials are stored in encrypted form</li>
+        <li>We do not store payment card data or sensitive financial information</li>
+        <li>Data is retained as long as the user's account is active</li>
+      </ul>
+    </div>
+
+    <div class="privacy-block">
+      <h3>6. User Rights</h3>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Request deletion of your personal data by contacting us via email</li>
+        <li>Disconnect Google Calendar integration at any time through bot settings</li>
+        <li>Request a copy of the data we hold about you</li>
+      </ul>
+    </div>
+
+    <div class="privacy-block">
+      <h3>7. Changes to This Policy</h3>
+      <p>We may update this Privacy Policy from time to time. The current version is always available on this page. Continued use of the bots after changes constitutes acceptance of the updated policy.</p>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="contact-section">
+    <h2>Contact</h2>
+    <p>For questions regarding this Privacy Policy, data deletion requests, or any other inquiries:</p>
+    <p>Email: <a href="/cdn-cgi/l/email-protection#fa99958a838a9b898ed48a9fba9d979b9396d4999597"><span class="__cf_email__" data-cfemail="9cfff3ece5ecfdefe8b2ecf9dcfbf1fdf5f0b2fff3f1">[email&#160;protected]</span></a></p>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>© 2026 TelegramBots. All rights reserved.</p>
+    <a href="https://crmfit.ru/privacy">Privacy Policy</a>
+  </footer>
+
+</div>
+</body>
+</html>
