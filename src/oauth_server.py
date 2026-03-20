@@ -1,6 +1,8 @@
 """OAuth callback server for Google Calendar integration."""
 
 import logging
+import time
+from collections import defaultdict
 from aiohttp import web
 
 from src.config import OAUTH_SERVER_PORT, MASTER_BOT_TOKEN
@@ -11,6 +13,68 @@ logger = logging.getLogger(__name__)
 
 # Master bot instance will be set from main.py
 master_bot = None
+
+# =============================================================================
+# Rate Limiting
+# =============================================================================
+
+# Store request timestamps per IP: {ip: [timestamp1, timestamp2, ...]}
+_rate_limit_storage: dict[str, list[float]] = defaultdict(list)
+_RATE_LIMIT_REQUESTS = 10  # Max requests
+_RATE_LIMIT_WINDOW = 60  # Per 60 seconds
+_RATE_LIMIT_CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
+_last_cleanup = time.time()
+
+
+def _get_client_ip(request: web.Request) -> str:
+    """Get client IP, considering proxy headers."""
+    # Check X-Forwarded-For (set by nginx)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # Take first IP (original client)
+        return forwarded.split(",")[0].strip()
+    # Check X-Real-IP
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    # Fallback to direct connection
+    peername = request.transport.get_extra_info("peername")
+    return peername[0] if peername else "unknown"
+
+
+def _cleanup_rate_limits() -> None:
+    """Remove expired entries from rate limit storage."""
+    global _last_cleanup
+    now = time.time()
+    if now - _last_cleanup < _RATE_LIMIT_CLEANUP_INTERVAL:
+        return
+    _last_cleanup = now
+    cutoff = now - _RATE_LIMIT_WINDOW
+    expired_ips = []
+    for ip, timestamps in _rate_limit_storage.items():
+        _rate_limit_storage[ip] = [t for t in timestamps if t > cutoff]
+        if not _rate_limit_storage[ip]:
+            expired_ips.append(ip)
+    for ip in expired_ips:
+        del _rate_limit_storage[ip]
+
+
+def _is_rate_limited(ip: str) -> bool:
+    """Check if IP is rate limited. Returns True if should be blocked."""
+    _cleanup_rate_limits()
+    now = time.time()
+    cutoff = now - _RATE_LIMIT_WINDOW
+
+    # Filter old timestamps
+    timestamps = [t for t in _rate_limit_storage[ip] if t > cutoff]
+    _rate_limit_storage[ip] = timestamps
+
+    if len(timestamps) >= _RATE_LIMIT_REQUESTS:
+        return True
+
+    # Record this request
+    _rate_limit_storage[ip].append(now)
+    return False
 
 
 def set_master_bot(bot):
@@ -148,6 +212,28 @@ async def health_check(request: web.Request) -> web.Response:
 
 
 @web.middleware
+async def rate_limit_middleware(request: web.Request, handler):
+    """Rate limit requests to OAuth endpoint."""
+    # Only rate limit OAuth callback, not health check
+    if request.path == "/auth/google/callback":
+        ip = _get_client_ip(request)
+        if _is_rate_limited(ip):
+            logger.warning(f"Rate limit exceeded for IP {ip}")
+            return web.Response(
+                status=429,
+                text=(
+                    "<html><head><meta charset='utf-8'></head><body>"
+                    "<h1>Слишком много запросов</h1>"
+                    "<p>Подождите минуту и попробуйте снова.</p>"
+                    "</body></html>"
+                ),
+                content_type="text/html",
+                headers={"Retry-After": "60"}
+            )
+    return await handler(request)
+
+
+@web.middleware
 async def security_headers_middleware(request: web.Request, handler):
     """Add security headers to all responses."""
     response = await handler(request)
@@ -161,7 +247,8 @@ async def security_headers_middleware(request: web.Request, handler):
 
 def create_app() -> web.Application:
     """Create aiohttp application with security middleware."""
-    app = web.Application(middlewares=[security_headers_middleware])
+    # Rate limiting runs first, then security headers
+    app = web.Application(middlewares=[rate_limit_middleware, security_headers_middleware])
     app.router.add_get("/auth/google/callback", handle_oauth_callback)
     app.router.add_get("/health", health_check)
     return app
