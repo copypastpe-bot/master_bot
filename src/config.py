@@ -21,3 +21,7 @@ GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI: str = os.getenv("GOOGLE_REDIRECT_URI", "")
 OAUTH_SERVER_PORT: int = int(os.getenv("OAUTH_SERVER_PORT", "8090"))
+
+# Mini App API
+API_PORT: int = int(os.getenv("API_PORT", "8081"))
+MINIAPP_URL: str = os.getenv("MINIAPP_URL", "https://app.crmfit.ru")
