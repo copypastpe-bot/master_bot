@@ -1,0 +1,36 @@
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #0f1923);
+  --tg-surface: var(--tg-theme-secondary-bg-color, #162030);
+  --tg-text: var(--tg-theme-text-color, #ffffff);
+  --tg-hint: var(--tg-theme-hint-color, #8b9bb4);
+  --tg-link: var(--tg-theme-link-color, #4f9cf9);
+  --tg-button: var(--tg-theme-button-color, #4f9cf9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-accent: var(--tg-theme-accent-text-color, #4f9cf9);
+
+  --radius-card: 16px;
+  --radius-btn: 12px;
+  --gap: 12px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  padding-bottom: 80px;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
