@@ -1,4 +1,4 @@
-export default function ErrorScreen({ message, onRetry }) {
+export default function ErrorScreen({ message, onRetry = () => {} }) {
   return (
     <div style={{ textAlign: 'center', padding: '48px 24px' }}>
       <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
