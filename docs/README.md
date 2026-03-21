@@ -61,12 +61,36 @@ python client_bot.py
 | `GOOGLE_CREDENTIALS_PATH` | Путь к JSON-ключу Google API |
 | `LOG_LEVEL` | DEBUG / INFO / WARNING (по умолчанию INFO) |
 
-## Деплой на VPS (prod)
+## Mini App
+
+Telegram Mini App для клиентов — React SPA, работает внутри Telegram.
+
+- **Фронт:** `https://app.crmfit.ru` (статика через nginx)
+- **API:** `https://api.crmfit.ru` (FastAPI, порт 8081 в Docker)
+- **Документация:** `miniapp/README.md`
 
 ```bash
-# Установить PostgreSQL, создать БД
-# Настроить .env с PostgreSQL URL
-# Создать два systemd-сервиса: master-bot.service и client-bot.service
+# Локальная разработка фронта (требует запущенного API на :8081)
+cd miniapp && npm install && npm run dev
+
+# Деплой на сервер
+./deploy_miniapp.sh
 ```
 
-Подробнее см. SPEC.md
+## Деплой на VPS (prod)
+
+Боты запускаются в Docker:
+
+```bash
+# На сервере (75.119.153.118)
+cd /opt/master_bot
+git pull origin main
+docker compose down && docker compose up -d --build
+```
+
+Nginx обслуживает:
+- `https://masterbot.crmfit.ru` → master_bot OAuth callback (порт 8090)
+- `https://app.crmfit.ru` → Mini App статика
+- `https://api.crmfit.ru` → FastAPI (порт 8081)
+
+Подробнее см. `nginx/miniapp.conf`
