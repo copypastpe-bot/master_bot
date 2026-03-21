@@ -18,14 +18,11 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
     masters = await get_masters()
     if not masters:
         raise HTTPException(status_code=404, detail="No masters in DB for dev mode")
-    m = masters[0]
-    # Build Master dataclass from dict — only include fields that exist in both
-    master_fields = Master.__dataclass_fields__.keys()
-    master = Master(**{k: m[k] for k in master_fields if k in m})
+    master = masters[0]
     fake_client = Client(
         id=0,
+        tg_id=999999999,  # fake tg_id — does not collide with real users
         name="Dev User",
-        tg_id=master.tg_id,
         phone="+79991234567",
         birthday=None,
     )
@@ -33,7 +30,7 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
         id=0,
         master_id=master.id,
         client_id=0,
-        bonus_balance=450,
+        bonus_balance=450,  # arbitrary test value
         note=None,
     )
     return fake_client, master, fake_master_client
