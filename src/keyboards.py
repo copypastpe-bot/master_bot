@@ -3,9 +3,10 @@
 import calendar
 from datetime import date
 from typing import Optional
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 
 from src.utils import TIMEZONES, CURRENCIES
+from src.config import MINIAPP_URL
 
 MONTHS_RU = [
     "", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -663,6 +664,12 @@ def home_client_kb() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="👨‍🔧 Мой мастер", callback_data="master_info"),
             InlineKeyboardButton(text="🔔 Уведомления", callback_data="notifications"),
+        ],
+        [
+            InlineKeyboardButton(
+                text="📱 Открыть приложение",
+                web_app=WebAppInfo(url=MINIAPP_URL)
+            )
         ],
     ])
 
