@@ -19,9 +19,9 @@
 | БД | SQLite (aiosqlite), PostgreSQL планируется |
 | Планировщик | APScheduler |
 | OAuth сервер | aiohttp (порт 8090) |
-| API для Mini App | FastAPI + uvicorn (порт 8081, в разработке) |
-| Фронт Mini App | React + Vite (в разработке) |
-| Деплой | VPS, nginx, Docker |
+| API для Mini App | FastAPI + uvicorn (порт 8081) |
+| Фронт Mini App | React 19 + Vite 8, @twa-dev/sdk, React Query, axios |
+| Деплой | VPS `75.119.153.118`, nginx, Docker Compose |
 
 ---
 
@@ -30,14 +30,37 @@
 ```
 master-bot/
 ├── main.py                        — точка входа, asyncio.gather() всех компонентов
-├── run_master.py                  — запуск только master_bot
+├── run_master.py                  — master_bot + API сервер (порт 8081) + oauth (порт 8090)
 ├── run_client.py                  — запуск только client_bot
 ├── requirements.txt
 ├── .env                           — секреты (не коммитить)
 ├── .env.example                   — шаблон переменных
+├── docker-compose.yml             — два контейнера: master_bot, client_bot
+│
+├── miniapp/                       — Telegram Mini App (React + Vite)
+│   ├── index.html
+│   ├── vite.config.js             — proxy /api → localhost:8081, port 5173
+│   ├── package.json
+│   ├── .env.development           — VITE_API_URL=http://localhost:8081
+│   ├── .env.production            — VITE_API_URL=https://api.crmfit.ru
+│   └── src/
+│       ├── main.jsx               — QueryClient + WebApp.ready() + WebApp.expand()
+│       ├── App.jsx                — useState роутинг + Telegram BackButton
+│       ├── theme.css              — CSS переменные из Telegram темы
+│       ├── api/
+│       │   └── client.js          — axios instance, dev bypass, все запросы
+│       ├── pages/
+│       │   ├── Home.jsx           — баланс, ближайшая запись, лог бонусов
+│       │   ├── Booking.jsx        — выбор услуги, MainButton, экран успеха
+│       │   ├── Bonuses.jsx        — 2 вкладки: лог бонусов / история заказов
+│       │   └── Promos.jsx         — карточки акций, empty state
+│       └── components/
+│           ├── BottomNav.jsx      — 4 вкладки с inline SVG иконками + haptic
+│           ├── Skeleton.jsx       — пульсирующий placeholder (skeleton-pulse)
+│           └── ErrorScreen.jsx    — экран ошибки + кнопка retry
 │
 └── src/
-    ├── config.py                  — загрузка .env (токены, DATABASE_URL, порты)
+    ├── config.py                  — загрузка .env (токены, DATABASE_URL, порты, APP_ENV)
     ├── database.py                — все функции БД (aiosqlite)
     ├── models.py                  — dataclasses: Master, Client, MasterClient, Service, Order, BonusLog, Campaign
     ├── states.py                  — FSM стейты (aiogram)
@@ -51,6 +74,17 @@ master-bot/
     │
     ├── master_bot.py              — точка входа master_bot, регистрация роутеров
     ├── client_bot.py              — клиентский бот (полностью)
+    │
+    ├── api/                       — FastAPI бэкенд для Mini App
+    │   ├── app.py                 — FastAPI app, CORS (app.crmfit.ru, localhost:5173)
+    │   ├── auth.py                — валидация Telegram initData (HMAC-SHA256)
+    │   ├── dependencies.py        — get_current_client + dev bypass (APP_ENV=development)
+    │   └── routers/
+    │       ├── client.py          — GET /api/me
+    │       ├── orders.py          — GET /api/orders, POST /api/orders/request
+    │       ├── bonuses.py         — GET /api/bonuses
+    │       ├── promos.py          — GET /api/promos
+    │       └── services.py        — GET /api/services
     │
     └── handlers/                  — обработчики master_bot по разделам
         ├── __init__.py
@@ -82,7 +116,29 @@ python run_master.py
 python run_client.py
 ```
 
-`main.py` запускает параллельно: master_bot + client_bot + oauth_server (8080).
+`run_master.py` запускает параллельно: master_bot + API сервер (8081) + oauth_server (8090).
+
+### Mini App (фронтенд)
+
+```bash
+cd miniapp
+npm install
+npm run dev      # http://localhost:5173 (proxy /api → :8081)
+npm run build    # сборка в miniapp/dist/
+```
+
+**Dev bypass:** без реального Telegram запускать с `APP_ENV=development` на бэкенде — тогда `X-Init-Data: "dev"` принимается без HMAC. В браузере автоматически подставляется dev-режим.
+
+### Деплой на сервер
+
+```bash
+ssh deploy@75.119.153.118
+cd /opt/master_bot
+git pull
+docker compose down && docker compose up -d --build
+```
+
+Контейнеры: `master_bot` (порты 8081, 8090), `client_bot`.
 
 ---
 
@@ -100,6 +156,7 @@ OAUTH_SERVER_PORT=8090
 API_PORT=8081
 MINIAPP_URL=https://app.crmfit.ru
 LOG_LEVEL=INFO
+APP_ENV=production           — development включает dev bypass в API (X-Init-Data: "dev")
 ```
 
 ---
@@ -139,6 +196,8 @@ LOG_LEVEL=INFO
 ## Текущее состояние разработки
 
 ### Реализовано ✅
+- **Mini App бэкенд** — FastAPI (`src/api/`), эндпоинты `/api/me`, `/api/orders`, `/api/bonuses`, `/api/promos`, `/api/services`, `/api/orders/request`. Авторизация через Telegram initData (HMAC-SHA256). Dev bypass через `APP_ENV=development`.
+- **Mini App фронтенд** — React 19 + Vite (`miniapp/`), 4 экрана, Telegram WebApp API, адаптивная тема.
 - Регистрация мастера и клиента (по инвайт-ссылке)
 - Полный цикл заказов: создание, проведение, перенос, отмена
 - Клиентская база: карточка, история, бонусы, заметки, редактирование
@@ -153,7 +212,8 @@ LOG_LEVEL=INFO
 - Рефакторинг: master_bot разбит на handlers/
 
 ### В разработке 🔄
-- **Mini App** — FastAPI бэкенд (`src/api/`) + React фронт (`miniapp/`)
+- **Mini App деплой** — сборка `miniapp/dist/` и раздача через nginx на `app.crmfit.ru`
+- **Mini App** — бэкенд и фронт реализованы, нужно настроить nginx для фронта
 
 ### Запланировано 📋
 - UI заказов с листанием по неделям и инлайн-календарём везде
@@ -165,6 +225,7 @@ LOG_LEVEL=INFO
 
 ## Правила кода
 
+### Backend (Python)
 - Весь код — async/await
 - Импорты из `src.*` (не относительные)
 - Новые обработчики master_bot — только в `src/handlers/` в соответствующий файл
@@ -175,6 +236,15 @@ LOG_LEVEL=INFO
 - Не дублировать логику между master_bot и client_bot — выносить в общие модули
 - При изменении схемы БД — добавлять новый файл миграции в `migrations/`
 - Не трогать `.env` — только `.env.example`
+
+### Frontend (Mini App)
+- Новые страницы — в `miniapp/src/pages/`
+- Новые компоненты — в `miniapp/src/components/`
+- Все запросы к API — только через `miniapp/src/api/client.js`
+- Стили — только через CSS переменные `var(--tg-*)`, не хардкодить цвета
+- Haptic feedback при любом нажатии: `WebApp.HapticFeedback.impactOccurred('light')`
+- Всегда проверять наличие WebApp API: `typeof WebApp?.SomeApi?.method === 'function'`
+- После изменений: `npm run build` в `miniapp/` должен проходить без ошибок
 
 ---
 
