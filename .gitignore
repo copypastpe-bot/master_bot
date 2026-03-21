@@ -33,3 +33,7 @@ logs/
 # Google credentials
 credentials.json
 token.json
+
+# Mini App
+miniapp/node_modules/
+miniapp/dist/
