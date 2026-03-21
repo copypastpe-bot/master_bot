@@ -5,13 +5,13 @@ from datetime import date, datetime
 
 from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject, MenuButtonWebApp, WebAppInfo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
 from typing import Callable, Dict, Any, Awaitable
 
-from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL
+from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL, MINIAPP_URL
 from src.states import (
     ClientRegistration, ClientDeletion, OrderRequestFSM, QuestionFSM, MediaFSM,
     ClientRescheduleOrder, ClientCancelOrder,
@@ -1969,6 +1969,12 @@ async def main() -> None:
         BotCommand(command="support", description="Поддержка"),
         BotCommand(command="delete_me", description="Удалить мои данные"),
     ])
+    await bot.set_chat_menu_button(
+        menu_button=MenuButtonWebApp(
+            text="📱 Открыть приложение",
+            web_app=WebAppInfo(url=MINIAPP_URL)
+        )
+    )
 
     # Setup scheduler
     from src.scheduler import setup_scheduler, start_scheduler
