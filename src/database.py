@@ -184,6 +184,20 @@ async def get_master_by_invite_token(invite_token: str) -> Optional[Master]:
         await conn.close()
 
 
+async def get_masters() -> list[dict]:
+    """Get all masters (used for dev bypass)."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute("SELECT * FROM masters LIMIT 10")
+        rows = await cursor.fetchall()
+        if not rows:
+            return []
+        columns = [d[0] for d in cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
+    finally:
+        await conn.close()
+
+
 async def create_master(
     tg_id: int,
     name: str,

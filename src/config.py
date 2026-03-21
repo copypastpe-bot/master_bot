@@ -25,3 +25,6 @@ OAUTH_SERVER_PORT: int = int(os.getenv("OAUTH_SERVER_PORT", "8090"))
 # Mini App API
 API_PORT: int = int(os.getenv("API_PORT", "8081"))
 MINIAPP_URL: str = os.getenv("MINIAPP_URL", "https://app.crmfit.ru")
+
+# Environment (development / production)
+APP_ENV: str = os.getenv("APP_ENV", "production")
