@@ -1,13 +1,14 @@
 import axios from 'axios';
-import WebApp from '@twa-dev/sdk';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 
 const api = axios.create({ baseURL: API_URL });
 
 api.interceptors.request.use((config) => {
-  // In dev mode send "dev" — backend accepts this when APP_ENV=development
-  config.headers['X-Init-Data'] = import.meta.env.DEV ? 'dev' : WebApp.initData;
+  // Read initData fresh each request from Telegram's injected script
+  config.headers['X-Init-Data'] = import.meta.env.DEV
+    ? 'dev'
+    : (window.Telegram?.WebApp?.initData || '');
   return config;
 });
 

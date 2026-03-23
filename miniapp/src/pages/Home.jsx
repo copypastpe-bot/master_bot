@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, getOrders, getBonuses } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
-import WebApp from '@twa-dev/sdk';
+const WebApp = window.Telegram?.WebApp;
 
 function relativeDate(dateStr) {
   if (!dateStr) return '';

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import WebApp from '@twa-dev/sdk';
+const WebApp = window.Telegram?.WebApp;
 import { getServices, createOrderRequest } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';

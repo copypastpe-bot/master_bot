@@ -1,4 +1,4 @@
-import WebApp from '@twa-dev/sdk';
+const WebApp = window.Telegram?.WebApp;
 
 const HomeIcon = () => (
   <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

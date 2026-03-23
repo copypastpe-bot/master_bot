@@ -5,9 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>miniapp</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="debug-bar" style="background:#ff0;color:#000;padding:10px;font:bold 14px monospace;position:fixed;top:0;left:0;right:0;z-index:99999"></div>
+    <div id="root" style="margin-top:40px"></div>
+    <script>
+      var tg = window.Telegram && window.Telegram.WebApp;
+      document.getElementById('debug-bar').textContent =
+        'initData=' + (tg ? tg.initData.length : 'NO_TG') +
+        ' | hash=' + location.hash.length +
+        ' | platform=' + (tg ? tg.platform : '?');
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

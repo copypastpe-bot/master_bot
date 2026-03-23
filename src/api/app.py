@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routers import client, orders, bonuses, promos, services
 from src.config import MINIAPP_URL
+from urllib.parse import urlparse
 
 app = FastAPI(
     title="Master Bot API",
@@ -12,10 +13,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# CORS origin = scheme + host (strip path/query from MINIAPP_URL)
+_parsed = urlparse(MINIAPP_URL)
+_miniapp_origin = f"{_parsed.scheme}://{_parsed.netloc}"
+
 # CORS for Mini App
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[MINIAPP_URL, "http://localhost:5173"],  # Mini App + local dev
+    allow_origins=[_miniapp_origin, "http://localhost:5173"],  # Mini App + local dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import WebApp from '@twa-dev/sdk';
+const WebApp = window.Telegram?.WebApp;
 import Home from './pages/Home';
 import Booking from './pages/Booking';
 import Bonuses from './pages/Bonuses';
