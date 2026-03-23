@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, getOrders, getBonuses } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
+import WebApp from '@twa-dev/sdk';
 
 function relativeDate(dateStr) {
   if (!dateStr) return '';
@@ -35,7 +36,17 @@ export default function Home({ onNavigate }) {
   const { data: orders = [], isLoading: ordersLoading } = useQuery({ queryKey: ['orders'], queryFn: getOrders });
   const { data: bonuses, isLoading: bonusesLoading } = useQuery({ queryKey: ['bonuses'], queryFn: getBonuses });
 
-  if (meError) return <ErrorScreen message={meError.message} onRetry={refetchMe} />;
+  // DEBUG: show initData status (remove after debugging)
+  const initDataLen = WebApp?.initData?.length ?? 0;
+
+  if (meError) return (
+    <>
+      <div style={{ background: '#222', color: '#fff', padding: '8px 16px', fontSize: 12, fontFamily: 'monospace' }}>
+        DEBUG: initData.length={initDataLen} | error={meError.message}
+      </div>
+      <ErrorScreen message={meError.message} onRetry={refetchMe} />
+    </>
+  );
 
   // Nearest upcoming order
   const now = new Date();

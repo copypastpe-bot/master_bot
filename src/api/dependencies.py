@@ -37,13 +37,16 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
 
 
 async def get_current_client(
-    x_init_data: str = Header(..., alias="X-Init-Data")
+    x_init_data: str | None = Header(None, alias="X-Init-Data")
 ) -> tuple[Client, Master, MasterClient]:
     """
     Dependency - validate initData and return (client, master, master_client).
     In development mode with X-Init-Data: "dev" — returns first DB client without HMAC check.
     Raises 401 if invalid, 404 if client not found in DB.
     """
+    if not x_init_data:
+        raise HTTPException(status_code=401, detail="Missing X-Init-Data header")
+
     # Dev bypass
     if APP_ENV == "development" and x_init_data == "dev":
         return await _get_dev_client()
