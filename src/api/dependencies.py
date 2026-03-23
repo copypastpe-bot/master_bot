@@ -1,5 +1,6 @@
 """FastAPI dependencies for Mini App API."""
 
+import logging
 from fastapi import Header, HTTPException
 
 from src.database import (
@@ -11,6 +12,8 @@ from src.database import (
 from src.api.auth import validate_init_data, extract_tg_id
 from src.config import CLIENT_BOT_TOKEN, APP_ENV
 from src.models import Client, Master, MasterClient
+
+log = logging.getLogger(__name__)
 
 
 async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
@@ -45,7 +48,10 @@ async def get_current_client(
     Raises 401 if invalid, 404 if client not found in DB.
     """
     if not x_init_data:
+        log.warning("AUTH: missing X-Init-Data header")
         raise HTTPException(status_code=401, detail="Missing X-Init-Data header")
+
+    log.info("AUTH: initData length=%d preview=%s", len(x_init_data), x_init_data[:40])
 
     # Dev bypass
     if APP_ENV == "development" and x_init_data == "dev":
@@ -53,6 +59,7 @@ async def get_current_client(
 
     validated = validate_init_data(x_init_data, CLIENT_BOT_TOKEN)
     if not validated:
+        log.warning("AUTH: HMAC validation failed")
         raise HTTPException(status_code=401, detail="Invalid initData")
 
     tg_id = extract_tg_id(validated)
