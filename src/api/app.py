@@ -1,6 +1,6 @@
 """FastAPI application for Mini App backend."""
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routers import client, orders, bonuses, promos, services
@@ -40,13 +40,3 @@ async def health_check():
     return {"status": "ok"}
 
 
-@app.get("/api/debug/headers")
-async def debug_headers(request: Request):
-    """Debug endpoint — returns received headers (remove after debugging)."""
-    init_data = request.headers.get("x-init-data", "")
-    return {
-        "x_init_data_present": bool(init_data),
-        "x_init_data_length": len(init_data),
-        "x_init_data_preview": init_data[:80] + "..." if len(init_data) > 80 else init_data,
-        "all_headers": dict(request.headers),
-    }

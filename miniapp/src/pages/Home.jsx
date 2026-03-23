@@ -36,17 +36,7 @@ export default function Home({ onNavigate }) {
   const { data: orders = [], isLoading: ordersLoading } = useQuery({ queryKey: ['orders'], queryFn: getOrders });
   const { data: bonuses, isLoading: bonusesLoading } = useQuery({ queryKey: ['bonuses'], queryFn: getBonuses });
 
-  // DEBUG: show initData status (remove after debugging)
-  const initDataLen = WebApp?.initData?.length ?? 0;
-
-  if (meError) return (
-    <>
-      <div style={{ background: '#222', color: '#fff', padding: '8px 16px', fontSize: 12, fontFamily: 'monospace' }}>
-        DEBUG: initData.length={initDataLen} | error={meError.message}
-      </div>
-      <ErrorScreen message={meError.message} onRetry={refetchMe} />
-    </>
-  );
+  if (meError) return <ErrorScreen message={meError.message} onRetry={refetchMe} />;
 
   // Nearest upcoming order
   const now = new Date();
