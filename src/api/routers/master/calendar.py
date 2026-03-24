@@ -1,7 +1,7 @@
 """Master calendar endpoints — orders by date and active dates for month."""
 
 from datetime import date
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.dependencies import get_current_master
 from src.database import get_orders_by_date, get_active_dates
@@ -54,7 +54,6 @@ async def get_orders_for_date(
     try:
         target_date = date.fromisoformat(date_str)
     except ValueError:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
     orders_raw = await get_orders_by_date(master.id, target_date, all_statuses=True)

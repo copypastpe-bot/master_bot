@@ -154,6 +154,11 @@ export default function WeekStrip({ selectedDate, onSelectDate, activeDates = []
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => {
+          touchStartX.current = null;
+          touchCurrentX.current = null;
+          setSwipeOffset(0);
+        }}
         style={{ overflow: 'hidden', touchAction: 'pan-y' }}
       >
         <div
