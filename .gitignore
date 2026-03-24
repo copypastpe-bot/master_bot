@@ -40,3 +40,4 @@ miniapp/dist/
 
 # Working prompts (not for VCS)
 prompts/
+.worktrees/
