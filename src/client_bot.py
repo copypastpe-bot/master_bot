@@ -19,13 +19,14 @@ from src.states import (
 from src.keyboards import (
     home_client_kb, client_bonuses_kb, client_bot_history_kb,
     client_promos_kb, client_master_info_kb, client_notifications_kb,
+    client_settings_kb, client_notifications_back_kb,
     skip_kb, share_contact_kb, stub_kb, home_reply_kb,
     order_request_services_kb, order_request_comment_kb, order_request_confirm_kb,
     question_cancel_kb, media_cancel_kb, media_comment_kb, client_home_kb,
     client_reschedule_calendar_kb, client_reschedule_hour_kb,
     client_reschedule_minutes_kb, client_reschedule_confirm_kb,
     client_cancel_reason_kb, client_cancel_confirm_kb,
-    consent_kb, delete_confirm_kb,
+    consent_kb, delete_confirm_kb, back_kb,
 )
 from src.database import (
     init_db,
@@ -776,7 +777,7 @@ async def cb_notifications(callback: CallbackQuery) -> None:
         "━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, client_notifications_kb(
+    await edit_home_message(callback, text, client_notifications_back_kb(
         master_client.notify_24h,
         master_client.notify_1h,
         master_client.notify_marketing,
@@ -812,13 +813,65 @@ async def cb_notifications_toggle(callback: CallbackQuery) -> None:
         "━━━━━━━━━━━━━━━"
     )
 
-    await edit_home_message(callback, text, client_notifications_kb(
+    await edit_home_message(callback, text, client_notifications_back_kb(
         master_client.notify_24h,
         master_client.notify_1h,
         master_client.notify_marketing,
         master_client.notify_promos,
     ))
     await callback.answer("Сохранено")
+
+
+@router.callback_query(F.data == "client_settings")
+async def cb_client_settings(callback: CallbackQuery) -> None:
+    """Show client settings menu."""
+    text = (
+        "⚙️ Настройки\n"
+        "━━━━━━━━━━━━━━━"
+    )
+    await edit_home_message(callback, text, client_settings_kb())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "client_support")
+async def cb_client_support(callback: CallbackQuery) -> None:
+    """Show support info."""
+    text = (
+        "💬 Поддержка\n"
+        "━━━━━━━━━━━━━━━\n"
+        "По вопросам работы бота:\n\n"
+        "Telegram: @pastushenko12\n"
+        "E-mail: copypast.pe@gmail.com"
+    )
+    await edit_home_message(callback, text, back_kb("client_settings"))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "client_delete_profile")
+async def cb_client_delete_profile(callback: CallbackQuery, state: FSMContext) -> None:
+    """Start profile deletion flow from settings."""
+    tg_id = callback.from_user.id
+    client, master, master_client = await get_client_context(tg_id)
+    if not client or not master_client:
+        await callback.answer("Ошибка")
+        return
+
+    await state.set_state(ClientDeletion.confirm)
+    await state.update_data(client_id=client.id)
+
+    text = (
+        "⚠️ Удаление данных\n"
+        "━━━━━━━━━━━━━━━\n"
+        "Будут удалены:\n"
+        "• Имя\n"
+        "• Телефон\n"
+        "• Дата рождения\n"
+        "• Привязка к Telegram\n\n"
+        "История заказов сохранится анонимно.\n\n"
+        "Это действие необратимо!"
+    )
+    await edit_home_message(callback, text, delete_confirm_kb())
+    await callback.answer()
 
 
 # =============================================================================
@@ -1966,8 +2019,6 @@ async def main() -> None:
     # Set bot commands for menu
     await bot.set_my_commands([
         BotCommand(command="start", description="Начать"),
-        BotCommand(command="support", description="Поддержка"),
-        BotCommand(command="delete_me", description="Удалить мои данные"),
     ])
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(

@@ -663,13 +663,57 @@ def home_client_kb() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="👨‍🔧 Мой мастер", callback_data="master_info"),
-            InlineKeyboardButton(text="🔔 Уведомления", callback_data="notifications"),
+            InlineKeyboardButton(text="⚙️ Настройки", callback_data="client_settings"),
         ],
         [
             InlineKeyboardButton(
                 text="📱 Открыть приложение",
                 web_app=WebAppInfo(url=MINIAPP_URL)
             )
+        ],
+    ])
+
+
+def client_settings_kb() -> InlineKeyboardMarkup:
+    """Client settings menu."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔔 Уведомления", callback_data="notifications")],
+        [InlineKeyboardButton(text="💬 Связаться с поддержкой", callback_data="client_support")],
+        [InlineKeyboardButton(text="🗑 Удалить мой профиль", callback_data="client_delete_profile")],
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_notifications_back_kb(
+    notify_24h: bool,
+    notify_1h: bool,
+    notify_marketing: bool,
+    notify_promos: bool
+) -> InlineKeyboardMarkup:
+    """Notifications keyboard with back button to settings."""
+    def status(enabled: bool) -> str:
+        return "✅" if enabled else "❌"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=f"Напоминание за 24ч: {status(notify_24h)}",
+            callback_data="notifications:toggle:notify_24h"
+        )],
+        [InlineKeyboardButton(
+            text=f"Напоминание за 1ч: {status(notify_1h)}",
+            callback_data="notifications:toggle:notify_1h"
+        )],
+        [InlineKeyboardButton(
+            text=f"Рассылки мастера: {status(notify_marketing)}",
+            callback_data="notifications:toggle:notify_marketing"
+        )],
+        [InlineKeyboardButton(
+            text=f"Акции: {status(notify_promos)}",
+            callback_data="notifications:toggle:notify_promos"
+        )],
+        [
+            InlineKeyboardButton(text="◀️ Назад", callback_data="client_settings"),
+            InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
         ],
     ])
 
