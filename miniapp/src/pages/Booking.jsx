@@ -73,7 +73,7 @@ export default function Booking({ onNavigate }) {
   }
 
   return (
-    <div style={{ padding: '16px 16px 0', paddingBottom: 100 }}>
+    <div style={{ padding: '16px 16px 0', paddingBottom: 120 }}>
       <h2 style={{ marginBottom: 20 }}>Запись к мастеру</h2>
 
       {/* Services grid */}
@@ -141,7 +141,7 @@ export default function Booking({ onNavigate }) {
         disabled={isSubmitting}
         style={{
           position: 'fixed',
-          bottom: 'calc(60px + env(safe-area-inset-bottom))',
+          bottom: 'calc(80px + env(safe-area-inset-bottom))',
           left: 16, right: 16,
           background: 'var(--tg-button)', color: 'var(--tg-button-text)',
           border: 'none', borderRadius: 'var(--radius-btn)',
