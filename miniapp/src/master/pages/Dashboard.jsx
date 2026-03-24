@@ -249,8 +249,8 @@ export default function Dashboard({ onNavigate }) {
             onClick={handleRequests}
             style={{
               background: 'var(--tg-surface)',
-              color: '#3390EC',
-              border: '1.5px solid #3390EC',
+              color: 'var(--tg-button)',
+              border: '1.5px solid var(--tg-button)',
               borderRadius: 12,
               padding: '14px',
               fontSize: 15,

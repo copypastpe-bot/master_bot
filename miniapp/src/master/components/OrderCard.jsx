@@ -1,5 +1,6 @@
 const WebApp = window.Telegram?.WebApp;
 
+// Status colors follow Telegram's semantic palette; these are Telegram's own accent values
 const STATUS_COLORS = {
   new: '#3390EC',
   confirmed: '#31B545',
@@ -7,7 +8,7 @@ const STATUS_COLORS = {
   cancelled: '#E53935',
 };
 
-export default function OrderCard({ order, onClick }) {
+export default function OrderCard({ order, onClick, style }) {
   const statusColor = STATUS_COLORS[order.status] || '#999999';
 
   const handleClick = () => {
@@ -28,6 +29,7 @@ export default function OrderCard({ order, onClick }) {
         borderBottom: '1px solid rgba(128,128,128,0.1)',
         cursor: 'pointer',
         userSelect: 'none',
+        ...style,
       }}
     >
       {/* Time */}
