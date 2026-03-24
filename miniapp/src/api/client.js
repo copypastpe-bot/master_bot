@@ -19,3 +19,9 @@ export const getPromos = () => api.get('/api/promos').then(r => r.data);
 export const getServices = () => api.get('/api/services').then(r => r.data);
 export const createOrderRequest = (data) =>
   api.post('/api/orders/request', data).then(r => r.data);
+
+// Auth
+export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
+
+// Master
+export const getMasterMe = () => api.get('/api/master/me').then(r => r.data);

@@ -6,10 +6,11 @@ from src.database import (
     get_client_by_tg_id,
     get_master_client_by_client_tg_id,
     get_master_by_id,
+    get_master_by_tg_id,
     get_masters,
 )
 from src.api.auth import validate_init_data, extract_tg_id
-from src.config import CLIENT_BOT_TOKEN, APP_ENV
+from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, APP_ENV
 from src.models import Client, Master, MasterClient
 
 
@@ -72,3 +73,36 @@ async def get_current_client(
         raise HTTPException(status_code=404, detail="Master not found")
 
     return client, master, master_client
+
+
+async def get_current_master(
+    x_init_data: str | None = Header(None, alias="X-Init-Data")
+) -> Master:
+    """
+    Dependency - validate initData and return Master.
+    In development mode with X-Init-Data: "dev" — returns first DB master without HMAC check.
+    Raises 401 if invalid, 403 if not a master.
+    """
+    if not x_init_data:
+        raise HTTPException(status_code=401, detail="Missing X-Init-Data header")
+
+    # Dev bypass
+    if APP_ENV == "development" and x_init_data == "dev":
+        masters = await get_masters()
+        if not masters:
+            raise HTTPException(status_code=404, detail="No masters in DB for dev mode")
+        return masters[0]
+
+    validated = validate_init_data(x_init_data, MASTER_BOT_TOKEN)
+    if not validated:
+        raise HTTPException(status_code=401, detail="Invalid initData")
+
+    tg_id = extract_tg_id(validated)
+    if not tg_id:
+        raise HTTPException(status_code=401, detail="No user data")
+
+    master = await get_master_by_tg_id(tg_id)
+    if not master:
+        raise HTTPException(status_code=403, detail="Not a master")
+
+    return master
