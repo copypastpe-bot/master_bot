@@ -1971,7 +1971,7 @@ async def main() -> None:
     ])
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
-            text="📱 Открыть приложение",
+            text="📱 Открыть",
             web_app=WebAppInfo(url=MINIAPP_URL)
         )
     )

@@ -667,7 +667,7 @@ def home_client_kb() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(
-                text="📱 Открыть приложение",
+                text="📱 Открыть",
                 web_app=WebAppInfo(url=MINIAPP_URL)
             )
         ],
