@@ -346,14 +346,14 @@ async def cmd_delete_me(message: Message, state: FSMContext, bot: Bot) -> None:
         await save_client_home_message_id(master.id, client.id, msg.message_id)
 
 
-@router.callback_query(ClientDeletion.confirm, F.data == "delete:confirm")
+@router.callback_query(F.data == "delete:confirm")
 async def delete_confirm(callback: CallbackQuery, state: FSMContext) -> None:
-    """Confirm data deletion."""
-    data = await state.get_data()
-    client_id = data.get("client_id")
+    """Confirm data deletion — stateless lookup by tg_id."""
+    tg_id = callback.from_user.id
+    client, _, _ = await get_client_context(tg_id)
 
-    if client_id:
-        await anonymize_client(client_id)
+    if client:
+        await anonymize_client(client.id)
 
     await state.clear()
     await callback.message.edit_text(
@@ -363,8 +363,8 @@ async def delete_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
 
-@router.callback_query(ClientDeletion.confirm, F.data == "delete:cancel")
-async def delete_cancel(callback: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+@router.callback_query(F.data == "delete:cancel")
+async def delete_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     """Cancel data deletion."""
     await state.clear()
 
