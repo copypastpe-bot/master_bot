@@ -1938,6 +1938,20 @@ async def save_inbound_request(
         await conn.close()
 
 
+async def count_pending_requests(master_id: int) -> int:
+    """Count pending (new) inbound requests for a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT COUNT(*) as cnt FROM inbound_requests WHERE master_id = ? AND status = 'new'",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        await conn.close()
+
+
 async def get_master_services_for_client(master_id: int) -> list[dict]:
     """Get active services for a master (for client order request)."""
     conn = await get_connection()

@@ -25,3 +25,4 @@ export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
 
 // Master
 export const getMasterMe = () => api.get('/api/master/me').then(r => r.data);
+export const getMasterDashboard = () => api.get('/api/master/dashboard').then(r => r.data);
