@@ -244,7 +244,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     # Show consent screen
     await bot.send_message(
         message.chat.id,
-        f"👋 Привет! Вы переходите к мастеру: {master.name}\n\n"
+        "Привет 👋\n\n"
         "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
         "Мы собираем: имя, телефон, дату рождения (опционально).\n"
         "Данные используются только для записи и бонусной программы.\n\n"
@@ -564,11 +564,14 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
             )
 
             if master.welcome_photo_id:
-                await bot.send_photo(
-                    message.chat.id,
-                    photo=master.welcome_photo_id,
-                    caption=welcome_text
-                )
+                try:
+                    await bot.send_photo(
+                        message.chat.id,
+                        photo=master.welcome_photo_id,
+                        caption=welcome_text
+                    )
+                except TelegramBadRequest:
+                    await bot.send_message(message.chat.id, welcome_text)
             else:
                 await bot.send_message(message.chat.id, welcome_text)
 
