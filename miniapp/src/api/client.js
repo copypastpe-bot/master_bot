@@ -26,3 +26,7 @@ export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
 // Master
 export const getMasterMe = () => api.get('/api/master/me').then(r => r.data);
 export const getMasterDashboard = () => api.get('/api/master/dashboard').then(r => r.data);
+export const getMasterOrders = (date) =>
+  api.get(`/api/master/orders?date=${date}`).then(r => r.data);
+export const getMasterOrderDates = (year, month) =>
+  api.get(`/api/master/orders/dates?year=${year}&month=${month}`).then(r => r.data);

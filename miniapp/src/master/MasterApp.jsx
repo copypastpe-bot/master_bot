@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import MasterNav from './components/MasterNav';
 import Dashboard from './pages/Dashboard';
+import Calendar from './pages/Calendar';
 
 function PlaceholderTab({ label }) {
   return (
@@ -67,7 +68,7 @@ export default function MasterApp() {
       case 'home':
         return <Dashboard onNavigate={handleNavigate} />;
       case 'calendar':
-        return <PlaceholderTab label="Календарь" />;
+        return <Calendar onNavigate={handleNavigate} />;
       case 'marketing':
         return <PlaceholderTab label="Рассылки" />;
       case 'more':

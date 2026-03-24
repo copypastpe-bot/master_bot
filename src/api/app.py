@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.routers import client, orders, bonuses, promos, services
 from src.api.routers import auth_router
 from src.api.routers.master import dashboard as master_dashboard
+from src.api.routers.master import calendar as master_calendar
 from src.config import MINIAPP_URL
 from urllib.parse import urlparse
 
@@ -36,6 +37,7 @@ app.include_router(promos.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(master_dashboard.router, prefix="/api")
+app.include_router(master_calendar.router, prefix="/api")
 
 
 @app.get("/health")
