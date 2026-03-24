@@ -93,6 +93,9 @@ async def get_current_master(
             raise HTTPException(status_code=404, detail="No masters in DB for dev mode")
         return masters[0]
 
+    # Assumption: Mini App is always opened from master_bot, so initData is
+    # signed with MASTER_BOT_TOKEN. If it were opened from client_bot, this
+    # would return 401 even for a valid master — by design.
     validated = validate_init_data(x_init_data, MASTER_BOT_TOKEN)
     if not validated:
         raise HTTPException(status_code=401, detail="Invalid initData")
