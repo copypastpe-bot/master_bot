@@ -65,16 +65,19 @@ async def complete_order_service(
     if master.bonus_enabled and master.bonus_rate:
         bonus_accrued = round(amount_paid * master.bonus_rate / 100)
 
-    # Update order status in DB
-    await update_order_status(
+    # Update order status atomically — guard ensures concurrent complete is rejected
+    updated = await update_order_status(
         order_id,
         "done",
+        required_statuses=("new", "confirmed"),
         amount_total=amount,
         bonus_spent=bonus_spent,
         bonus_accrued=bonus_accrued,
         payment_type=payment_type,
         done_at=datetime.now().isoformat(),
     )
+    if not updated:
+        raise ValueError("Order already completed or status changed concurrently")
 
     # Apply bonus transaction (spend + accrue)
     new_balance = 0
@@ -98,36 +101,18 @@ async def complete_order_service(
     client = await get_client_by_id(client_id)
     if client and client.tg_id:
         try:
-            # Use passed bot instance if available (API context)
-            if bot is not None:
-                import src.notifications as notif_module
-                # Temporarily swap the bot instance used for notifications
-                original_bot = notif_module.client_bot
-                notif_module.client_bot = bot
-                await notifications.notify_order_done(
-                    client=client,
-                    order={
-                        "services": order.get("services", ""),
-                        "amount_total": amount,
-                        "bonus_spent": bonus_spent,
-                    },
-                    master=master,
-                    bonus_accrued=bonus_accrued,
-                    new_balance=new_balance,
-                )
-                notif_module.client_bot = original_bot
-            else:
-                await notifications.notify_order_done(
-                    client=client,
-                    order={
-                        "services": order.get("services", ""),
-                        "amount_total": amount,
-                        "bonus_spent": bonus_spent,
-                    },
-                    master=master,
-                    bonus_accrued=bonus_accrued,
-                    new_balance=new_balance,
-                )
+            await notifications.notify_order_done(
+                client=client,
+                order={
+                    "services": order.get("services", ""),
+                    "amount_total": amount,
+                    "bonus_spent": bonus_spent,
+                },
+                master=master,
+                bonus_accrued=bonus_accrued,
+                new_balance=new_balance,
+                bot=bot,
+            )
         except Exception as e:
             logger.error(f"Failed to notify client (order {order_id}): {e}")
 
@@ -180,24 +165,13 @@ async def move_order_service(
     if client and client.tg_id:
         try:
             updated_order_for_notif = await get_order_by_id(order_id, master.id)
-            if bot is not None:
-                import src.notifications as notif_module
-                original_bot = notif_module.client_bot
-                notif_module.client_bot = bot
-                await notifications.notify_order_moved(
-                    client=client,
-                    order=updated_order_for_notif,
-                    master=master,
-                    old_dt=old_dt,
-                )
-                notif_module.client_bot = original_bot
-            else:
-                await notifications.notify_order_moved(
-                    client=client,
-                    order=updated_order_for_notif,
-                    master=master,
-                    old_dt=old_dt,
-                )
+            await notifications.notify_order_moved(
+                client=client,
+                order=updated_order_for_notif,
+                master=master,
+                old_dt=old_dt,
+                bot=bot,
+            )
         except Exception as e:
             logger.error(f"Failed to notify client (order move {order_id}): {e}")
 
@@ -247,22 +221,12 @@ async def cancel_order_service(
             cancelled_order = {**order}
             if reason:
                 cancelled_order["cancel_reason"] = reason
-            if bot is not None:
-                import src.notifications as notif_module
-                original_bot = notif_module.client_bot
-                notif_module.client_bot = bot
-                await notifications.notify_order_cancelled(
-                    client=client,
-                    order=cancelled_order,
-                    master=master,
-                )
-                notif_module.client_bot = original_bot
-            else:
-                await notifications.notify_order_cancelled(
-                    client=client,
-                    order=cancelled_order,
-                    master=master,
-                )
+            await notifications.notify_order_cancelled(
+                client=client,
+                order=cancelled_order,
+                master=master,
+                bot=bot,
+            )
         except Exception as e:
             logger.error(f"Failed to notify client (order cancel {order_id}): {e}")
 

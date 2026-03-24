@@ -75,7 +75,8 @@ async def notify_order_moved(
     client: Client,
     order: dict,
     master: Master,
-    old_dt: datetime
+    old_dt: datetime,
+    bot=None,
 ) -> bool:
     """Notify client that order was rescheduled."""
     if not client.tg_id:
@@ -97,7 +98,7 @@ async def notify_order_moved(
             f"📞 {master.contacts or '—'}"
         )
 
-        await client_bot.send_message(client.tg_id, text)
+        await (bot or client_bot).send_message(client.tg_id, text)
         logger.info(f"Notification sent to client {client.id}: order moved")
         return True
 
@@ -115,7 +116,8 @@ async def notify_order_moved(
 async def notify_order_cancelled(
     client: Client,
     order: dict,
-    master: Master
+    master: Master,
+    bot=None,
 ) -> bool:
     """Notify client that order was cancelled."""
     if not client.tg_id:
@@ -145,7 +147,7 @@ async def notify_order_cancelled(
             f"📞 {master.contacts or '—'}"
         )
 
-        await client_bot.send_message(client.tg_id, text)
+        await (bot or client_bot).send_message(client.tg_id, text)
         logger.info(f"Notification sent to client {client.id}: order cancelled")
         return True
 
@@ -165,7 +167,8 @@ async def notify_order_done(
     order: dict,
     master: Master,
     bonus_accrued: int,
-    new_balance: int
+    new_balance: int,
+    bot=None,
 ) -> bool:
     """Notify client that order was completed."""
     if not client.tg_id:
@@ -196,7 +199,7 @@ async def notify_order_done(
             "Спасибо, что выбираете нас!"
         )
 
-        await client_bot.send_message(client.tg_id, text)
+        await (bot or client_bot).send_message(client.tg_id, text)
         logger.info(f"Notification sent to client {client.id}: order done")
         return True
 

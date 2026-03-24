@@ -906,9 +906,18 @@ async def get_order_items(order_id: int) -> list[dict]:
         await conn.close()
 
 
-async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
-    """Update order status and optional fields."""
-    # Validate field names against whitelist
+async def update_order_status(
+    order_id: int,
+    status: str,
+    required_statuses: Optional[tuple] = None,
+    **kwargs,
+) -> bool:
+    """Update order status and optional fields.
+
+    If required_statuses is given (e.g. ('new', 'confirmed')), the UPDATE adds
+    a WHERE status IN (...) guard so the operation is atomic — returns False if
+    the row was already in a different status (concurrent request).
+    """
     _validate_fields(set(kwargs.keys()) | {"status"}, ALLOWED_ORDER_FIELDS, "orders")
 
     conn = await get_connection()
@@ -917,12 +926,16 @@ async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
         set_clause = ", ".join(f"{k} = ?" for k in fields.keys())
         values = list(fields.values()) + [order_id]
 
-        await conn.execute(
-            f"UPDATE orders SET {set_clause} WHERE id = ?",
-            values
-        )
+        if required_statuses:
+            placeholders = ", ".join("?" for _ in required_statuses)
+            sql = f"UPDATE orders SET {set_clause} WHERE id = ? AND status IN ({placeholders})"
+            values = values + list(required_statuses)
+        else:
+            sql = f"UPDATE orders SET {set_clause} WHERE id = ?"
+
+        cursor = await conn.execute(sql, values)
         await conn.commit()
-        return True
+        return cursor.rowcount > 0
     finally:
         await conn.close()
 

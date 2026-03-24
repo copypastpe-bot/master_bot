@@ -148,7 +148,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
       <div style={{ marginBottom: 16 }}>
         <label style={styles.label}>Способ оплаты</label>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['cash', 'card', 'transfer'].map(pt => (
+          {['cash', 'card', 'transfer', 'invoice'].map(pt => (
             <button
               key={pt}
               onClick={() => { haptic(); setPaymentType(pt); }}
@@ -312,30 +312,25 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
   const [sheet, setSheet] = useState(null); // 'complete' | 'move' | null
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [actionError, setActionError] = useState('');
-  const [masterData, setMasterData] = useState(null);
-
-  const { data: order, isLoading, error, refetch } = useQuery({
+  const { data: order, isLoading, error } = useQuery({
     queryKey: ['master-order', orderId],
     queryFn: () => getMasterOrder(orderId),
     staleTime: 10_000,
   });
 
-  // Fetch master data for bonus calculations (from dashboard cache)
-  const masterCache = queryClient.getQueryData(['master-me']);
-
-  const activeMaster = masterCache || masterData;
+  // Master data for bonus calculations — from dashboard/me cache
+  const activeMaster = queryClient.getQueryData(['master-me']);
 
   const handleActionSuccess = (result) => {
     haptic('medium');
     setSheet(null);
     setCancelConfirm(false);
     setActionError('');
-    // Invalidate caches
+    // Invalidate caches — React Query will refetch automatically
     queryClient.invalidateQueries({ queryKey: ['master-order', orderId] });
     queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
     queryClient.invalidateQueries({ queryKey: ['master-calendar'] });
     queryClient.invalidateQueries({ queryKey: ['master-orders'] });
-    refetch();
     if (onUpdated) onUpdated(result);
   };
 
