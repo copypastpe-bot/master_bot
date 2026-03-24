@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import MasterNav from './components/MasterNav';
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
+import OrderDetail from './pages/OrderDetail';
 
 function PlaceholderTab({ label }) {
   return (
@@ -43,6 +45,7 @@ function PlaceholderScreen({ label, onBack }) {
 export default function MasterApp() {
   const [tab, setTab] = useState('home');
   const [screen, setScreen] = useState(null); // { type: 'order'|'create_order', id? }
+  const queryClient = useQueryClient();
 
   const handleNavigate = (type, id) => {
     setScreen({ type, id });
@@ -52,10 +55,22 @@ export default function MasterApp() {
     setScreen(null);
   };
 
+  const handleOrderUpdated = () => {
+    queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['master-calendar'] });
+    queryClient.invalidateQueries({ queryKey: ['master-orders'] });
+  };
+
   // Nested screens (over tab content)
   if (screen) {
     if (screen.type === 'order') {
-      return <PlaceholderScreen label={`Заказ #${screen.id} (скоро)`} onBack={handleBack} />;
+      return (
+        <OrderDetail
+          orderId={screen.id}
+          onBack={handleBack}
+          onUpdated={handleOrderUpdated}
+        />
+      );
     }
     if (screen.type === 'create_order') {
       return <PlaceholderScreen label="Создание заказа (скоро)" onBack={handleBack} />;

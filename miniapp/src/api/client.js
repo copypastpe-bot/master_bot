@@ -30,3 +30,11 @@ export const getMasterOrders = (date) =>
   api.get(`/api/master/orders?date=${date}`).then(r => r.data);
 export const getMasterOrderDates = (year, month) =>
   api.get(`/api/master/orders/dates?year=${year}&month=${month}`).then(r => r.data);
+export const getMasterOrder = (id) =>
+  api.get(`/api/master/orders/${id}`).then(r => r.data);
+export const completeMasterOrder = (id, data) =>
+  api.put(`/api/master/orders/${id}/complete`, data).then(r => r.data);
+export const moveMasterOrder = (id, data) =>
+  api.put(`/api/master/orders/${id}/move`, data).then(r => r.data);
+export const cancelMasterOrder = (id, data) =>
+  api.put(`/api/master/orders/${id}/cancel`, data).then(r => r.data);

@@ -805,6 +805,7 @@ async def get_order_by_id(order_id: int, master_id: int) -> Optional[dict]:
         cursor = await conn.execute(
             """
             SELECT o.*, c.name as client_name, c.phone as client_phone,
+                   c.tg_id as client_tg_id,
                    GROUP_CONCAT(oi.name, ', ') as services
             FROM orders o
             JOIN clients c ON o.client_id = c.id
@@ -887,6 +888,20 @@ async def create_order_items(order_id: int, services: list[dict]) -> None:
                 (order_id, service["name"], service["price"])
             )
         await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def get_order_items(order_id: int) -> list[dict]:
+    """Get all items (services) for an order."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT id, name, price FROM order_items WHERE order_id = ? ORDER BY id",
+            (order_id,)
+        )
+        rows = await cursor.fetchall()
+        return [{"id": row["id"], "name": row["name"], "price": row["price"] or 0} for row in rows]
     finally:
         await conn.close()
 
