@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 const WebApp = window.Telegram?.WebApp;
 import { getServices, createOrderRequest } from '../api/client';
@@ -16,23 +16,6 @@ export default function Booking({ onNavigate }) {
     queryKey: ['services'],
     queryFn: getServices,
   });
-
-  // Manage Telegram MainButton
-  useEffect(() => {
-    if (!WebApp?.MainButton) return;
-    if (submitted) {
-      WebApp.MainButton.hide();
-      return;
-    }
-
-    WebApp.MainButton.setText('Отправить заявку');
-    WebApp.MainButton.show();
-    WebApp.MainButton.onClick(handleSubmit);
-    return () => {
-      WebApp.MainButton.offClick(handleSubmit);
-      WebApp.MainButton.hide();
-    };
-  }, [selectedService, comment, submitted]);
 
   async function handleSubmit() {
     if (!selectedService) {
@@ -90,7 +73,7 @@ export default function Booking({ onNavigate }) {
   }
 
   return (
-    <div style={{ padding: '16px 16px 0' }}>
+    <div style={{ padding: '16px 16px 0', paddingBottom: 100 }}>
       <h2 style={{ marginBottom: 20 }}>Запись к мастеру</h2>
 
       {/* Services grid */}
@@ -152,22 +135,23 @@ export default function Booking({ onNavigate }) {
         }}
       />
 
-      {/* Fallback button when MainButton unavailable (e.g. browser dev) */}
-      {!WebApp?.MainButton && (
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          style={{
-            marginTop: 16, width: '100%',
-            background: 'var(--tg-button)', color: 'var(--tg-button-text)',
-            border: 'none', borderRadius: 'var(--radius-btn)',
-            padding: '14px', fontSize: 16, cursor: 'pointer',
-            opacity: isSubmitting ? 0.7 : 1,
-          }}
-        >
-          {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
-        </button>
-      )}
+      {/* Submit button — fixed above BottomNav */}
+      <button
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+        style={{
+          position: 'fixed',
+          bottom: 'calc(60px + env(safe-area-inset-bottom))',
+          left: 16, right: 16,
+          background: 'var(--tg-button)', color: 'var(--tg-button-text)',
+          border: 'none', borderRadius: 'var(--radius-btn)',
+          padding: '14px', fontSize: 16, cursor: 'pointer',
+          opacity: isSubmitting ? 0.7 : 1,
+          zIndex: 50,
+        }}
+      >
+        {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+      </button>
     </div>
   );
 }
