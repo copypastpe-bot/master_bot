@@ -539,21 +539,20 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
 
     await state.clear()
 
-    success_text = "✅ Регистрация завершена!\n\nДобро пожаловать!"
-
+    # "Регистрация завершена!" — with reply keyboard, no separate house message
+    success_text = "✅ Регистрация завершена!"
     if edit:
-        await message.edit_text(success_text)
+        await message.edit_text(success_text, reply_markup=home_reply_kb())
     else:
-        await message.answer(success_text)
+        await message.answer(success_text, reply_markup=home_reply_kb())
 
-    # Send welcome bonus if configured
+    # Build welcome home text (shown until user navigates back)
+    home_text = None
     if master.bonus_welcome and master.bonus_welcome > 0:
         bonus_amount = await accrue_welcome_bonus(master.id, client.id)
         if bonus_amount > 0:
-            # Refresh master_client to get updated balance
             master_client = await get_master_client(master.id, client.id)
-
-            welcome_text = render_bonus_message(
+            home_text = render_bonus_message(
                 template=master.welcome_message,
                 default=DEFAULT_WELCOME_MESSAGE,
                 client_name=client.name,
@@ -563,21 +562,16 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
                 currency=get_currency_symbol(master.currency),
             )
 
-            if master.welcome_photo_id:
-                try:
-                    await bot.send_photo(
-                        message.chat.id,
-                        photo=master.welcome_photo_id,
-                        caption=welcome_text
-                    )
-                except TelegramBadRequest:
-                    await bot.send_message(message.chat.id, welcome_text)
-            else:
-                await bot.send_message(message.chat.id, welcome_text)
-
-    # Send reply keyboard
-    await bot.send_message(message.chat.id, "🏠", reply_markup=home_reply_kb())
-    await show_home(bot, client, master, master_client, message.chat.id)
+    # Show home screen: welcome text if configured, otherwise normal home text
+    if home_text:
+        msg = await bot.send_message(
+            message.chat.id,
+            home_text,
+            reply_markup=home_client_kb(),
+        )
+        await save_client_home_message_id(master_client.master_id, master_client.client_id, msg.message_id)
+    else:
+        await show_home(bot, client, master, master_client, message.chat.id)
 
 
 # =============================================================================
