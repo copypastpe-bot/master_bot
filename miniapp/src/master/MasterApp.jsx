@@ -4,6 +4,7 @@ import MasterNav from './components/MasterNav';
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import OrderDetail from './pages/OrderDetail';
+import OrderCreate from './pages/OrderCreate';
 
 function PlaceholderTab({ label }) {
   return (
@@ -47,8 +48,8 @@ export default function MasterApp() {
   const [screen, setScreen] = useState(null); // { type: 'order'|'create_order', id? }
   const queryClient = useQueryClient();
 
-  const handleNavigate = (type, id) => {
-    setScreen({ type, id });
+  const handleNavigate = (type, params) => {
+    setScreen({ type, ...( typeof params === 'object' ? params : { id: params }) });
   };
 
   const handleBack = () => {
@@ -59,6 +60,19 @@ export default function MasterApp() {
     queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
     queryClient.invalidateQueries({ queryKey: ['master-calendar'] });
     queryClient.invalidateQueries({ queryKey: ['master-orders'] });
+  };
+
+  const handleOrderCreated = (order) => {
+    queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['master-calendar'] });
+    queryClient.invalidateQueries({ queryKey: ['master-orders'] });
+    // Navigate to calendar showing the new order's date
+    setScreen(null);
+    const orderDate = order?.scheduled_at?.slice(0, 10) || null;
+    if (orderDate) {
+      // Switch to calendar tab with the date
+      setTab('calendar');
+    }
   };
 
   // Nested screens (over tab content)
@@ -73,7 +87,13 @@ export default function MasterApp() {
       );
     }
     if (screen.type === 'create_order') {
-      return <PlaceholderScreen label="Создание заказа (скоро)" onBack={handleBack} />;
+      return (
+        <OrderCreate
+          params={screen}
+          onBack={handleBack}
+          onCreated={handleOrderCreated}
+        />
+      );
     }
     return <PlaceholderScreen label="Скоро" onBack={handleBack} />;
   }

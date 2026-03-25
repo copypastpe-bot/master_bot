@@ -38,3 +38,10 @@ export const moveMasterOrder = (id, data) =>
   api.put(`/api/master/orders/${id}/move`, data).then(r => r.data);
 export const cancelMasterOrder = (id, data) =>
   api.put(`/api/master/orders/${id}/cancel`, data).then(r => r.data);
+
+export const searchMasterClients = (search, page = 1) =>
+  api.get(`/api/master/clients?search=${encodeURIComponent(search)}&page=${page}&per_page=10`).then(r => r.data);
+export const getMasterServices = () => api.get('/api/master/services').then(r => r.data);
+export const createMasterOrder = (data) => api.post('/api/master/orders', data).then(r => r.data);
+export const getLastClientAddress = (clientId) =>
+  api.get(`/api/master/clients/${clientId}/last-address`).then(r => r.data);
