@@ -6,6 +6,7 @@ import {
   createMasterOrder,
   getLastClientAddress,
 } from '../../api/client';
+import { useBackButton } from '../hooks/useBackButton';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -883,6 +884,16 @@ export default function OrderCreate({ params, onBack, onCreated }) {
   const [time, setTime] = useState('');
   const [address, setAddress] = useState('');
   const [createdOrder, setCreatedOrder] = useState(null);
+
+  const handleBack = useCallback(() => {
+    if (step > 1) {
+      setStep(s => s - 1);
+    } else {
+      onBack();
+    }
+  }, [step, onBack]);
+
+  useBackButton(handleBack);
 
   const goToStep = (n) => {
     haptic();

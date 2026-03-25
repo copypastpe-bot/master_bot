@@ -11,6 +11,7 @@ from src.database import (
     count_pending_requests,
 )
 from src.models import Master
+from src.config import CLIENT_BOT_USERNAME
 
 router = APIRouter(tags=["master"])
 
@@ -109,3 +110,13 @@ async def get_master_dashboard(
             "pending_requests": pending_requests,
         },
     }
+
+
+@router.get("/master/invite-link")
+async def get_master_invite_link(
+    master: Master = Depends(get_current_master)
+):
+    """Return the invite link for the master's client bot."""
+    bot_username = CLIENT_BOT_USERNAME or "client_bot"
+    invite_link = f"https://t.me/{bot_username}?start=invite_{master.invite_token}"
+    return {"invite_link": invite_link}

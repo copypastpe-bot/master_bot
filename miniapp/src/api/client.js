@@ -12,6 +12,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 || status === 403) {
+      const WebApp = window.Telegram?.WebApp;
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert('Сессия истекла, перезапустите приложение');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const getMe = () => api.get('/api/me').then(r => r.data);
 export const getOrders = () => api.get('/api/orders').then(r => r.data);
 export const getBonuses = () => api.get('/api/bonuses').then(r => r.data);
@@ -52,3 +66,6 @@ export const previewBroadcast = (data) =>
   api.post('/api/master/broadcast/preview', data).then(r => r.data);
 export const sendBroadcast = (data) =>
   api.post('/api/master/broadcast/send', data).then(r => r.data);
+
+export const getMasterInviteLink = () =>
+  api.get('/api/master/invite-link').then(r => r.data);

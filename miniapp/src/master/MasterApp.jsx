@@ -6,21 +6,7 @@ import Calendar from './pages/Calendar';
 import OrderDetail from './pages/OrderDetail';
 import OrderCreate from './pages/OrderCreate';
 import Broadcast from './pages/Broadcast';
-
-function PlaceholderTab({ label }) {
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '60vh',
-      color: 'var(--tg-hint)',
-      fontSize: 16,
-    }}>
-      {label} — скоро
-    </div>
-  );
-}
+import More from './pages/More';
 
 function PlaceholderScreen({ label, onBack }) {
   return (
@@ -108,7 +94,7 @@ export default function MasterApp() {
       case 'marketing':
         return <Broadcast />;
       case 'more':
-        return <PlaceholderTab label="Ещё" />;
+        return <More />;
       default:
         return <Dashboard onNavigate={handleNavigate} />;
     }

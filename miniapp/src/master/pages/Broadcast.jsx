@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getBroadcastSegments, previewBroadcast, sendBroadcast } from '../../api/client';
+import { useBackButton } from '../hooks/useBackButton';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -362,6 +363,12 @@ export default function Broadcast() {
   const [text, setText] = useState('');
   const [sendResult, setSendResult] = useState(null);
 
+  // Show Telegram BackButton on steps 2 and 3
+  const handleBack = useCallback(() => {
+    if (step > 1) setStep(s => s - 1);
+  }, [step]);
+  useBackButton(handleBack, step > 1 && !sendResult);
+
   // Load segments on mount
   const {
     data: segmentsData,
@@ -436,10 +443,6 @@ export default function Broadcast() {
   }
 
   const stepTitle = step === 1 ? 'Аудитория' : step === 2 ? 'Текст' : 'Предпросмотр';
-
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1);
-  };
 
   return (
     <div>
