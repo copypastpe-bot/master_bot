@@ -1,5 +1,6 @@
 """FastAPI dependencies for Mini App API."""
 
+from typing import Optional, Tuple
 from fastapi import Header, HTTPException
 
 from src.database import (
@@ -14,7 +15,7 @@ from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, APP_ENV
 from src.models import Client, Master, MasterClient
 
 
-async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
+async def _get_dev_client() -> Tuple[Client, Master, MasterClient]:
     """Return first master's data for development testing."""
     masters = await get_masters()
     if not masters:
@@ -22,7 +23,7 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
     master = masters[0]
     fake_client = Client(
         id=0,
-        tg_id=999999999,  # fake tg_id — does not collide with real users
+        tg_id=999999999,
         name="Dev User",
         phone="+79991234567",
         birthday=None,
@@ -31,15 +32,15 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
         id=0,
         master_id=master.id,
         client_id=0,
-        bonus_balance=450,  # arbitrary test value
+        bonus_balance=450,
         note=None,
     )
     return fake_client, master, fake_master_client
 
 
 async def get_current_client(
-    x_init_data: str | None = Header(None, alias="X-Init-Data")
-) -> tuple[Client, Master, MasterClient]:
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
+) -> Tuple[Client, Master, MasterClient]:
     """
     Dependency - validate initData and return (client, master, master_client).
     In development mode with X-Init-Data: "dev" — returns first DB client without HMAC check.
@@ -76,7 +77,7 @@ async def get_current_client(
 
 
 async def get_current_master(
-    x_init_data: str | None = Header(None, alias="X-Init-Data")
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
 ) -> Master:
     """
     Dependency - validate initData and return Master.
@@ -93,9 +94,6 @@ async def get_current_master(
             raise HTTPException(status_code=404, detail="No masters in DB for dev mode")
         return masters[0]
 
-    # Assumption: Mini App is always opened from master_bot, so initData is
-    # signed with MASTER_BOT_TOKEN. If it were opened from client_bot, this
-    # would return 401 even for a valid master — by design.
     validated = validate_init_data(x_init_data, MASTER_BOT_TOKEN)
     if not validated:
         raise HTTPException(status_code=401, detail="Invalid initData")

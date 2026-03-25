@@ -228,6 +228,8 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
   const [custom, setCustom] = useState({ name: '', price: '' });
   const [showCustom, setShowCustom] = useState(false);
   const [customList, setCustomList] = useState([]);
+  // price overrides for services without a set price
+  const [priceOverrides, setPriceOverrides] = useState({});
 
   const { data } = useQuery({
     queryKey: ['master-services'],
@@ -244,8 +246,17 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
     if (isSelected(svc.id)) {
       onSelect(selected.filter((s) => s.service_id !== svc.id));
     } else {
-      onSelect([...selected, { service_id: svc.id, name: svc.name, price: svc.price }]);
+      const price = svc.price || priceOverrides[svc.id] || 0;
+      onSelect([...selected, { service_id: svc.id, name: svc.name, price }]);
     }
+  };
+
+  const updateServicePrice = (svcId, rawVal) => {
+    const price = parseInt(rawVal, 10) || 0;
+    setPriceOverrides((prev) => ({ ...prev, [svcId]: price }));
+    onSelect(selected.map((s) =>
+      s.service_id === svcId ? { ...s, price } : s
+    ));
   };
 
   const toggleCustom = (idx) => {
@@ -272,35 +283,69 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
   };
 
   const total = selected.reduce((sum, s) => sum + (s.price || 0), 0);
-  const canNext = selected.length > 0;
+  const canNext = selected.length > 0 && selected.every((s) => s.price > 0);
 
   return (
     <div style={{ padding: '0 16px 16px' }}>
-      {services.map((svc) => (
-        <button
-          key={svc.id}
-          onClick={() => toggleService(svc)}
-          style={{
-            width: '100%',
-            padding: '11px 12px',
-            background: isSelected(svc.id) ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
-            color: isSelected(svc.id) ? 'var(--tg-button-text)' : 'var(--tg-text)',
-            border: 'none',
-            borderRadius: 10,
-            marginBottom: 6,
-            textAlign: 'left',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span style={{ fontSize: 14, fontWeight: isSelected(svc.id) ? 600 : 400 }}>
-            {isSelected(svc.id) ? '✓ ' : ''}{svc.name}
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>{svc.price.toLocaleString()} ₽</span>
-        </button>
-      ))}
+      {services.map((svc) => {
+        const sel = isSelected(svc.id);
+        const noPrice = !svc.price;
+        return (
+          <div key={svc.id}>
+            <button
+              onClick={() => toggleService(svc)}
+              style={{
+                width: '100%',
+                padding: '11px 12px',
+                background: sel ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+                color: sel ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                border: 'none',
+                borderRadius: noPrice && sel ? '10px 10px 0 0' : 10,
+                marginBottom: noPrice && sel ? 0 : 6,
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>
+                {sel ? '✓ ' : ''}{svc.name}
+              </span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {svc.price ? `${svc.price.toLocaleString()} ₽` : 'цена не указана'}
+              </span>
+            </button>
+            {sel && noPrice && (
+              <div style={{
+                background: 'var(--tg-button)',
+                borderRadius: '0 0 10px 10px',
+                padding: '0 12px 10px',
+                marginBottom: 6,
+              }}>
+                <input
+                  type="number"
+                  placeholder="Введите цену ₽"
+                  value={priceOverrides[svc.id] || ''}
+                  onChange={(e) => updateServicePrice(svc.id, e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    fontSize: 14,
+                    background: 'rgba(255,255,255,0.2)',
+                    color: 'var(--tg-button-text)',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    borderRadius: 8,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {customList.map((item, idx) => {
         const key = `custom_${idx}`;

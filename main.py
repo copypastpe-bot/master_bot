@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 async def run_master_bot():
-    """Run master bot."""
+    """Run master bot (oauth_server is started separately by main.py)."""
     from src.master_bot import main as master_main
-    await master_main()
+    await master_main(with_oauth=False)
 
 
 async def run_client_bot():

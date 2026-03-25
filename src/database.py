@@ -2039,7 +2039,7 @@ async def count_pending_requests(master_id: int) -> int:
     conn = await get_connection()
     try:
         cursor = await conn.execute(
-            "SELECT COUNT(*) as cnt FROM inbound_requests WHERE master_id = ? AND status = 'new'",
+            "SELECT COUNT(*) as cnt FROM inbound_requests WHERE master_id = ? AND is_read = FALSE",
             (master_id,)
         )
         row = await cursor.fetchone()

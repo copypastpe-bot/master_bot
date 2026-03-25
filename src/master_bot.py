@@ -37,9 +37,14 @@ def setup_dispatcher() -> Dispatcher:
     return dp
 
 
-async def main() -> None:
-    """Main entry point."""
-    from src.oauth_server import run_oauth_server, set_master_bot
+async def main(with_oauth: bool = True) -> None:
+    """Main entry point.
+
+    Args:
+        with_oauth: If True, also starts the OAuth server (standalone mode).
+                    Set to False when oauth_server is managed externally (e.g. main.py).
+    """
+    from src.oauth_server import set_master_bot
 
     await init_db()
     logger.info("Database initialized")
@@ -52,12 +57,15 @@ async def main() -> None:
 
     logger.info("Starting master bot...")
 
-    # Run bot polling and OAuth server concurrently
-    await asyncio.gather(
-        dp.start_polling(bot),
-        run_oauth_server(),
-    )
+    if with_oauth:
+        from src.oauth_server import run_oauth_server
+        await asyncio.gather(
+            dp.start_polling(bot),
+            run_oauth_server(),
+        )
+    else:
+        await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main(with_oauth=True))

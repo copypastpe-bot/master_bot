@@ -1,5 +1,6 @@
 """Auth role detection endpoint."""
 
+from typing import Optional
 from fastapi import APIRouter, Header
 
 from src.database import (
@@ -16,7 +17,7 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/auth/role")
 async def get_role(
-    x_init_data: str | None = Header(None, alias="X-Init-Data")
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
 ):
     """
     Determine the role of the Telegram user opening the Mini App.
