@@ -155,9 +155,11 @@ async def create_master_order(
     # Create order items
     await create_order_items(order_id, order_items)
 
+    # Fetch client once — used for both GC and notifications below
+    client = await get_client_by_id(body.client_id)
+
     # GC: create event (optional, no crash on failure)
     try:
-        client = await get_client_by_id(body.client_id)
         if client:
             services_text = ", ".join(item["name"] for item in order_items)
             gc_event_id = await google_calendar.create_event(
@@ -175,9 +177,8 @@ async def create_master_order(
     except Exception as e:
         logger.warning(f"GC create_event failed (order {order_id}): {e}")
 
-    # Notify client via module-level client_bot (no bot param needed)
+    # Notify client via module-level client_bot
     try:
-        client = await get_client_by_id(body.client_id)
         if client and client.tg_id:
             await notifications.notify_order_created(
                 client=client,

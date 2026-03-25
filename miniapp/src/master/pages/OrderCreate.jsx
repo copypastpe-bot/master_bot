@@ -87,10 +87,13 @@ function StepClient({ selected, onSelect, onNext }) {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const timerRef = useRef(null);
 
+  // Clear pending debounce timer on unmount to prevent state update after unmount
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+
   const handleChange = (e) => {
     const val = e.target.value;
     setQuery(val);
-    clearTimeout(timerRef.current);
+    if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setDebouncedQuery(val), 300);
   };
 
