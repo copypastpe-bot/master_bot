@@ -74,7 +74,8 @@ class SendRequest(BaseModel):
 
 def _personalize(text: str, name: str) -> str:
     """Replace {name} placeholder with client's first name."""
-    first_name = name.split()[0] if name else name
+    stripped = (name or "").strip()
+    first_name = stripped.split()[0] if stripped else "клиент"
     return text.replace("{name}", first_name)
 
 
