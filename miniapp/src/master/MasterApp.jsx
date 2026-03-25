@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import OrderDetail from './pages/OrderDetail';
 import OrderCreate from './pages/OrderCreate';
+import Broadcast from './pages/Broadcast';
 
 function PlaceholderTab({ label }) {
   return (
@@ -105,7 +106,7 @@ export default function MasterApp() {
       case 'calendar':
         return <Calendar onNavigate={handleNavigate} />;
       case 'marketing':
-        return <PlaceholderTab label="Рассылки" />;
+        return <Broadcast />;
       case 'more':
         return <PlaceholderTab label="Ещё" />;
       default:

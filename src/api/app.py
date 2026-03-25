@@ -10,6 +10,7 @@ from src.api.routers.master import calendar as master_calendar
 from src.api.routers.master import orders as master_orders
 from src.api.routers.master import clients as master_clients
 from src.api.routers.master import services_router as master_services
+from src.api.routers.master import broadcast as master_broadcast
 from src.config import MINIAPP_URL
 from urllib.parse import urlparse
 
@@ -44,6 +45,7 @@ app.include_router(master_calendar.router, prefix="/api")
 app.include_router(master_orders.router, prefix="/api")
 app.include_router(master_clients.router, prefix="/api")
 app.include_router(master_services.router, prefix="/api")
+app.include_router(master_broadcast.router, prefix="/api")
 
 
 @app.get("/health")

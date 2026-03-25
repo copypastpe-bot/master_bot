@@ -1797,6 +1797,74 @@ async def get_broadcast_recipients_count(master_id: int, segment: str) -> int:
     return len(recipients)
 
 
+async def get_clients_by_segment(master_id: int, segment: str) -> list[dict]:
+    """Get broadcast recipients for Mini App broadcast feature.
+
+    Segments:
+      all            — all clients with notify_marketing = 1
+      active         — done order in last 30 days
+      inactive       — no done order in 60+ days (or no orders at all)
+      new            — client registered (created_at) within last 30 days
+      birthday_month — birthday in current month
+    """
+    conn = await get_connection()
+    try:
+        base_query = """
+            SELECT c.id, c.tg_id, c.name
+            FROM clients c
+            JOIN master_clients mc ON mc.client_id = c.id
+            WHERE mc.master_id = ?
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_marketing = 1
+        """
+
+        if segment == "all":
+            query = base_query
+            params = (master_id,)
+        elif segment == "active":
+            query = base_query + """
+              AND EXISTS (
+                SELECT 1 FROM orders o
+                WHERE o.master_id = ?
+                  AND o.client_id = c.id
+                  AND o.status = 'done'
+                  AND o.done_at > datetime('now', '-30 days')
+              )
+            """
+            params = (master_id, master_id)
+        elif segment == "inactive":
+            query = base_query + """
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o
+                WHERE o.master_id = ?
+                  AND o.client_id = c.id
+                  AND o.status = 'done'
+                  AND o.done_at > datetime('now', '-60 days')
+              )
+            """
+            params = (master_id, master_id)
+        elif segment == "new":
+            query = base_query + """
+              AND c.created_at > datetime('now', '-30 days')
+            """
+            params = (master_id,)
+        elif segment == "birthday_month":
+            query = base_query + """
+              AND c.birthday IS NOT NULL
+              AND strftime('%m', c.birthday) = strftime('%m', 'now')
+            """
+            params = (master_id,)
+        else:
+            query = base_query
+            params = (master_id,)
+
+        cursor = await conn.execute(query, params)
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
 async def save_campaign(
     master_id: int,
     campaign_type: str,

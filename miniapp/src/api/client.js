@@ -45,3 +45,10 @@ export const getMasterServices = () => api.get('/api/master/services').then(r =>
 export const createMasterOrder = (data) => api.post('/api/master/orders', data).then(r => r.data);
 export const getLastClientAddress = (clientId) =>
   api.get(`/api/master/clients/${clientId}/last-address`).then(r => r.data);
+
+export const getBroadcastSegments = () =>
+  api.get('/api/master/broadcast/segments').then(r => r.data);
+export const previewBroadcast = (data) =>
+  api.post('/api/master/broadcast/preview', data).then(r => r.data);
+export const sendBroadcast = (data) =>
+  api.post('/api/master/broadcast/send', data).then(r => r.data);
