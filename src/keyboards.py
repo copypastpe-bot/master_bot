@@ -225,6 +225,7 @@ def clients_paginated_kb(
 
     # Action buttons
     buttons.append([InlineKeyboardButton(text="+ Добавить клиента", callback_data="clients:new")])
+    buttons.append([InlineKeyboardButton(text="📦 Архив", callback_data="clients:archive")])
     buttons.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -242,11 +243,40 @@ def client_card_kb(client_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📝 Заметка", callback_data=f"clients:note:{client_id}"),
         ],
         [InlineKeyboardButton(text="➕ Создать заказ", callback_data=f"clients:order:{client_id}")],
+        [InlineKeyboardButton(text="📦 В архив", callback_data=f"clients:archive:confirm:{client_id}")],
         [
             InlineKeyboardButton(text="◀️ Назад", callback_data="clients"),
             InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
         ],
     ])
+
+
+def client_archive_confirm_kb(client_id: int) -> InlineKeyboardMarkup:
+    """Confirmation keyboard for archiving a client."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Да, в архив", callback_data=f"clients:archive:do:{client_id}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data=f"clients:view:{client_id}")],
+    ])
+
+
+def archived_clients_kb(clients: list) -> InlineKeyboardMarkup:
+    """Archived clients list keyboard."""
+    buttons = []
+    for client in clients:
+        name = client.get("name", "Клиент")
+        phone = client.get("phone", "")
+        label = name + (f" | {phone}" if phone else "")
+        buttons.append([InlineKeyboardButton(
+            text=f"↩️ {label}",
+            callback_data=f"clients:restore:{client['id']}"
+        )])
+    if not clients:
+        buttons.append([InlineKeyboardButton(text="📭 Архив пуст", callback_data="noop")])
+    buttons.append([
+        InlineKeyboardButton(text="◀️ Назад", callback_data="clients"),
+        InlineKeyboardButton(text="🏠 Главная", callback_data="home"),
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def client_edit_kb(client_id: int) -> InlineKeyboardMarkup:
