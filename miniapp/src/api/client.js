@@ -69,3 +69,53 @@ export const sendBroadcast = (data) =>
 
 export const getMasterInviteLink = () =>
   api.get('/api/master/invite-link').then(r => r.data);
+
+// V2 — Clients (extended)
+export const getMasterClients = (search = '', page = 1) =>
+  api.get('/api/master/clients', { params: { search, page, per_page: 20 } }).then(r => r.data);
+export const getMasterClient = (id) =>
+  api.get(`/api/master/clients/${id}`).then(r => r.data);
+export const updateMasterClient = (id, data) =>
+  api.put(`/api/master/clients/${id}`, data).then(r => r.data);
+export const updateMasterClientNote = (id, note) =>
+  api.put(`/api/master/clients/${id}/note`, { note }).then(r => r.data);
+export const masterClientBonus = (id, amount, comment) =>
+  api.post(`/api/master/clients/${id}/bonus`, { amount, comment }).then(r => r.data);
+
+// V2 — Profile / Settings
+export const updateMasterProfile = (data) =>
+  api.put('/api/master/profile', data).then(r => r.data);
+export const updateMasterTimezone = (timezone) =>
+  api.put('/api/master/timezone', { timezone }).then(r => r.data);
+export const updateMasterCurrency = (currency) =>
+  api.put('/api/master/currency', { currency }).then(r => r.data);
+export const getMasterInvite = () =>
+  api.get('/api/master/invite').then(r => r.data);
+
+// V2 — Bonus settings
+export const getMasterBonusSettings = () =>
+  api.get('/api/master/bonus-settings').then(r => r.data);
+export const updateMasterBonusSettings = (data) =>
+  api.put('/api/master/bonus-settings', data).then(r => r.data);
+
+// V2 — Services (full CRUD — backward compat: getMasterServices still works)
+export const getMasterServicesAll = () =>
+  api.get('/api/master/services').then(r => r.data);
+export const createMasterService = (data) =>
+  api.post('/api/master/services', data).then(r => r.data);
+export const updateMasterService = (id, data) =>
+  api.put(`/api/master/services/${id}`, data).then(r => r.data);
+export const archiveMasterService = (id) =>
+  api.put(`/api/master/services/${id}/archive`).then(r => r.data);
+export const restoreMasterService = (id) =>
+  api.put(`/api/master/services/${id}/restore`).then(r => r.data);
+
+// V2 — Promos
+export const getMasterPromos = () =>
+  api.get('/api/master/promos').then(r => r.data);
+export const createMasterPromo = (data) =>
+  api.post('/api/master/promos', data).then(r => r.data);
+export const deactivateMasterPromo = (id) =>
+  api.put(`/api/master/promos/${id}/deactivate`).then(r => r.data);
+export const getPromoRecipientsCount = () =>
+  api.get('/api/master/promos/recipients-count').then(r => r.data);

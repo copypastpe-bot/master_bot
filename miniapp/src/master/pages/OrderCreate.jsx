@@ -609,12 +609,12 @@ function StepDateTime({ clientId, date, setDate, time, setTime, address, setAddr
           onChange={(e) => setTime(e.target.value)}
           style={{
             padding: '6px 10px',
-            fontSize: 13,
             background: 'var(--tg-secondary-bg)',
             color: 'var(--tg-text)',
             border: '1px solid var(--tg-hint)',
             borderRadius: 8,
             outline: 'none',
+            boxSizing: 'border-box',
           }}
         />
       </div>
@@ -825,42 +825,23 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => { haptic(); onBack(); }}
-          disabled={mutation.isPending}
-          style={{
-            flex: 1,
-            padding: '13px',
-            background: 'var(--tg-secondary-bg)',
-            color: 'var(--tg-text)',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 15,
-            cursor: 'pointer',
-            opacity: mutation.isPending ? 0.5 : 1,
-          }}
-        >
-          ← Назад
-        </button>
-        <button
-          onClick={() => { haptic(); handleCreate(); }}
-          disabled={mutation.isPending}
-          style={{
-            flex: 2,
-            padding: '13px',
-            background: mutation.isPending ? 'var(--tg-hint)' : 'var(--tg-button)',
-            color: 'var(--tg-button-text)',
-            border: 'none',
-            borderRadius: 12,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: mutation.isPending ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {mutation.isPending ? 'Создаём...' : 'Создать заказ'}
-        </button>
-      </div>
+      <button
+        onClick={() => { haptic(); onBack(); }}
+        disabled={mutation.isPending}
+        style={{
+          width: '100%',
+          padding: '13px',
+          background: 'var(--tg-secondary-bg)',
+          color: 'var(--tg-text)',
+          border: 'none',
+          borderRadius: 12,
+          fontSize: 15,
+          cursor: 'pointer',
+          opacity: mutation.isPending ? 0.5 : 1,
+        }}
+      >
+        ← Назад
+      </button>
     </div>
   );
 }
@@ -967,41 +948,11 @@ export default function OrderCreate({ params, onBack, onCreated }) {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--tg-bg)', paddingBottom: 24 }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '12px 16px 4px',
-        gap: 8,
-      }}>
-        <button
-          onClick={() => {
-            haptic();
-            if (step === 1) onBack();
-            else setStep(step - 1);
-          }}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--tg-button)',
-            fontSize: 15,
-            cursor: 'pointer',
-            padding: '4px 0',
-          }}
-        >
-          ← Назад
-        </button>
-        <h2 style={{
-          flex: 1,
-          textAlign: 'center',
-          margin: 0,
-          fontSize: 17,
-          fontWeight: 600,
-          color: 'var(--tg-text)',
-        }}>
+      {/* Header — no custom back button: Telegram BackButton handles navigation */}
+      <div style={{ padding: '12px 16px 4px', textAlign: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--tg-text)' }}>
           {TITLES[step - 1]}
         </h2>
-        <div style={{ width: 60 }} />
       </div>
 
       <ProgressBar step={step} />
