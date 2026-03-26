@@ -9,7 +9,8 @@ from src.api.routers.master import dashboard as master_dashboard
 from src.api.routers.master import calendar as master_calendar
 from src.api.routers.master import orders as master_orders
 from src.api.routers.master import clients as master_clients
-from src.api.routers.master import services_router as master_services
+from src.api.routers.master import settings as master_settings
+from src.api.routers.master import promos as master_promos
 from src.api.routers.master import broadcast as master_broadcast
 from src.config import MINIAPP_URL
 from urllib.parse import urlparse
@@ -44,7 +45,8 @@ app.include_router(master_dashboard.router, prefix="/api")
 app.include_router(master_calendar.router, prefix="/api")
 app.include_router(master_orders.router, prefix="/api")
 app.include_router(master_clients.router, prefix="/api")
-app.include_router(master_services.router, prefix="/api")
+app.include_router(master_settings.router, prefix="/api")
+app.include_router(master_promos.router, prefix="/api")
 app.include_router(master_broadcast.router, prefix="/api")
 
 
