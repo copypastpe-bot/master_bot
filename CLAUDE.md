@@ -254,6 +254,17 @@ APP_ENV=production           — development включает dev bypass в API 
 
 ---
 
+## Git workflow
+
+Разработчик работает один. Всегда работать в ветке `main` напрямую — не создавать feature-ветки и worktree. Скиллы `superpowers:using-git-worktrees` не применять.
+
+Деплой:
+1. `git push origin main` — с локальной машины
+2. На сервере: `git pull origin main && docker compose up -d --build master_bot`
+3. Сервер никогда не делает `git commit` или `git merge` — только `git pull`
+
+---
+
 ## Правила кода
 
 ### Backend (Python)
