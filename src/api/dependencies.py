@@ -1,5 +1,7 @@
 """FastAPI dependencies for Mini App API."""
 
+from typing import Optional
+
 from fastapi import Header, HTTPException
 
 from src.database import (
@@ -37,7 +39,7 @@ async def _get_dev_client() -> tuple[Client, Master, MasterClient]:
 
 
 async def get_current_client(
-    x_init_data: str | None = Header(None, alias="X-Init-Data")
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
 ) -> tuple[Client, Master, MasterClient]:
     """
     Dependency - validate initData and return (client, master, master_client).
