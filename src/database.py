@@ -33,7 +33,7 @@ ALLOWED_CLIENT_FIELDS = frozenset({
 ALLOWED_MASTER_CLIENT_FIELDS = frozenset({
     "bonus_balance", "total_spent", "note", "first_visit", "last_visit",
     "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
-    "home_message_id",
+    "home_message_id", "is_archived",
 })
 
 ALLOWED_SERVICE_FIELDS = frozenset({
@@ -410,7 +410,7 @@ async def search_clients(master_id: int, query: str) -> list[dict]:
             SELECT c.*, mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON c.id = mc.client_id
-            WHERE mc.master_id = ? AND c.phone LIKE ?
+            WHERE mc.master_id = ? AND mc.is_archived = 0 AND c.phone LIKE ?
             ORDER BY c.name
             LIMIT 10
             """,
@@ -425,7 +425,7 @@ async def search_clients(master_id: int, query: str) -> list[dict]:
             SELECT c.*, mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON c.id = mc.client_id
-            WHERE mc.master_id = ?
+            WHERE mc.master_id = ? AND mc.is_archived = 0
             ORDER BY c.name
             """,
             (master_id,)
@@ -462,7 +462,7 @@ async def get_clients_paginated(master_id: int, page: int = 1, per_page: int = 1
     try:
         # Get total count
         cursor = await conn.execute(
-            "SELECT COUNT(*) as cnt FROM master_clients WHERE master_id = ?",
+            "SELECT COUNT(*) as cnt FROM master_clients WHERE master_id = ? AND is_archived = 0",
             (master_id,)
         )
         row = await cursor.fetchone()
@@ -475,7 +475,7 @@ async def get_clients_paginated(master_id: int, page: int = 1, per_page: int = 1
             SELECT c.*, mc.bonus_balance
             FROM clients c
             JOIN master_clients mc ON c.id = mc.client_id
-            WHERE mc.master_id = ?
+            WHERE mc.master_id = ? AND mc.is_archived = 0
             ORDER BY c.name
             LIMIT ? OFFSET ?
             """,
@@ -483,6 +483,26 @@ async def get_clients_paginated(master_id: int, page: int = 1, per_page: int = 1
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows], total_count
+    finally:
+        await conn.close()
+
+
+async def get_archived_clients(master_id: int) -> list[dict]:
+    """Get all archived clients for a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT c.*, mc.bonus_balance
+            FROM clients c
+            JOIN master_clients mc ON c.id = mc.client_id
+            WHERE mc.master_id = ? AND mc.is_archived = 1
+            ORDER BY c.name
+            """,
+            (master_id,)
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
     finally:
         await conn.close()
 
@@ -709,6 +729,16 @@ async def update_master_client(master_id: int, client_id: int, **kwargs) -> None
         await conn.commit()
     finally:
         await conn.close()
+
+
+async def archive_client(master_id: int, client_id: int) -> None:
+    """Archive a client (hide from main list)."""
+    await update_master_client(master_id, client_id, is_archived=True)
+
+
+async def restore_client(master_id: int, client_id: int) -> None:
+    """Restore archived client."""
+    await update_master_client(master_id, client_id, is_archived=False)
 
 
 async def save_client_home_message_id(master_id: int, client_id: int, message_id: int) -> None:
