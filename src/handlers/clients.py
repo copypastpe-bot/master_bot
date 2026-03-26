@@ -22,6 +22,9 @@ from src.database import (
     update_client_note,
     manual_bonus_transaction,
     get_last_client_address,
+    archive_client,
+    restore_client,
+    get_archived_clients,
 )
 from src.keyboards import (
     clients_kb,
@@ -33,6 +36,8 @@ from src.keyboards import (
     order_address_kb,
     stub_kb,
     skip_kb,
+    client_archive_confirm_kb,
+    archived_clients_kb,
 )
 from src.states import ClientAdd, ClientEdit, ClientNote, BonusManual, CreateOrder
 from src.utils import normalize_phone, get_currency_symbol
@@ -97,6 +102,80 @@ async def cb_clients_page(callback: CallbackQuery, state: FSMContext) -> None:
     )
 
     await edit_home_message(callback, text, clients_paginated_kb(clients, page, total))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "clients:archive")
+async def cb_clients_archive_list(callback: CallbackQuery) -> None:
+    """Show archived clients list."""
+    master = await get_master_by_tg_id(callback.from_user.id)
+    clients = await get_archived_clients(master.id)
+    text = (
+        "📦 Архив клиентов\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"Архивировано: {len(clients)}\n\n"
+        "Нажмите ↩️ чтобы восстановить клиента."
+    )
+    await edit_home_message(callback, text, archived_clients_kb(clients))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("clients:archive:confirm:"))
+async def cb_client_archive_confirm(callback: CallbackQuery) -> None:
+    """Show archive confirmation screen."""
+    client_id = int(callback.data.split(":")[3])
+    master = await get_master_by_tg_id(callback.from_user.id)
+    client = await get_client_with_stats(master.id, client_id)
+
+    name = client["name"] if client else "Клиент"
+    text = (
+        f"📦 Архивировать клиента?\n"
+        f"━━━━━━━━━━━━━━━\n"
+        f"👤 {name}\n\n"
+        "Клиент исчезнет из основного списка.\n"
+        "Вы сможете восстановить его из раздела Архив."
+    )
+    await edit_home_message(callback, text, client_archive_confirm_kb(client_id))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("clients:archive:do:"))
+async def cb_client_archive_do(callback: CallbackQuery) -> None:
+    """Archive the client."""
+    client_id = int(callback.data.split(":")[3])
+    master = await get_master_by_tg_id(callback.from_user.id)
+    await archive_client(master.id, client_id)
+
+    clients, total = await get_clients_paginated(master.id, page=1)
+    total_pages = max(1, (total + 9) // 10)
+    text = (
+        "👥 Клиенты\n"
+        "━━━━━━━━━━━━━━━\n"
+        "✅ Клиент перемещён в архив.\n\n"
+        "🔍 Введите часть имени/телефона\n"
+        "для поиска или выберите из списка.\n"
+        f"стр 1 из {total_pages}"
+    )
+    await edit_home_message(callback, text, clients_paginated_kb(clients, 1, total))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("clients:restore:"))
+async def cb_client_restore(callback: CallbackQuery) -> None:
+    """Restore archived client."""
+    client_id = int(callback.data.split(":")[2])
+    master = await get_master_by_tg_id(callback.from_user.id)
+    await restore_client(master.id, client_id)
+
+    clients = await get_archived_clients(master.id)
+    text = (
+        "📦 Архив клиентов\n"
+        "━━━━━━━━━━━━━━━\n"
+        f"✅ Клиент восстановлен.\n\n"
+        f"Архивировано: {len(clients)}\n\n"
+        "Нажмите ↩️ чтобы восстановить клиента."
+    )
+    await edit_home_message(callback, text, archived_clients_kb(clients))
     await callback.answer()
 
 
