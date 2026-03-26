@@ -32,6 +32,9 @@ def home_master_kb() -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings"),
         ],
+        [
+            InlineKeyboardButton(text="📱 Открыть приложение", web_app=WebAppInfo(url=MINIAPP_URL)),
+        ],
     ])
 
 

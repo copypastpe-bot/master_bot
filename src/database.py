@@ -835,6 +835,7 @@ async def get_order_by_id(order_id: int, master_id: int) -> Optional[dict]:
         cursor = await conn.execute(
             """
             SELECT o.*, c.name as client_name, c.phone as client_phone,
+                   c.tg_id as client_tg_id,
                    GROUP_CONCAT(oi.name, ', ') as services
             FROM orders o
             JOIN clients c ON o.client_id = c.id
@@ -921,9 +922,32 @@ async def create_order_items(order_id: int, services: list[dict]) -> None:
         await conn.close()
 
 
-async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
-    """Update order status and optional fields."""
-    # Validate field names against whitelist
+async def get_order_items(order_id: int) -> list[dict]:
+    """Get all items (services) for an order."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT id, name, price FROM order_items WHERE order_id = ? ORDER BY id",
+            (order_id,)
+        )
+        rows = await cursor.fetchall()
+        return [{"id": row["id"], "name": row["name"], "price": row["price"] or 0} for row in rows]
+    finally:
+        await conn.close()
+
+
+async def update_order_status(
+    order_id: int,
+    status: str,
+    required_statuses: Optional[tuple] = None,
+    **kwargs,
+) -> bool:
+    """Update order status and optional fields.
+
+    If required_statuses is given (e.g. ('new', 'confirmed')), the UPDATE adds
+    a WHERE status IN (...) guard so the operation is atomic — returns False if
+    the row was already in a different status (concurrent request).
+    """
     _validate_fields(set(kwargs.keys()) | {"status"}, ALLOWED_ORDER_FIELDS, "orders")
 
     conn = await get_connection()
@@ -932,12 +956,16 @@ async def update_order_status(order_id: int, status: str, **kwargs) -> bool:
         set_clause = ", ".join(f"{k} = ?" for k in fields.keys())
         values = list(fields.values()) + [order_id]
 
-        await conn.execute(
-            f"UPDATE orders SET {set_clause} WHERE id = ?",
-            values
-        )
+        if required_statuses:
+            placeholders = ", ".join("?" for _ in required_statuses)
+            sql = f"UPDATE orders SET {set_clause} WHERE id = ? AND status IN ({placeholders})"
+            values = values + list(required_statuses)
+        else:
+            sql = f"UPDATE orders SET {set_clause} WHERE id = ?"
+
+        cursor = await conn.execute(sql, values)
         await conn.commit()
-        return True
+        return cursor.rowcount > 0
     finally:
         await conn.close()
 
@@ -1799,6 +1827,74 @@ async def get_broadcast_recipients_count(master_id: int, segment: str) -> int:
     return len(recipients)
 
 
+async def get_clients_by_segment(master_id: int, segment: str) -> list[dict]:
+    """Get broadcast recipients for Mini App broadcast feature.
+
+    Segments:
+      all            — all clients with notify_marketing = 1
+      active         — done order in last 30 days
+      inactive       — no done order in 60+ days (or no orders at all)
+      new            — client registered (created_at) within last 30 days
+      birthday_month — birthday in current month
+    """
+    conn = await get_connection()
+    try:
+        base_query = """
+            SELECT c.id, c.tg_id, c.name
+            FROM clients c
+            JOIN master_clients mc ON mc.client_id = c.id
+            WHERE mc.master_id = ?
+              AND c.tg_id IS NOT NULL
+              AND mc.notify_marketing = 1
+        """
+
+        if segment == "all":
+            query = base_query
+            params = (master_id,)
+        elif segment == "active":
+            query = base_query + """
+              AND EXISTS (
+                SELECT 1 FROM orders o
+                WHERE o.master_id = ?
+                  AND o.client_id = c.id
+                  AND o.status = 'done'
+                  AND o.done_at > datetime('now', '-30 days')
+              )
+            """
+            params = (master_id, master_id)
+        elif segment == "inactive":
+            query = base_query + """
+              AND NOT EXISTS (
+                SELECT 1 FROM orders o
+                WHERE o.master_id = ?
+                  AND o.client_id = c.id
+                  AND o.status = 'done'
+                  AND o.done_at > datetime('now', '-60 days')
+              )
+            """
+            params = (master_id, master_id)
+        elif segment == "new":
+            query = base_query + """
+              AND c.created_at > datetime('now', '-30 days')
+            """
+            params = (master_id,)
+        elif segment == "birthday_month":
+            query = base_query + """
+              AND c.birthday IS NOT NULL
+              AND strftime('%m', c.birthday) = strftime('%m', 'now')
+            """
+            params = (master_id,)
+        else:
+            query = base_query
+            params = (master_id,)
+
+        cursor = await conn.execute(query, params)
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
 async def save_campaign(
     master_id: int,
     campaign_type: str,
@@ -1964,6 +2060,20 @@ async def save_inbound_request(
         )
         await conn.commit()
         return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def count_pending_requests(master_id: int) -> int:
+    """Count pending (new) inbound requests for a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT COUNT(*) as cnt FROM inbound_requests WHERE master_id = ? AND is_read = FALSE",
+            (master_id,)
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
     finally:
         await conn.close()
 

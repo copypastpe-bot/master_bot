@@ -54,10 +54,27 @@ master-bot/
 │       │   ├── Booking.jsx        — выбор услуги, MainButton, экран успеха
 │       │   ├── Bonuses.jsx        — 2 вкладки: лог бонусов / история заказов
 │       │   └── Promos.jsx         — карточки акций, empty state
-│       └── components/
-│           ├── BottomNav.jsx      — 4 вкладки с inline SVG иконками + haptic
-│           ├── Skeleton.jsx       — пульсирующий placeholder (skeleton-pulse)
-│           └── ErrorScreen.jsx    — экран ошибки + кнопка retry
+│       ├── components/
+│       │   ├── BottomNav.jsx      — 4 вкладки с inline SVG иконками + haptic
+│       │   ├── Skeleton.jsx       — пульсирующий placeholder (skeleton-pulse)
+│       │   └── ErrorScreen.jsx    — экран ошибки + кнопка retry
+│       └── master/                — мастерский интерфейс
+│           ├── MasterApp.jsx      — корневой компонент мастера, таб-навигация
+│           ├── pages/
+│           │   ├── Dashboard.jsx  — сводка дня, статистика, кнопка создания заказа
+│           │   ├── Calendar.jsx   — WeekStrip + список заказов на выбранный день
+│           │   ├── OrderDetail.jsx — карточка заказа, проведение/перенос/отмена
+│           │   ├── OrderCreate.jsx — 4-шаговое создание заказа (клиент, услуги, дата, подтверждение)
+│           │   ├── Broadcast.jsx  — 3-шаговая рассылка (сегмент, текст, отправка)
+│           │   └── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
+│           ├── components/
+│           │   ├── MasterNav.jsx  — нижняя навигация (4 таба)
+│           │   ├── WeekStrip.jsx  — горизонтальная лента дней недели
+│           │   ├── DaySchedule.jsx — список заказов дня
+│           │   ├── OrderCard.jsx  — карточка заказа в списке
+│           │   └── StatCard.jsx   — карточка статистики
+│           └── hooks/
+│               └── useBackButton.js — хук для Telegram BackButton на nested экранах
 │
 └── src/
     ├── config.py                  — загрузка .env (токены, DATABASE_URL, порты, APP_ENV)
@@ -78,13 +95,20 @@ master-bot/
     ├── api/                       — FastAPI бэкенд для Mini App
     │   ├── app.py                 — FastAPI app, CORS (app.crmfit.ru, localhost:5173)
     │   ├── auth.py                — валидация Telegram initData (HMAC-SHA256)
-    │   ├── dependencies.py        — get_current_client + dev bypass (APP_ENV=development)
+    │   ├── dependencies.py        — get_current_client + get_current_master + dev bypass
     │   └── routers/
     │       ├── client.py          — GET /api/me
     │       ├── orders.py          — GET /api/orders, POST /api/orders/request
     │       ├── bonuses.py         — GET /api/bonuses
     │       ├── promos.py          — GET /api/promos
-    │       └── services.py        — GET /api/services
+    │       ├── services.py        — GET /api/services
+    │       └── master/            — API для мастера
+    │           ├── dashboard.py   — GET /api/master/me, /api/master/dashboard, /api/master/invite-link
+    │           ├── calendar.py    — GET /api/master/orders/dates
+    │           ├── orders.py      — CRUD заказов мастера
+    │           ├── clients.py     — GET /api/master/clients, /api/master/clients/{id}/last-address
+    │           ├── services_router.py — GET /api/master/services
+    │           └── broadcast.py   — POST /api/master/broadcast/preview, /send, /segments
     │
     └── handlers/                  — обработчики master_bot по разделам
         ├── __init__.py
@@ -196,8 +220,17 @@ APP_ENV=production           — development включает dev bypass в API 
 ## Текущее состояние разработки
 
 ### Реализовано ✅
-- **Mini App бэкенд** — FastAPI (`src/api/`), эндпоинты `/api/me`, `/api/orders`, `/api/bonuses`, `/api/promos`, `/api/services`, `/api/orders/request`. Авторизация через Telegram initData (HMAC-SHA256). Dev bypass через `APP_ENV=development`.
-- **Mini App фронтенд** — React 19 + Vite (`miniapp/`), 4 экрана, Telegram WebApp API, адаптивная тема.
+- **Mini App бэкенд (клиентский)** — FastAPI (`src/api/`), эндпоинты `/api/me`, `/api/orders`, `/api/bonuses`, `/api/promos`, `/api/services`, `/api/orders/request`. Авторизация через Telegram initData (HMAC-SHA256). Dev bypass через `APP_ENV=development`.
+- **Mini App фронтенд (клиентский)** — React 19 + Vite (`miniapp/`), 4 экрана, Telegram WebApp API, адаптивная тема.
+- **Master Mini App** — полный мастерский интерфейс (`miniapp/src/master/`):
+  - Dashboard — сводка дня, статистика (неделя/месяц), ближайшие заказы
+  - Calendar — WeekStrip + список заказов на выбранный день
+  - OrderDetail — карточка заказа, провести / перенести / отменить с bottom sheet
+  - OrderCreate — 4-шаговое создание заказа (поиск клиента, услуги, дата/время, подтверждение)
+  - Broadcast — 3-шаговая рассылка (сегмент, текст, предпросмотр и отправка)
+  - More — профиль мастера, инвайт-ссылка, поддержка
+  - Telegram BackButton на всех nested экранах (хук `useBackButton`)
+- **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard, calendar, orders (CRUD), clients, services, broadcast, invite-link
 - Регистрация мастера и клиента (по инвайт-ссылке)
 - Полный цикл заказов: создание, проведение, перенос, отмена
 - Клиентская база: карточка, история, бонусы, заметки, редактирование
@@ -213,10 +246,8 @@ APP_ENV=production           — development включает dev bypass в API 
 
 ### В разработке 🔄
 - **Mini App деплой** — сборка `miniapp/dist/` и раздача через nginx на `app.crmfit.ru`
-- **Mini App** — бэкенд и фронт реализованы, нужно настроить nginx для фронта
 
 ### Запланировано 📋
-- UI заказов с листанием по неделям и инлайн-календарём везде
 - Список клиентов с пагинацией по алфавиту
 - Массовое начисление бонусов с ограниченным сроком
 - Сгорание бонусов через год
