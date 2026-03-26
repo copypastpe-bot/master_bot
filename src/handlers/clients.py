@@ -110,11 +110,12 @@ async def cb_clients_archive_list(callback: CallbackQuery) -> None:
     """Show archived clients list."""
     master = await get_master_by_tg_id(callback.from_user.id)
     clients = await get_archived_clients(master.id)
+    hint = "\nНажмите ↩️ чтобы восстановить клиента." if clients else ""
     text = (
         "📦 Архив клиентов\n"
         "━━━━━━━━━━━━━━━\n"
-        f"Архивировано: {len(clients)}\n\n"
-        "Нажмите ↩️ чтобы восстановить клиента."
+        f"Архивировано: {len(clients)}"
+        + hint
     )
     await edit_home_message(callback, text, archived_clients_kb(clients))
     await callback.answer()
@@ -144,6 +145,10 @@ async def cb_client_archive_do(callback: CallbackQuery) -> None:
     """Archive the client."""
     client_id = int(callback.data.split(":")[3])
     master = await get_master_by_tg_id(callback.from_user.id)
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        await callback.answer("Клиент не найден")
+        return
     await archive_client(master.id, client_id)
 
     clients, total = await get_clients_paginated(master.id, page=1)
@@ -168,12 +173,13 @@ async def cb_client_restore(callback: CallbackQuery) -> None:
     await restore_client(master.id, client_id)
 
     clients = await get_archived_clients(master.id)
+    hint = "\n\nНажмите ↩️ чтобы восстановить клиента." if clients else ""
     text = (
         "📦 Архив клиентов\n"
         "━━━━━━━━━━━━━━━\n"
         f"✅ Клиент восстановлен.\n\n"
-        f"Архивировано: {len(clients)}\n\n"
-        "Нажмите ↩️ чтобы восстановить клиента."
+        f"Архивировано: {len(clients)}"
+        + hint
     )
     await edit_home_message(callback, text, archived_clients_kb(clients))
     await callback.answer()

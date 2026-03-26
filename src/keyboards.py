@@ -265,9 +265,11 @@ def archived_clients_kb(clients: list) -> InlineKeyboardMarkup:
     for client in clients:
         name = client.get("name", "Клиент")
         phone = client.get("phone", "")
-        label = name + (f" | {phone}" if phone else "")
+        text = f"↩️ {name}"
+        if phone:
+            text += f" | {phone}"
         buttons.append([InlineKeyboardButton(
-            text=f"↩️ {label}",
+            text=text,
             callback_data=f"clients:restore:{client['id']}"
         )])
     if not clients:
