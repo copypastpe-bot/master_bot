@@ -3,7 +3,7 @@
 import aiosqlite
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 import calendar
 
@@ -1360,6 +1360,38 @@ async def get_reports(master_id: int, date_from: date, date_to: date) -> dict:
             "top_services": top_services,
             "top_orders": top_orders,
         }
+    finally:
+        await conn.close()
+
+
+async def get_daily_revenue(
+    master_id: int, date_from: date, date_to: date
+) -> list[dict]:
+    """Get revenue by day for chart. Fills missing days with 0."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT date(done_at) as day, COALESCE(SUM(amount_total), 0) as revenue
+            FROM orders
+            WHERE master_id = ?
+              AND status = 'done'
+              AND date(done_at) >= ?
+              AND date(done_at) <= ?
+            GROUP BY date(done_at)
+            """,
+            (master_id, date_from.isoformat(), date_to.isoformat())
+        )
+        rows = await cursor.fetchall()
+        revenue_by_day = {row["day"]: row["revenue"] for row in rows}
+
+        result = []
+        current = date_from
+        while current <= date_to:
+            day_str = current.isoformat()
+            result.append({"date": day_str, "revenue": revenue_by_day.get(day_str, 0)})
+            current += timedelta(days=1)
+        return result
     finally:
         await conn.close()
 
