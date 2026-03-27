@@ -119,3 +119,8 @@ export const deactivateMasterPromo = (id) =>
   api.put(`/api/master/promos/${id}/deactivate`).then(r => r.data);
 export const getPromoRecipientsCount = () =>
   api.get('/api/master/promos/recipients-count').then(r => r.data);
+
+// Reports
+// params: { period: 'week'|'month'|'today' } or { date_from: 'YYYY-MM-DD', date_to: 'YYYY-MM-DD' }
+export const getMasterReports = (params) =>
+  api.get('/api/master/reports', { params }).then(r => r.data);
