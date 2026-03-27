@@ -110,9 +110,15 @@ function RevenueChart({ data }) {
   }
 
   if (data.length === 1) {
+    const dayRevenue = data[0].revenue;
     return (
-      <div style={{ color: 'var(--tg-hint)', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
-        График доступен для периода от 2 дней
+      <div style={{ textAlign: 'center', padding: '32px 0' }}>
+        <div style={{ color: 'var(--tg-text)', fontSize: 22, fontWeight: 700 }}>
+          {formatCurrency(dayRevenue)}
+        </div>
+        <div style={{ color: 'var(--tg-hint)', fontSize: 13, marginTop: 4 }}>
+          за {formatTooltipDate(data[0].date)}
+        </div>
       </div>
     );
   }
@@ -372,7 +378,10 @@ export default function Reports({ initialPeriod = 'month' }) {
   };
 
   const customLabel = customRange
-    ? `${customRange.from.slice(5).replace('-', '.')} – ${customRange.to.slice(5).replace('-', '.')}`
+    ? (() => {
+        const fmt = (s) => new Date(s + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        return `${fmt(customRange.from)} – ${fmt(customRange.to)}`;
+      })()
     : undefined;
 
   if (isLoading) return <ReportsSkeleton />;

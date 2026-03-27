@@ -161,17 +161,23 @@ export default function Dashboard({ onNavigate }) {
   };
 
   const handleReportsWeek = () => {
-    WebApp?.HapticFeedback?.impactOccurred('light');
+    if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
+      WebApp.HapticFeedback.impactOccurred('light');
+    }
     onNavigate('reports', { period: 'week' });
   };
 
   const handleReportsMonth = () => {
-    WebApp?.HapticFeedback?.impactOccurred('light');
+    if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
+      WebApp.HapticFeedback.impactOccurred('light');
+    }
     onNavigate('reports', { period: 'month' });
   };
 
   const handleClients = () => {
-    WebApp?.HapticFeedback?.impactOccurred('light');
+    if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
+      WebApp.HapticFeedback.impactOccurred('light');
+    }
     onNavigate('clients');
   };
 
