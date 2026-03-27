@@ -15,6 +15,7 @@ import Services from './pages/Services';
 import PromosList from './pages/PromosList';
 import PromoCreate from './pages/PromoCreate';
 import PromoCard from './pages/PromoCard';
+import Reports from './pages/Reports';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -32,6 +33,7 @@ const SCREEN_TITLES = {
   promos: 'Акции',
   promo_new: 'Новая акция',
   promo: 'Акция',
+  reports: 'Аналитика',
 };
 
 export default function MasterApp() {
@@ -200,6 +202,15 @@ export default function MasterApp() {
         <div>
           <PageHeader title="Акция" onBack={handleBack} />
           <PromoCard promo={promo} onBack={handleBack} />
+        </div>
+      );
+    }
+
+    if (type === 'reports') {
+      return (
+        <div>
+          <PageHeader title="Аналитика" onBack={handleBack} />
+          <Reports initialPeriod={current.period || 'month'} />
         </div>
       );
     }
