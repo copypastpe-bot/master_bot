@@ -160,6 +160,21 @@ export default function Dashboard({ onNavigate }) {
     onNavigate('requests');
   };
 
+  const handleReportsWeek = () => {
+    WebApp?.HapticFeedback?.impactOccurred('light');
+    onNavigate('reports', { period: 'week' });
+  };
+
+  const handleReportsMonth = () => {
+    WebApp?.HapticFeedback?.impactOccurred('light');
+    onNavigate('reports', { period: 'month' });
+  };
+
+  const handleClients = () => {
+    WebApp?.HapticFeedback?.impactOccurred('light');
+    onNavigate('clients');
+  };
+
   return (
     <div style={{ padding: '16px 16px 100px' }}>
       {/* Block 1: Greeting */}
@@ -193,21 +208,25 @@ export default function Dashboard({ onNavigate }) {
           icon="💰"
           value={formatCurrency(stats.week_revenue || 0)}
           label="Выручка за неделю"
+          onClick={handleReportsWeek}
         />
         <StatCard
           icon="📅"
           value={formatCurrency(stats.month_revenue || 0)}
           label="Выручка за месяц"
+          onClick={handleReportsMonth}
         />
         <StatCard
           icon="✅"
           value={stats.week_orders || 0}
           label="Заказов за неделю"
+          // TODO: onClick={() => onNavigate('orders_week')} — список выполненных заказов за неделю
         />
         <StatCard
           icon="👥"
           value={stats.total_clients || 0}
           label="Всего клиентов"
+          onClick={handleClients}
         />
       </div>
 
