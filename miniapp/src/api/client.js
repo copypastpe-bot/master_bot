@@ -124,3 +124,11 @@ export const getPromoRecipientsCount = () =>
 // params: { period: 'week'|'month'|'today' } or { date_from: 'YYYY-MM-DD', date_to: 'YYYY-MM-DD' }
 export const getMasterReports = (params) =>
   api.get('/api/master/reports', { params }).then(r => r.data);
+
+// Client creation
+export const createMasterClient = (data) =>
+  api.post('/api/master/clients', data).then(r => r.data);
+// data: { name: string, phone: string, birthday?: string }
+
+export const restoreArchivedClient = (clientId) =>
+  api.post(`/api/master/clients/${clientId}/restore`).then(r => r.data);
