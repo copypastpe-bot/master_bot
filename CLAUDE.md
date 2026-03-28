@@ -258,10 +258,34 @@ APP_ENV=production           — development включает dev bypass в API 
 
 Разработчик работает один. Всегда работать в ветке `main` напрямую — не создавать feature-ветки и worktree. Скиллы `superpowers:using-git-worktrees` не применять.
 
-Деплой:
-1. `git push origin main` — с локальной машины
-2. На сервере: `git pull origin main && docker compose up -d --build master_bot`
-3. Сервер никогда не делает `git commit` или `git merge` — только `git pull`
+### Деплой бэкенда (бот + API)
+
+```bash
+git push origin main
+ssh deploy@75.119.153.118 "cd /opt/master_bot && git pull origin main --ff-only && docker compose up -d --build master_bot"
+```
+
+Сервер никогда не делает `git commit` или `git merge` — только `git pull`.
+
+### Деплой Mini App (фронтенд)
+
+Нужен при любых изменениях в `miniapp/src/` или `miniapp/package.json`:
+
+```bash
+bash deploy_miniapp.sh
+```
+
+Скрипт делает всё сам: `npm run build` → `rsync dist/` на сервер → обновляет nginx конфиг → `nginx reload`.
+
+После деплоя nginx выводит `warn` про `protocol options redefined` — это норма (конфликт с n8n конфигом), главное что в конце `syntax ok` и `test is successful`.
+
+### Когда деплоить что
+
+| Изменения в | Деплой |
+|---|---|
+| `src/`, `migrations/`, `requirements.txt` | только бэкенд |
+| `miniapp/src/`, `miniapp/package.json` | только Mini App |
+| И то и другое | оба деплоя |
 
 ---
 
