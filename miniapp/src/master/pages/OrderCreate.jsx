@@ -7,6 +7,7 @@ import {
   getLastClientAddress,
 } from '../../api/client';
 import { useBackButton } from '../hooks/useBackButton';
+import ClientAddSheet from '../components/ClientAddSheet';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -86,6 +87,7 @@ function ProgressBar({ step }) {
 function StepClient({ selected, onSelect, onNext }) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [showAddSheet, setShowAddSheet] = useState(false);
   const timerRef = useRef(null);
 
   // Clear pending debounce timer on unmount to prevent state update after unmount
@@ -172,8 +174,26 @@ function StepClient({ selected, onSelect, onNext }) {
             </div>
           )}
           {!isFetching && clients.length === 0 && (
-            <div style={{ textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13, padding: 12 }}>
-              Клиенты не найдены
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: 'var(--tg-hint)', fontSize: 13, padding: '12px 0 8px' }}>
+                Клиенты не найдены
+              </div>
+              <button
+                onClick={() => { haptic(); setShowAddSheet(true); }}
+                style={{
+                  width: '100%',
+                  padding: '11px 16px',
+                  background: 'none',
+                  border: '1.5px solid var(--tg-button)',
+                  borderRadius: 10,
+                  color: 'var(--tg-button)',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Добавить нового клиента
+              </button>
             </div>
           )}
           {clients.map((c) => (
@@ -218,6 +238,18 @@ function StepClient({ selected, onSelect, onNext }) {
       >
         Далее →
       </button>
+
+      {showAddSheet && (
+        <ClientAddSheet
+          onSuccess={(client) => {
+            haptic();
+            setShowAddSheet(false);
+            onSelect(client);
+            onNext();
+          }}
+          onClose={() => setShowAddSheet(false)}
+        />
+      )}
     </div>
   );
 }
