@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getMasterClients } from '../../api/client';
+import ClientAddSheet from '../components/ClientAddSheet';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -30,6 +31,8 @@ export default function ClientsList({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+
+  const [showAddSheet, setShowAddSheet] = useState(false);
 
   const sentinelRef = useRef(null);
   const debounceRef = useRef(null);
@@ -97,6 +100,17 @@ export default function ClientsList({ onNavigate }) {
   const handleClear = () => {
     haptic();
     setQuery('');
+  };
+
+  const handleClientAdded = (client) => {
+    haptic('medium');
+    setShowAddSheet(false);
+    setQuery('');
+    setDebouncedQuery('');
+    setClients([]);
+    setPage(1);
+    setTotalPages(1);
+    onNavigate('client', { id: client.id });
   };
 
   const handleClientClick = (client) => {
@@ -268,6 +282,38 @@ export default function ClientsList({ onNavigate }) {
         <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13 }}>
           Загрузка...
         </div>
+      )}
+
+      {/* FAB: Add client */}
+      <button
+        onClick={() => { haptic(); setShowAddSheet(true); }}
+        style={{
+          position: 'fixed',
+          bottom: 90,
+          right: 20,
+          width: 52,
+          height: 52,
+          borderRadius: '50%',
+          background: 'var(--tg-button)',
+          color: 'var(--tg-button-text)',
+          border: 'none',
+          fontSize: 26,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+          zIndex: 20,
+        }}
+      >
+        +
+      </button>
+
+      {showAddSheet && (
+        <ClientAddSheet
+          onSuccess={handleClientAdded}
+          onClose={() => setShowAddSheet(false)}
+        />
       )}
     </div>
   );
