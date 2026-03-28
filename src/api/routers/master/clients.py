@@ -17,8 +17,13 @@ from src.database import (
     update_client,
     update_client_note,
     manual_bonus_transaction,
+    get_client_by_phone,
+    create_client,
+    link_client_to_master,
+    restore_client,
 )
 from src.models import Master
+from src.utils import normalize_phone
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +283,151 @@ async def master_client_bonus(
 
     await manual_bonus_transaction(master.id, client_id, body.amount, body.comment)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Create client
+# ---------------------------------------------------------------------------
+
+class ClientCreateRequest(BaseModel):
+    name: str
+    phone: str
+    birthday: Optional[str] = None
+
+
+@router.post("/master/clients", status_code=201)
+async def create_master_client_endpoint(
+    body: ClientCreateRequest,
+    master: Master = Depends(get_current_master),
+):
+    """Create or link a client. Handles duplicate phone scenarios."""
+    name = body.name.strip()
+    if not name or len(name) > 100:
+        raise HTTPException(422, "name must be 1-100 characters")
+
+    normalized_phone = normalize_phone(body.phone)
+    if not normalized_phone:
+        raise HTTPException(422, "invalid phone number")
+
+    birthday = body.birthday
+    if birthday:
+        try:
+            from datetime import date as date_cls
+            bday = date_cls.fromisoformat(birthday)
+            if bday > date_cls.today():
+                raise HTTPException(422, "birthday cannot be in the future")
+        except ValueError:
+            raise HTTPException(422, "birthday must be YYYY-MM-DD")
+
+    existing = await get_client_by_phone(normalized_phone)
+
+    if existing:
+        # Check master-client link including is_archived (not in MasterClient dataclass)
+        conn = await get_connection()
+        try:
+            cursor = await conn.execute(
+                "SELECT is_archived FROM master_clients WHERE master_id = ? AND client_id = ?",
+                (master.id, existing.id),
+            )
+            mc_row = await cursor.fetchone()
+        finally:
+            await conn.close()
+
+        if mc_row:
+            if not mc_row["is_archived"]:
+                raise HTTPException(
+                    409,
+                    detail={"error": "client_exists", "archived": False},
+                )
+            else:
+                raise HTTPException(
+                    409,
+                    detail={
+                        "error": "client_archived",
+                        "archived": True,
+                        "client_id": existing.id,
+                        "name": existing.name,
+                    },
+                )
+        # Client exists globally but not linked to this master — link them
+        await link_client_to_master(master.id, existing.id)
+        updates = {}
+        if name and name != existing.name:
+            updates["name"] = name
+        if birthday and birthday != existing.birthday:
+            updates["birthday"] = birthday
+        if updates:
+            await update_client(existing.id, **updates)
+        client = existing
+        is_new = False
+    else:
+        client = await create_client(
+            name=name,
+            tg_id=None,
+            phone=normalized_phone,
+            birthday=birthday,
+        )
+        await link_client_to_master(master.id, client.id)
+        is_new = True
+
+    return {
+        "id": client.id,
+        "name": name if is_new else (client.name or name),
+        "phone": normalized_phone,
+        "birthday": birthday or client.birthday,
+        "bonus_balance": 0,
+        "is_new": is_new,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Restore archived client
+# ---------------------------------------------------------------------------
+
+@router.post("/master/clients/{client_id}/restore")
+async def restore_master_client(
+    client_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Restore archived client."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT is_archived FROM master_clients WHERE master_id = ? AND client_id = ?",
+            (master.id, client_id),
+        )
+        mc_row = await cursor.fetchone()
+    finally:
+        await conn.close()
+
+    if not mc_row:
+        raise HTTPException(404, "client not found")
+    if not mc_row["is_archived"]:
+        raise HTTPException(409, "client is not archived")
+
+    await restore_client(master.id, client_id)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT id, name, phone, birthday FROM clients WHERE id = ?",
+            (client_id,),
+        )
+        row = await cursor.fetchone()
+    finally:
+        await conn.close()
+
+    if not row:
+        raise HTTPException(404, "client not found")
+
+    return {
+        "id": row["id"],
+        "name": row["name"] or "",
+        "phone": row["phone"] or "",
+        "birthday": row["birthday"],
+        "bonus_balance": 0,
+        "is_new": False,
+    }
 
 
 # ---------------------------------------------------------------------------
