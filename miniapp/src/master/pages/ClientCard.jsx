@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterClient,
@@ -212,6 +212,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   const qc = useQueryClient();
+  const birthdayInputRef = useRef(null);
 
   const { data: client, isLoading, error } = useQuery({
     queryKey: ['master-client', clientId],
@@ -269,7 +270,9 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 
   const handleEditSave = () => {
     haptic('medium');
-    editMutation.mutate(editForm);
+    // Read birthday from DOM ref to avoid React controlled-input issues on Telegram WebView
+    const birthday = birthdayInputRef.current?.value ?? editForm.birthday;
+    editMutation.mutate({ ...editForm, birthday });
   };
 
   const handleEditStart = () => {
@@ -328,8 +331,8 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
             <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 10, marginBottom: 4 }}>Дата рождения</div>
             <input
               type="date"
-              value={editForm.birthday || ''}
-              onChange={e => setEditForm(p => ({ ...p, birthday: e.target.value }))}
+              ref={birthdayInputRef}
+              defaultValue={editForm.birthday || ''}
               style={inputStyle}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>

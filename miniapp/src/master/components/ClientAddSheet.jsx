@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createMasterClient, restoreArchivedClient } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
@@ -32,8 +32,8 @@ function FieldLabel({ children }) {
 export default function ClientAddSheet({ onSuccess, onClose }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [birthday, setBirthday] = useState('');
   const [loading, setLoading] = useState(false);
+  const birthdayRef = useRef(null);
   const [fieldError, setFieldError] = useState('');
   // Archived conflict state
   const [archivedClient, setArchivedClient] = useState(null); // { client_id, name }
@@ -46,11 +46,13 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
     haptic();
     setLoading(true);
     setFieldError('');
+    // Read date from DOM ref to avoid React controlled-input issues on Telegram WebView
+    const birthdayVal = birthdayRef.current?.value || undefined;
     try {
       const client = await createMasterClient({
         name: name.trim(),
         phone: phone.trim(),
-        birthday: birthday || undefined,
+        birthday: birthdayVal || undefined,
       });
       if (typeof WebApp?.HapticFeedback?.notificationOccurred === 'function') {
         WebApp.HapticFeedback.notificationOccurred('success');
@@ -177,9 +179,8 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
               <FieldLabel>Дата рождения (необязательно)</FieldLabel>
               <input
                 type="date"
-                value={birthday}
+                ref={birthdayRef}
                 max={today}
-                onChange={e => setBirthday(e.target.value)}
                 style={inputStyle}
               />
               <div style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 3 }}>

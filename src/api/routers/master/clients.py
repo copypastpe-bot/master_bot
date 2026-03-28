@@ -23,11 +23,30 @@ from src.database import (
     restore_client,
 )
 from src.models import Master
-from src.utils import normalize_phone
+from src.utils import normalize_phone, parse_date
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["master"])
+
+
+def _normalize_birthday(raw: Optional[str]) -> Optional[str]:
+    """Normalize birthday to YYYY-MM-DD. Accepts ISO and DD.MM.YYYY formats.
+    Returns None if raw is empty/unparseable, raises HTTPException on future date."""
+    if not raw:
+        return None
+    from datetime import date as date_cls
+    # Try ISO format first (from HTML date input per spec)
+    try:
+        bday = date_cls.fromisoformat(raw)
+    except ValueError:
+        # Fall back to DD.MM.YYYY (Telegram WebView locale format)
+        bday = parse_date(raw)
+    if bday is None:
+        raise HTTPException(422, "Неверный формат даты рождения")
+    if bday > date_cls.today():
+        raise HTTPException(422, "Дата рождения не может быть в будущем")
+    return bday.isoformat()
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +249,10 @@ async def update_master_client(
         raise HTTPException(status_code=404, detail="Client not found")
 
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "birthday" in kwargs:
+        kwargs["birthday"] = _normalize_birthday(kwargs["birthday"])
+        if kwargs["birthday"] is None:
+            del kwargs["birthday"]
     if kwargs:
         await update_client(client_id, **kwargs)
     return {"ok": True}
@@ -309,15 +332,7 @@ async def create_master_client_endpoint(
     if not normalized_phone:
         raise HTTPException(422, "invalid phone number")
 
-    birthday = body.birthday
-    if birthday:
-        try:
-            from datetime import date as date_cls
-            bday = date_cls.fromisoformat(birthday)
-            if bday > date_cls.today():
-                raise HTTPException(422, "birthday cannot be in the future")
-        except ValueError:
-            raise HTTPException(422, "birthday must be YYYY-MM-DD")
+    birthday = _normalize_birthday(body.birthday)
 
     existing = await get_client_by_phone(normalized_phone)
 
