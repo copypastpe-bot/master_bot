@@ -542,7 +542,8 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     # "Регистрация завершена!" — with reply keyboard, no separate house message
     success_text = "✅ Регистрация завершена!"
     if edit:
-        await message.edit_text(success_text, reply_markup=home_reply_kb())
+        await message.edit_text(success_text)
+        await message.answer("🏠", reply_markup=home_reply_kb())
     else:
         await message.answer(success_text, reply_markup=home_reply_kb())
 
