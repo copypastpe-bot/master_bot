@@ -5,7 +5,8 @@ import logging
 from typing import Optional
 
 from aiogram.exceptions import TelegramForbiddenError
-from fastapi import APIRouter, Depends, HTTPException, Request
+from aiogram.types import BufferedInputFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
@@ -52,26 +53,9 @@ class PreviewRequest(BaseModel):
         return v
 
 
-class SendRequest(BaseModel):
-    segment: str
-    text: str
 
-    @field_validator("segment")
-    @classmethod
-    def validate_segment(cls, v: str) -> str:
-        if v not in VALID_SEGMENTS:
-            raise ValueError(f"Unknown segment: {v}")
-        return v
-
-    @field_validator("text")
-    @classmethod
-    def validate_text(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("text cannot be empty")
-        if len(v) > MAX_TEXT_LENGTH:
-            raise ValueError(f"text exceeds {MAX_TEXT_LENGTH} characters")
-        return v
+PHOTO_MAX_BYTES = 10 * 1024 * 1024   # 10 MB
+VIDEO_MAX_BYTES = 50 * 1024 * 1024   # 50 MB
 
 
 def _personalize(text: str, name: str) -> str:
@@ -135,12 +119,38 @@ async def preview_broadcast(
 
 @router.post("/master/broadcast/send")
 async def send_broadcast(
-    body: SendRequest,
     request: Request,
+    segment: str = Form(...),
+    text: str = Form(...),
+    media_type: Optional[str] = Form(None),
+    media: Optional[UploadFile] = File(None),
     master: Master = Depends(get_current_master),
 ):
     """Send broadcast to selected segment via client_bot."""
-    recipients = await get_clients_by_segment(master.id, body.segment)
+    # Validate segment
+    if segment not in VALID_SEGMENTS:
+        raise HTTPException(status_code=422, detail="Unknown segment")
+
+    # Validate text
+    text = text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text cannot be empty")
+    if len(text) > MAX_TEXT_LENGTH:
+        raise HTTPException(status_code=422, detail=f"text exceeds {MAX_TEXT_LENGTH} characters")
+
+    # Read and validate media
+    media_bytes: Optional[bytes] = None
+    if media is not None and media_type in ("photo", "video"):
+        media_bytes = await media.read()
+        limit = PHOTO_MAX_BYTES if media_type == "photo" else VIDEO_MAX_BYTES
+        if len(media_bytes) > limit:
+            limit_mb = limit // (1024 * 1024)
+            raise HTTPException(
+                status_code=413,
+                detail=f"{media_type} exceeds {limit_mb} MB limit",
+            )
+
+    recipients = await get_clients_by_segment(master.id, segment)
 
     if not recipients:
         raise HTTPException(status_code=400, detail="No recipients in this segment")
@@ -158,8 +168,15 @@ async def send_broadcast(
             failed += 1
             continue
         try:
-            text = _personalize(body.text, client.get("name") or "")
-            await client_bot.send_message(chat_id=tg_id, text=text)
+            personalized = _personalize(text, client.get("name") or "")
+            if media_bytes and media_type == "photo":
+                file_obj = BufferedInputFile(media_bytes, filename="photo.jpg")
+                await client_bot.send_photo(chat_id=tg_id, photo=file_obj, caption=personalized)
+            elif media_bytes and media_type == "video":
+                file_obj = BufferedInputFile(media_bytes, filename="video.mp4")
+                await client_bot.send_video(chat_id=tg_id, video=file_obj, caption=personalized)
+            else:
+                await client_bot.send_message(chat_id=tg_id, text=personalized)
             sent += 1
             await asyncio.sleep(0.05)  # 50 ms rate-limit pause
         except TelegramForbiddenError:
@@ -169,16 +186,15 @@ async def send_broadcast(
             logger.error(f"Broadcast: failed to send to {tg_id}: {e}")
             failed += 1
 
-    # Persist campaign record
     await save_campaign(
         master_id=master.id,
         campaign_type="broadcast",
         title=None,
-        text=body.text,
+        text=text,
         active_from=None,
         active_to=None,
         sent_count=sent,
-        segment=body.segment,
+        segment=segment,
     )
 
     return {"sent_count": sent, "failed_count": failed}
