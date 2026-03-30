@@ -31,6 +31,8 @@ MAX_TEXT_LENGTH = 1000
 class PreviewRequest(BaseModel):
     segment: str
     text: str
+    has_media: bool = False
+    media_type: Optional[str] = None  # "photo" | "video" | None
 
     @field_validator("segment")
     @classmethod
@@ -126,6 +128,8 @@ async def preview_broadcast(
         "recipients_count": len(recipients),
         "preview_text": preview_text,
         "sample_recipients": sample_recipients,
+        "has_media": body.has_media,
+        "media_type": body.media_type,
     }
 
 
