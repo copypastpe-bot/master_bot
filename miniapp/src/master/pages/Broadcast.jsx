@@ -343,6 +343,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
         bottom: 'calc(env(safe-area-inset-bottom) + 60px)', left: 0, right: 0,
         padding: '12px 16px',
         background: 'var(--tg-bg)',
+        zIndex: 200,
         display: 'flex',
         gap: 8,
       }}>
