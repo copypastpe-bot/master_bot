@@ -64,8 +64,11 @@ export const getBroadcastSegments = () =>
   api.get('/api/master/broadcast/segments').then(r => r.data);
 export const previewBroadcast = (data) =>
   api.post('/api/master/broadcast/preview', data).then(r => r.data);
-export const sendBroadcast = (data) =>
-  api.post('/api/master/broadcast/send', data).then(r => r.data);
+export const sendBroadcast = (formData) =>
+  api.post('/api/master/broadcast/send', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
+  }).then(r => r.data);
 
 export const getMasterInviteLink = () =>
   api.get('/api/master/invite-link').then(r => r.data);
