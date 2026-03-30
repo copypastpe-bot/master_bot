@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getBroadcastSegments, previewBroadcast, sendBroadcast } from '../../api/client';
 import { useBackButton } from '../hooks/useBackButton';
@@ -24,7 +24,7 @@ function ProgressBar({ step }) {
       gap: 8,
       padding: '12px 16px',
     }}>
-      {[1, 2, 3].map((s) => (
+      {[1, 2, 3, 4].map((s) => (
         <div
           key={s}
           style={{
@@ -196,16 +196,200 @@ function StepText({ text, onTextChange, onNext }) {
             opacity: canContinue ? 1 : 0.5,
           }}
         >
-          Предпросмотр
+          Далее
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Step 3: Preview & send ───────────────────────────────────────────────────
+// ─── Step 2: Media upload ─────────────────────────────────────────────────────
 
-function StepPreview({ segment, text, previewData, isLoading, onSend, isSending }) {
+const PHOTO_MAX_MB = 10;
+const VIDEO_MAX_MB = 50;
+
+function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNext }) {
+  const inputRef = useRef(null);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const isPhoto = file.type.startsWith('image/');
+    const isVideo = file.type === 'video/mp4';
+
+    if (!isPhoto && !isVideo) {
+      alert('Поддерживаются только JPEG, PNG и MP4');
+      return;
+    }
+
+    const maxBytes = isPhoto ? PHOTO_MAX_MB * 1024 * 1024 : VIDEO_MAX_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const limit = isPhoto ? PHOTO_MAX_MB : VIDEO_MAX_MB;
+      alert(`Файл превышает ${limit} МБ`);
+      e.target.value = '';
+      return;
+    }
+
+    onFileChange(file, isPhoto ? 'photo' : 'video');
+    haptic();
+  };
+
+  const previewUrl = mediaFile && mediaType === 'photo'
+    ? URL.createObjectURL(mediaFile)
+    : null;
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const fileSizeMb = mediaFile ? (mediaFile.size / (1024 * 1024)).toFixed(1) : null;
+
+  return (
+    <div style={{ padding: '0 16px 80px' }}>
+      <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 16px' }}>
+        Добавьте фото или видео к сообщению (необязательно)
+      </p>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,video/mp4"
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+      />
+
+      {!mediaFile ? (
+        <button
+          onClick={() => { haptic(); inputRef.current?.click(); }}
+          style={{
+            width: '100%',
+            padding: '32px 16px',
+            background: 'var(--tg-secondary-bg)',
+            border: '1.5px dashed var(--tg-hint)',
+            borderRadius: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 36 }}>📎</span>
+          <span style={{ color: 'var(--tg-button)', fontSize: 15, fontWeight: 600 }}>
+            Выбрать фото или видео
+          </span>
+          <span style={{ color: 'var(--tg-hint)', fontSize: 12 }}>
+            JPEG, PNG до {PHOTO_MAX_MB} МБ · MP4 до {VIDEO_MAX_MB} МБ
+          </span>
+        </button>
+      ) : (
+        <div style={{
+          background: 'var(--tg-secondary-bg)',
+          borderRadius: 14,
+          overflow: 'hidden',
+        }}>
+          {mediaType === 'photo' && previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="preview"
+              style={{
+                width: '100%',
+                maxHeight: 240,
+                objectFit: 'cover',
+                display: 'block',
+              }}
+            />
+          ) : (
+            <div style={{
+              padding: '20px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+              <span style={{ fontSize: 32 }}>🎥</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)' }}>
+                  {mediaFile.name}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
+                  {fileSizeMb} МБ
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={() => { haptic(); onRemove(); }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: 'none',
+              border: 'none',
+              borderTop: '1px solid var(--tg-hint)',
+              color: '#e74c3c',
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            Удалить
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        position: 'fixed',
+        bottom: 0, left: 0, right: 0,
+        padding: '12px 16px',
+        background: 'var(--tg-bg)',
+        display: 'flex',
+        gap: 8,
+      }}>
+        {!mediaFile && (
+          <button
+            onClick={() => { haptic(); onSkip(); }}
+            style={{
+              flex: 1,
+              padding: '14px',
+              background: 'var(--tg-secondary-bg)',
+              color: 'var(--tg-text)',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 15,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Пропустить
+          </button>
+        )}
+        <button
+          onClick={() => { haptic(); onNext(); }}
+          style={{
+            flex: mediaFile ? 1 : undefined,
+            flexGrow: 1,
+            padding: '14px',
+            background: 'var(--tg-button)',
+            color: 'var(--tg-button-text)',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Далее
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 4: Preview & send ───────────────────────────────────────────────────
+
+function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoading, onSend, isSending }) {
   const { recipients_count = 0, preview_text = '', sample_recipients = [] } = previewData || {};
 
   // Show Telegram MainButton on this step only
@@ -264,6 +448,24 @@ function StepPreview({ segment, text, previewData, isLoading, onSend, isSending 
           )}
         </div>
       </div>
+
+      {/* Media indicator */}
+      {mediaFile && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 14px',
+          background: 'var(--tg-secondary-bg)',
+          borderRadius: 12,
+          marginBottom: 12,
+        }}>
+          <span style={{ fontSize: 22 }}>{mediaType === 'photo' ? '🖼️' : '🎥'}</span>
+          <div style={{ fontSize: 14, color: 'var(--tg-text)' }}>
+            {mediaType === 'photo' ? 'Фото приложено' : 'Видео приложено'}
+          </div>
+        </div>
+      )}
 
       {/* Preview message */}
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 6px' }}>
@@ -359,11 +561,13 @@ function SuccessScreen({ result, onReset }) {
 
 export default function Broadcast() {
   const [step, setStep] = useState(1);
-  const [selectedSegment, setSelectedSegment] = useState(null);
   const [text, setText] = useState('');
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaType, setMediaType] = useState(null);
+  const [selectedSegment, setSelectedSegment] = useState(null);
   const [sendResult, setSendResult] = useState(null);
 
-  // Show Telegram BackButton on steps 2 and 3
+  // Back button: show on steps 2–4, hide on success
   const handleBack = useCallback(() => {
     if (step > 1) setStep(s => s - 1);
   }, [step]);
@@ -382,15 +586,19 @@ export default function Broadcast() {
 
   const segments = segmentsData?.segments || [];
 
-  // Preview query — runs when entering step 3
+  // Preview query — runs when entering step 4
   const {
     data: previewData,
     isLoading: previewLoading,
-    refetch: refetchPreview,
   } = useQuery({
-    queryKey: ['broadcast-preview', selectedSegment, text],
-    queryFn: () => previewBroadcast({ segment: selectedSegment, text }),
-    enabled: step === 3 && !!selectedSegment && text.trim().length > 0,
+    queryKey: ['broadcast-preview', selectedSegment, text, !!mediaFile, mediaType],
+    queryFn: () => previewBroadcast({
+      segment: selectedSegment,
+      text,
+      has_media: !!mediaFile,
+      media_type: mediaFile ? mediaType : null,
+    }),
+    enabled: step === 4 && !!selectedSegment && text.trim().length > 0,
     staleTime: 0,
   });
 
@@ -415,34 +623,43 @@ export default function Broadcast() {
     },
   });
 
-  // Hide MainButton when not on step 3
+  // Hide MainButton when not on step 4
   useEffect(() => {
-    if (step !== 3 && !sendResult) {
+    if (step !== 4 && !sendResult) {
       if (typeof WebApp?.MainButton?.hide === 'function') {
         WebApp.MainButton.hide();
       }
     }
   }, [step, sendResult]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     haptic();
     if (!selectedSegment || !text.trim()) return;
-    sendMutation.mutate({ segment: selectedSegment, text });
-  };
+
+    const fd = new FormData();
+    fd.append('segment', selectedSegment);
+    fd.append('text', text.trim());
+    if (mediaFile && mediaType) {
+      fd.append('media_type', mediaType);
+      fd.append('media', mediaFile);
+    }
+    sendMutation.mutate(fd);
+  }, [selectedSegment, text, mediaFile, mediaType, sendMutation]);
 
   const handleReset = () => {
     setStep(1);
-    setSelectedSegment(null);
     setText('');
+    setMediaFile(null);
+    setMediaType(null);
+    setSelectedSegment(null);
     setSendResult(null);
   };
 
-  // Success screen
   if (sendResult) {
     return <SuccessScreen result={sendResult} onReset={handleReset} />;
   }
 
-  const stepTitle = step === 1 ? 'Аудитория' : step === 2 ? 'Текст' : 'Предпросмотр';
+  const stepTitles = ['', 'Текст', 'Медиа', 'Аудитория', 'Предпросмотр'];
 
   return (
     <div>
@@ -467,7 +684,7 @@ export default function Broadcast() {
             textAlign: 'center',
             flex: 1,
           }}>
-            {stepTitle}
+            {stepTitles[step]}
           </h2>
           <div style={{ width: 60 }} />
         </div>
@@ -477,6 +694,25 @@ export default function Broadcast() {
 
       {/* Step content */}
       {step === 1 && (
+        <StepText
+          text={text}
+          onTextChange={setText}
+          onNext={() => setStep(2)}
+        />
+      )}
+
+      {step === 2 && (
+        <StepMedia
+          mediaFile={mediaFile}
+          mediaType={mediaType}
+          onFileChange={(file, type) => { setMediaFile(file); setMediaType(type); }}
+          onRemove={() => { setMediaFile(null); setMediaType(null); }}
+          onSkip={() => setStep(3)}
+          onNext={() => setStep(3)}
+        />
+      )}
+
+      {step === 3 && (
         segmentsLoading ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
             Загрузка...
@@ -490,23 +726,17 @@ export default function Broadcast() {
             segments={segments}
             selected={selectedSegment}
             onSelect={setSelectedSegment}
-            onNext={() => setStep(2)}
+            onNext={() => setStep(4)}
           />
         )
       )}
 
-      {step === 2 && (
-        <StepText
-          text={text}
-          onTextChange={setText}
-          onNext={() => setStep(3)}
-        />
-      )}
-
-      {step === 3 && (
+      {step === 4 && (
         <StepPreview
           segment={selectedSegment}
           text={text}
+          mediaFile={mediaFile}
+          mediaType={mediaType}
           previewData={previewData}
           isLoading={previewLoading}
           onSend={handleSend}
