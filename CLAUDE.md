@@ -65,14 +65,18 @@ master-bot/
 │           │   ├── Calendar.jsx   — WeekStrip + список заказов на выбранный день
 │           │   ├── OrderDetail.jsx — карточка заказа, проведение/перенос/отмена
 │           │   ├── OrderCreate.jsx — 4-шаговое создание заказа (клиент, услуги, дата, подтверждение)
-│           │   ├── Broadcast.jsx  — 3-шаговая рассылка (сегмент, текст, отправка)
+│           │   ├── Broadcast.jsx  — 4-шаговая рассылка (текст, медиа, сегмент, отправка)
+│           │   ├── Reports.jsx    — аналитика: выручка, заказы, клиенты, график
+│           │   ├── ClientsList.jsx — список клиентов с поиском и пагинацией
+│           │   ├── ClientCard.jsx — карточка клиента: история, бонусы, редактирование
 │           │   └── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
 │           ├── components/
 │           │   ├── MasterNav.jsx  — нижняя навигация (4 таба)
 │           │   ├── WeekStrip.jsx  — горизонтальная лента дней недели
 │           │   ├── DaySchedule.jsx — список заказов дня
 │           │   ├── OrderCard.jsx  — карточка заказа в списке
-│           │   └── StatCard.jsx   — карточка статистики
+│           │   ├── StatCard.jsx   — карточка статистики
+│           │   └── ClientAddSheet.jsx — bottom sheet добавления нового клиента
 │           └── hooks/
 │               └── useBackButton.js — хук для Telegram BackButton на nested экранах
 │
@@ -108,7 +112,8 @@ master-bot/
     │           ├── orders.py      — CRUD заказов мастера
     │           ├── clients.py     — GET /api/master/clients, /api/master/clients/{id}/last-address
     │           ├── services_router.py — GET /api/master/services
-    │           └── broadcast.py   — POST /api/master/broadcast/preview, /send, /segments
+    │           ├── broadcast.py   — POST /api/master/broadcast/preview (JSON), /send (multipart/form-data с опциональным UploadFile), /segments
+│           └── reports.py     — GET /api/master/reports (параметры: period или date_from/date_to)
     │
     └── handlers/                  — обработчики master_bot по разделам
         ├── __init__.py
@@ -227,10 +232,14 @@ APP_ENV=production           — development включает dev bypass в API 
   - Calendar — WeekStrip + список заказов на выбранный день
   - OrderDetail — карточка заказа, провести / перенести / отменить с bottom sheet
   - OrderCreate — 4-шаговое создание заказа (поиск клиента, услуги, дата/время, подтверждение)
-  - Broadcast — 3-шаговая рассылка (сегмент, текст, предпросмотр и отправка)
+  - Broadcast — 4-шаговая рассылка (текст, медиа фото/видео, сегмент, предпросмотр и отправка); `/send` принимает `multipart/form-data`
+  - Reports (Аналитика) — выручка, заказы, новые клиенты, топ услуг, график по дням; доступ через клики на StatCard Dashboard
+  - ClientsList — список клиентов с поиском и бесконечной прокруткой
+  - ClientCard — карточка клиента: история заказов, бонусы, редактирование
+  - ClientAddSheet — bottom sheet добавления клиента; обрабатывает 409 (дубликат, архивный)
   - More — профиль мастера, инвайт-ссылка, поддержка
   - Telegram BackButton на всех nested экранах (хук `useBackButton`)
-- **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard, calendar, orders (CRUD), clients, services, broadcast, invite-link
+- **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard, calendar, orders (CRUD), clients (GET list + POST create), services, broadcast, reports, invite-link
 - Регистрация мастера и клиента (по инвайт-ссылке)
 - Полный цикл заказов: создание, проведение, перенос, отмена
 - Клиентская база: карточка, история, бонусы, заметки, редактирование
