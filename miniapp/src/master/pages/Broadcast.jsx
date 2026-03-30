@@ -152,7 +152,6 @@ function StepText({ text, onTextChange, onNext }) {
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
         placeholder="Введите текст рассылки..."
-        autoFocus
         rows={8}
         style={{
           width: '100%',
