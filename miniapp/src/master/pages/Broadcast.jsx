@@ -618,7 +618,10 @@ export default function Broadcast() {
       if (typeof WebApp?.MainButton?.hideProgress === 'function') {
         WebApp.MainButton.hideProgress();
       }
-      const msg = err?.response?.data?.detail || 'Ошибка отправки';
+      const isTimeout = err?.code === 'ECONNABORTED' || (err?.response?.status >= 504);
+      const msg = isTimeout
+        ? 'Рассылка заняла больше времени — проверьте результат позже'
+        : (err?.response?.data?.detail || 'Ошибка отправки');
       alert(msg);
     },
   });
