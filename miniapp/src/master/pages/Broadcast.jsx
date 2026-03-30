@@ -68,7 +68,7 @@ function BackBtn({ onClick }) {
 
 function StepSegment({ segments, selected, onSelect, onNext }) {
   return (
-    <div style={{ padding: '0 16px 80px' }}>
+    <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 12px' }}>
         Выберите аудиторию
       </p>
@@ -140,7 +140,7 @@ function StepText({ text, onTextChange, onNext }) {
   const canContinue = text.trim().length > 0 && text.length <= MAX_TEXT;
 
   return (
-    <div style={{ padding: '0 16px 80px' }}>
+    <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 4px' }}>
         Текст сообщения
       </p>
@@ -247,7 +247,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
   const fileSizeMb = mediaFile ? (mediaFile.size / (1024 * 1024)).toFixed(1) : null;
 
   return (
-    <div style={{ padding: '0 16px 80px' }}>
+    <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 16px' }}>
         Добавьте фото или видео к сообщению (необязательно)
       </p>
@@ -340,7 +340,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
 
       <div style={{
         position: 'fixed',
-        bottom: 0, left: 0, right: 0,
+        bottom: 'calc(env(safe-area-inset-bottom) + 60px)', left: 0, right: 0,
         padding: '12px 16px',
         background: 'var(--tg-bg)',
         display: 'flex',
@@ -424,7 +424,7 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
   }
 
   return (
-    <div style={{ padding: '0 16px 100px' }}>
+    <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 160px)' }}>
       {/* Recipient count */}
       <div style={{
         display: 'flex',
