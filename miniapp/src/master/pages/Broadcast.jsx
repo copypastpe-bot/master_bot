@@ -109,7 +109,7 @@ function StepSegment({ segments, selected, onSelect, onNext }) {
         })}
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--tg-bg)' }}>
+      <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom) + 60px)', left: 0, right: 0, padding: '12px 16px', background: 'var(--tg-bg)', zIndex: 200 }}>
         <button
           onClick={() => { haptic(); onNext(); }}
           disabled={!selected}
@@ -178,7 +178,7 @@ function StepText({ text, onTextChange, onNext }) {
         {remaining < 0 ? `Превышено на ${-remaining}` : `Осталось ${remaining}`}
       </div>
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, padding: '12px 16px', background: 'var(--tg-bg)' }}>
+      <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom) + 60px)', left: 0, right: 0, padding: '12px 16px', background: 'var(--tg-bg)', zIndex: 200 }}>
         <button
           onClick={() => { haptic(); onNext(); }}
           disabled={!canContinue}
