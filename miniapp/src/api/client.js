@@ -26,13 +26,23 @@ api.interceptors.response.use(
   }
 );
 
-export const getMe = () => api.get('/api/me').then(r => r.data);
-export const getOrders = () => api.get('/api/orders').then(r => r.data);
-export const getBonuses = () => api.get('/api/bonuses').then(r => r.data);
-export const getPromos = () => api.get('/api/promos').then(r => r.data);
-export const getServices = () => api.get('/api/services').then(r => r.data);
+// Active master (module-level — localStorage unavailable in TG Mini App)
+let _activeMasterId = null;
+export const setActiveMasterId = (id) => { _activeMasterId = id; };
+
+const masterParams = () => (_activeMasterId != null ? { master_id: _activeMasterId } : {});
+
+export const getMe = () => api.get('/api/me', { params: masterParams() }).then(r => r.data);
+export const getOrders = () => api.get('/api/orders', { params: masterParams() }).then(r => r.data);
+export const getBonuses = () => api.get('/api/bonuses', { params: masterParams() }).then(r => r.data);
+export const getPromos = () => api.get('/api/promos', { params: masterParams() }).then(r => r.data);
+export const getServices = () => api.get('/api/services', { params: masterParams() }).then(r => r.data);
 export const createOrderRequest = (data) =>
   api.post('/api/orders/request', data).then(r => r.data);
+
+// Multi-master
+export const getClientMasters = () => api.get('/api/client/masters').then(r => r.data);
+export const linkToMaster = (token) => api.post('/api/client/link', { token }).then(r => r.data);
 
 // Auth
 export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
