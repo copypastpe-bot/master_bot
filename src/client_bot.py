@@ -39,6 +39,8 @@ from src.database import (
     link_client_to_master,
     get_master_client,
     get_master_client_by_client_tg_id,
+    get_all_client_masters_by_tg_id,
+    link_existing_client_to_master,
     save_client_home_message_id,
     toggle_client_notification,
     get_client_orders,
@@ -63,6 +65,9 @@ from src.utils import (
 
 # Master bot instance for sending notifications
 master_bot: Bot = None
+
+# Active master selection for multi-master clients (tg_id → master_id)
+_active_masters: dict[int, int] = {}
 
 # Configure logging
 logging.basicConfig(
@@ -145,17 +150,36 @@ async def edit_home_message(callback: CallbackQuery, text: str, keyboard) -> Non
         pass
 
 
-async def get_client_context(tg_id: int) -> tuple:
-    """Get client, master, and master_client for a user."""
+async def get_client_context(tg_id: int, master_id: int = None) -> tuple:
+    """Get client, master, and master_client for a user.
+
+    If master_id specified → use that master.
+    If client has 1 master → use that one (backward compat).
+    If client has multiple and no master_id → return (client, None, None).
+    """
     client = await get_client_by_tg_id(tg_id)
-    if not client or not client.registered_via:
+    if not client:
         return None, None, None
 
-    master = await get_master_by_id(client.registered_via)
+    masters = await get_all_client_masters_by_tg_id(tg_id)
+    if not masters:
+        return client, None, None
+
+    if master_id:
+        entry = next((m for m in masters if m["master_id"] == master_id), None)
+        if not entry:
+            return client, None, None
+    elif len(masters) == 1:
+        master_id = masters[0]["master_id"]
+    else:
+        # Multiple masters, no selection — caller must handle
+        return client, None, None
+
+    master = await get_master_by_id(master_id)
     if not master:
         return client, None, None
 
-    master_client = await get_master_client(master.id, client.id)
+    master_client = await get_master_client(master_id, client.id)
     return client, master, master_client
 
 
@@ -174,7 +198,7 @@ class HomeButtonMiddleware(BaseMiddleware):
             state: FSMContext = data["state"]
             tg_id = event.from_user.id
 
-            client, master, master_client = await get_client_context(tg_id)
+            client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
             if client and master and master_client:
                 await state.clear()
                 try:
@@ -207,7 +231,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     tg_id = message.from_user.id
 
     # Check if already registered
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if client and master and master_client:
         await state.clear()
         # Show home menu (force_new to show at bottom of chat)
@@ -266,7 +290,7 @@ async def cmd_support(message: Message, state: FSMContext, bot: Bot) -> None:
         pass
 
     tg_id = message.from_user.id
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
 
     if not client or not master or not master_client:
         await message.answer("Вы не зарегистрированы. Перейдите по ссылке от мастера.")
@@ -308,7 +332,7 @@ async def cmd_delete_me(message: Message, state: FSMContext, bot: Bot) -> None:
 
     tg_id = message.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master or not master_client:
         await bot.send_message(message.chat.id, "Вы не зарегистрированы в системе.")
         return
@@ -350,7 +374,7 @@ async def cmd_delete_me(message: Message, state: FSMContext, bot: Bot) -> None:
 async def delete_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     """Confirm data deletion — stateless lookup by tg_id."""
     tg_id = callback.from_user.id
-    client, _, _ = await get_client_context(tg_id)
+    client, _, _ = await get_client_context(tg_id, _active_masters.get(tg_id))
 
     if client:
         await anonymize_client(client.id)
@@ -369,7 +393,7 @@ async def delete_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
 
     tg_id = callback.from_user.id
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
 
     if client and master and master_client:
         text = await build_home_text(client, master, master_client)
@@ -587,7 +611,7 @@ async def cb_home(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
 
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master or not master_client:
         await callback.answer("Ошибка")
         return
@@ -606,7 +630,7 @@ async def cb_bonuses(callback: CallbackQuery) -> None:
     """Show bonuses."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master:
         await callback.answer("Ошибка")
         return
@@ -645,7 +669,7 @@ async def cb_history(callback: CallbackQuery) -> None:
     """Show order history."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master:
         await callback.answer("Ошибка")
         return
@@ -685,7 +709,7 @@ async def cb_promos(callback: CallbackQuery) -> None:
     """Show active promos."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master:
         await callback.answer("Ошибка")
         return
@@ -733,7 +757,7 @@ async def cb_master_info(callback: CallbackQuery) -> None:
     """Show master info."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master:
         await callback.answer("Ошибка")
         return
@@ -762,7 +786,7 @@ async def cb_notifications(callback: CallbackQuery) -> None:
     """Show notifications settings."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master or not master_client:
         await callback.answer("Ошибка")
         return
@@ -789,7 +813,7 @@ async def cb_notifications_toggle(callback: CallbackQuery) -> None:
     """Toggle notification setting."""
     tg_id = callback.from_user.id
 
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master or not master_client:
         await callback.answer("Ошибка")
         return
@@ -849,7 +873,7 @@ async def cb_client_support(callback: CallbackQuery) -> None:
 async def cb_client_delete_profile(callback: CallbackQuery, state: FSMContext) -> None:
     """Start profile deletion flow from settings."""
     tg_id = callback.from_user.id
-    client, master, master_client = await get_client_context(tg_id)
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if not client or not master_client:
         await callback.answer("Ошибка")
         return
