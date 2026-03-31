@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { registerMaster } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
@@ -97,11 +97,16 @@ export default function MasterOnboarding({ onRegistered }) {
   };
 
   // Show Telegram MainButton on step 3
-  if (step === 3 && WebApp?.MainButton) {
+  useEffect(() => {
+    if (step !== 3 || !WebApp?.MainButton) return;
     WebApp.MainButton.setText('Начать работу');
     WebApp.MainButton.show();
     WebApp.MainButton.onClick(handleStart);
-  }
+    return () => {
+      WebApp.MainButton.offClick(handleStart);
+      WebApp.MainButton.hide();
+    };
+  }, [step]);
 
   return (
     <div style={{ padding: '32px 20px', maxWidth: 420, margin: '0 auto' }}>

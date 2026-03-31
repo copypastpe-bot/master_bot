@@ -50,10 +50,11 @@ master-bot/
 │       ├── api/
 │       │   └── client.js          — axios instance, dev bypass, все запросы
 │       ├── pages/
-│       │   ├── Home.jsx           — баланс, ближайшая запись, лог бонусов
+│       │   ├── Home.jsx           — баланс, ближайшая запись, лог бонусов; bottom sheet выбора мастера (мультимастер)
 │       │   ├── Booking.jsx        — выбор услуги, MainButton, экран успеха
 │       │   ├── Bonuses.jsx        — 2 вкладки: лог бонусов / история заказов
-│       │   └── Promos.jsx         — карточки акций, empty state
+│       │   ├── Promos.jsx         — карточки акций, empty state
+│       │   └── MasterSelectScreen.jsx — экран выбора мастера при 2+ мастерах (показывается до перехода в ClientApp)
 │       ├── components/
 │       │   ├── BottomNav.jsx      — 4 вкладки с inline SVG иконками + haptic
 │       │   ├── Skeleton.jsx       — пульсирующий placeholder (skeleton-pulse)
@@ -69,7 +70,8 @@ master-bot/
 │           │   ├── Reports.jsx    — аналитика: выручка, заказы, клиенты, график
 │           │   ├── ClientsList.jsx — список клиентов с поиском и пагинацией
 │           │   ├── ClientCard.jsx — карточка клиента: история, бонусы, редактирование
-│           │   └── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
+│           │   ├── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
+│           │   └── MasterOnboarding.jsx — 3-шаговый онбординг нового мастера (имя → детали → профиль создан + инвайт-ссылка)
 │           ├── components/
 │           │   ├── MasterNav.jsx  — нижняя навигация (4 таба)
 │           │   ├── WeekStrip.jsx  — горизонтальная лента дней недели
@@ -101,13 +103,15 @@ master-bot/
     │   ├── auth.py                — валидация Telegram initData (HMAC-SHA256)
     │   ├── dependencies.py        — get_current_client + get_current_master + dev bypass
     │   └── routers/
-    │       ├── client.py          — GET /api/me
-    │       ├── orders.py          — GET /api/orders, POST /api/orders/request
-    │       ├── bonuses.py         — GET /api/bonuses
-    │       ├── promos.py          — GET /api/promos
-    │       ├── services.py        — GET /api/services
+    │       ├── client.py          — GET /api/me (поддерживает ?master_id для мультимастера)
+    │       ├── orders.py          — GET /api/orders (поддерживает ?master_id), POST /api/orders/request
+    │       ├── bonuses.py         — GET /api/bonuses (поддерживает ?master_id)
+    │       ├── promos.py          — GET /api/promos (поддерживает ?master_id)
+    │       ├── services.py        — GET /api/services (поддерживает ?master_id)
+    │       ├── auth_router.py     — GET /api/auth/role → {role: master|client|unknown}
+    │       ├── client_masters.py  — GET /api/client/masters, POST /api/client/link
     │       └── master/            — API для мастера
-    │           ├── dashboard.py   — GET /api/master/me, /api/master/dashboard, /api/master/invite-link
+    │           ├── dashboard.py   — GET /api/master/me, /api/master/dashboard, /api/master/invite-link; POST /api/master/register
     │           ├── calendar.py    — GET /api/master/orders/dates
     │           ├── orders.py      — CRUD заказов мастера
     │           ├── clients.py     — GET /api/master/clients, /api/master/clients/{id}/last-address
@@ -240,7 +244,17 @@ APP_ENV=production           — development включает dev bypass в API 
   - More — профиль мастера, инвайт-ссылка, поддержка
   - Telegram BackButton на всех nested экранах (хук `useBackButton`)
 - **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard, calendar, orders (CRUD), clients (GET list + POST create), services, broadcast, reports, invite-link
-- Регистрация мастера и клиента (по инвайт-ссылке)
+- **Регистрация мастера** — два пути:
+  - через `master_bot`: FSM `/start` → имя → сфера → профиль создан
+  - через Mini App: `MasterOnboarding.jsx` (3 шага) → POST `/api/master/register` → `onRegistered()` → MasterApp
+- **Мультимастерность (подход C)** — клиент может быть привязан к нескольким мастерам:
+  - Привязка через бот: `/start {invite_token}` → `link_existing_client_to_master` + `_active_masters[tg_id]`
+  - Привязка через Mini App: `start_param=invite_TOKEN` → POST `/api/client/link` с `{invite_token}` → обновление списка
+  - Выбор мастера в Mini App: `MasterSelectScreen` (при 2+ мастерах на старте) + bottom sheet в Home
+  - Выбор мастера в боте: inline-кнопки `select_master:{id}` + `_active_masters` dict в памяти
+  - Все клиентские API принимают опциональный `?master_id`; `_activeMasterId` в `client.js` передаётся в каждый запрос
+  - `get_client_context(tg_id, master_id)`: если `master_id` задан — используется, иначе — последний посещённый (ORDER BY last_visit DESC)
+- Регистрация клиента (по инвайт-ссылке через бот)
 - Полный цикл заказов: создание, проведение, перенос, отмена
 - Клиентская база: карточка, история, бонусы, заметки, редактирование
 - Бонусная программа: начисление, списание, ручные операции

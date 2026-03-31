@@ -42,7 +42,7 @@ export const createOrderRequest = (data) =>
 
 // Multi-master
 export const getClientMasters = () => api.get('/api/client/masters').then(r => r.data);
-export const linkToMaster = (token) => api.post('/api/client/link', { token }).then(r => r.data);
+export const linkToMaster = (token) => api.post('/api/client/link', { invite_token: token }).then(r => r.data);
 
 // Auth
 export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
