@@ -243,7 +243,6 @@ class HomeButtonMiddleware(BaseMiddleware):
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     """Handle /start command."""
-    # Delete command message
     try:
         await message.delete()
     except TelegramBadRequest:
@@ -251,24 +250,69 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
 
     tg_id = message.from_user.id
 
-    # Check if already registered
-    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
-    if client and master and master_client:
-        await state.clear()
-        # Show home menu (force_new to show at bottom of chat)
-        await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
-        return
+    # Extract token early (before any DB calls)
+    args = message.text.split(maxsplit=1)
+    invite_token = args[1].strip() if len(args) >= 2 else None
 
-    # Multi-master: registered but no master selected
-    if client and not master:
-        masters = await get_all_client_masters_by_tg_id(tg_id)
-        if masters:
-            await show_master_select(bot, tg_id, message.chat.id)
+    # Load client (without master — token determines which master)
+    client = await get_client_by_tg_id(tg_id)
+
+    # ── Branch A: invite token present ────────────────────────────────────────
+    if invite_token:
+        master = await get_master_by_invite_token(invite_token)
+        if not master:
+            await bot.send_message(
+                message.chat.id,
+                "❌ Ссылка недействительна.\n\n"
+                "Попросите мастера отправить вам актуальную ссылку."
+            )
             return
 
-    # Extract invite token
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
+        if not client:
+            # Scenario 1: New client → full registration FSM (unchanged)
+            await state.update_data(master_id=master.id)
+            await bot.send_message(
+                message.chat.id,
+                "Привет 👋\n\n"
+                "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
+                "Мы собираем: имя, телефон, дату рождения (опционально).\n"
+                "Данные используются только для записи и бонусной программы.\n\n"
+                '📜 <a href="https://crmfit.ru/privacy">Политика конфиденциальности</a>',
+                reply_markup=consent_kb(),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+            await state.set_state(ClientRegistration.consent)
+            return
+
+        # Existing client — check if already linked to this master
+        existing_link = await get_master_client(master.id, client.id)
+        if existing_link:
+            # Scenario 3: already linked to this master
+            _active_masters[tg_id] = master.id
+            await state.clear()
+            await bot.send_message(
+                message.chat.id,
+                f"✅ Вы уже записаны к мастеру {master.name}"
+            )
+            await show_home(bot, client, master, existing_link, message.chat.id, force_new=True)
+        else:
+            # Scenario 2: existing client, new master
+            await link_existing_client_to_master(client.id, master.id)
+            await accrue_welcome_bonus(master.id, client.id)
+            _active_masters[tg_id] = master.id
+            master_client = await get_master_client(master.id, client.id)
+            await state.clear()
+            await bot.send_message(
+                message.chat.id,
+                f"✅ Вы подключились к мастеру {master.name}!"
+            )
+            await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
+        return
+
+    # ── Branch B: no token ────────────────────────────────────────────────────
+    if not client:
+        # Scenario 4: not registered
         await bot.send_message(
             message.chat.id,
             "👋 Добро пожаловать!\n\n"
@@ -278,34 +322,17 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         )
         return
 
-    invite_token = args[1].strip()
-
-    # Find master
-    master = await get_master_by_invite_token(invite_token)
-    if not master:
+    # Scenario 5: registered client, no token → show Home (best master auto-selected)
+    await state.clear()
+    client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
+    if master:
+        await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
+    else:
         await bot.send_message(
             message.chat.id,
-            "❌ Ссылка недействительна.\n\n"
-            "Попросите мастера отправить вам актуальную ссылку."
+            "👋 Для начала работы нужна ссылка от мастера.",
+            reply_markup=home_reply_kb()
         )
-        return
-
-    # Store master_id for registration
-    await state.update_data(master_id=master.id)
-
-    # Show consent screen
-    await bot.send_message(
-        message.chat.id,
-        "Привет 👋\n\n"
-        "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
-        "Мы собираем: имя, телефон, дату рождения (опционально).\n"
-        "Данные используются только для записи и бонусной программы.\n\n"
-        '📜 <a href="https://crmfit.ru/privacy">Политика конфиденциальности</a>',
-        reply_markup=consent_kb(),
-        parse_mode="HTML",
-        disable_web_page_preview=True,
-    )
-    await state.set_state(ClientRegistration.consent)
 
 
 @router.message(Command("support"))
