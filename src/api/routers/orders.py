@@ -23,6 +23,7 @@ def set_master_bot(bot):
 class OrderRequest(BaseModel):
     """Order request from Mini App."""
     service_name: str
+    master_id: Optional[int] = None  # для мультимастерных клиентов
     comment: Optional[str] = None
 
 
