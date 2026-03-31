@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, getOrders, getBonuses } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
@@ -30,27 +31,28 @@ const BONUS_ICONS = {
   promo:    { icon: '◆', color: '#9c27b0' },
 };
 
-export default function Home({ onNavigate }) {
+export default function Home({ onNavigate, masters = [], activeMasterId, onMasterChange }) {
   const qc = useQueryClient();
+  const [showMasterPicker, setShowMasterPicker] = useState(false);
+
   const { data: me, isLoading: meLoading, error: meError, refetch: refetchMe } = useQuery({ queryKey: ['me'], queryFn: getMe });
   const { data: orders = [], isLoading: ordersLoading } = useQuery({ queryKey: ['orders'], queryFn: getOrders });
   const { data: bonuses, isLoading: bonusesLoading } = useQuery({ queryKey: ['bonuses'], queryFn: getBonuses });
 
   if (meError) return <ErrorScreen message={meError.message} onRetry={refetchMe} />;
 
-  // Nearest upcoming order
   const now = new Date();
   const upcoming = orders
     .filter(o => (o.status === 'new' || o.status === 'confirmed') && new Date(o.scheduled_at) > now)
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
 
-  // Last 3 bonus operations
   const recentBonuses = bonuses?.log?.slice(0, 3) || [];
 
-  // Avatar initials from client name
   const initials = me?.client?.name
     ? me.client.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
+
+  const multiMaster = masters.length > 1;
 
   return (
     <div style={{ padding: '16px 16px 0' }}>
@@ -98,9 +100,22 @@ export default function Home({ onNavigate }) {
         {meLoading
           ? <Skeleton width={160} height={16} style={{ marginTop: 8 }} />
           : <>
-              <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginTop: 8 }}>
-                Мастер: {me?.master?.name || '—'}
-              </p>
+              {/* Clickable master name if multi-master */}
+              <div
+                onClick={multiMaster ? () => setShowMasterPicker(true) : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  marginTop: 8,
+                  cursor: multiMaster ? 'pointer' : 'default',
+                }}
+              >
+                <p style={{ color: 'var(--tg-hint)', fontSize: 13 }}>
+                  Мастер: {me?.master?.name || '—'}
+                </p>
+                {multiMaster && (
+                  <span style={{ color: 'var(--tg-hint)', fontSize: 11 }}>▼</span>
+                )}
+              </div>
               {me?.master?.sphere && (
                 <span style={{
                   display: 'inline-block', marginTop: 6,
@@ -168,6 +183,69 @@ export default function Home({ onNavigate }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Master picker bottom sheet */}
+      {showMasterPicker && (
+        <div
+          onClick={() => setShowMasterPicker(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 100,
+            display: 'flex', alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--tg-bg)',
+              width: '100%',
+              borderRadius: '16px 16px 0 0',
+              padding: '20px 16px 40px',
+            }}
+          >
+            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Сменить мастера</p>
+            {masters.map((m, i) => (
+              <div
+                key={m.master_id}
+                onClick={() => {
+                  onMasterChange(m.master_id);
+                  qc.invalidateQueries();
+                  setShowMasterPicker(false);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '12px 0',
+                  borderBottom: i < masters.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: '50%',
+                  background: m.master_id === activeMasterId ? 'var(--tg-button)' : 'var(--tg-surface)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: m.master_id === activeMasterId ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                  fontWeight: 700, fontSize: 15,
+                  flexShrink: 0,
+                }}>
+                  {(m.master_name || '?')[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontWeight: m.master_id === activeMasterId ? 700 : 400 }}>
+                    {m.master_name}
+                  </p>
+                  {m.sphere && (
+                    <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{m.sphere}</p>
+                  )}
+                </div>
+                {m.master_id === activeMasterId && (
+                  <span style={{ color: 'var(--tg-accent)', fontSize: 18 }}>✓</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
