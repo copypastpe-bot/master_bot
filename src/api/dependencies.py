@@ -1,7 +1,7 @@
 """FastAPI dependencies for Mini App API."""
 
 from typing import Optional, Tuple
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Query
 
 from src.database import (
     get_client_by_tg_id,
@@ -9,6 +9,8 @@ from src.database import (
     get_master_by_id,
     get_master_by_tg_id,
     get_masters,
+    get_master_client,
+    get_all_client_masters_by_tg_id,
 )
 from src.api.auth import validate_init_data, extract_tg_id
 from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, APP_ENV
@@ -39,17 +41,24 @@ async def _get_dev_client() -> Tuple[Client, Master, MasterClient]:
 
 
 async def get_current_client(
-    x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
+    master_id: Optional[int] = Query(None),
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data"),
 ) -> Tuple[Client, Master, MasterClient]:
     """
     Dependency - validate initData and return (client, master, master_client).
+
+    Master determined by:
+    1. ?master_id=X query param (explicit)
+    2. If client has only 1 master → use that one (backward compat)
+    3. If client has multiple masters and no master_id → HTTP 400
+
     In development mode with X-Init-Data: "dev" — returns first DB client without HMAC check.
-    Raises 401 if invalid, 404 if client not found in DB.
+    Raises 401 if invalid, 404 if client not found.
     """
     if not x_init_data:
         raise HTTPException(status_code=401, detail="Missing X-Init-Data header")
 
-    # Dev bypass
+    # Dev bypass — unchanged behaviour
     if APP_ENV == "development" and x_init_data == "dev":
         return await _get_dev_client()
 
@@ -65,13 +74,30 @@ async def get_current_client(
     if not client:
         raise HTTPException(status_code=404, detail="Client not registered")
 
-    master_client = await get_master_client_by_client_tg_id(tg_id)
-    if not master_client:
-        raise HTTPException(status_code=404, detail="Master not linked")
+    masters = await get_all_client_masters_by_tg_id(tg_id)
+    if not masters:
+        raise HTTPException(status_code=404, detail="Not linked to any master")
 
-    master = await get_master_by_id(master_client.master_id)
+    if master_id is not None:
+        entry = next((m for m in masters if m["master_id"] == master_id), None)
+        if entry is None:
+            raise HTTPException(status_code=403, detail="Not linked to this master")
+        chosen_master_id = master_id
+    elif len(masters) == 1:
+        chosen_master_id = masters[0]["master_id"]
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Укажите master_id: у вас несколько мастеров",
+        )
+
+    master = await get_master_by_id(chosen_master_id)
     if not master:
         raise HTTPException(status_code=404, detail="Master not found")
+
+    master_client = await get_master_client(chosen_master_id, client.id)
+    if not master_client:
+        raise HTTPException(status_code=404, detail="Master-client link not found")
 
     return client, master, master_client
 
