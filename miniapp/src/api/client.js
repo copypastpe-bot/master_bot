@@ -135,3 +135,7 @@ export const createMasterClient = (data) =>
 
 export const restoreArchivedClient = (clientId) =>
   api.post(`/api/master/clients/${clientId}/restore`).then(r => r.data);
+
+// Master registration (onboarding)
+export const registerMaster = (data) =>
+  api.post('/api/master/register', data).then(r => r.data);
