@@ -7,6 +7,7 @@ import Promos from './pages/Promos';
 import BottomNav from './components/BottomNav';
 import { Skeleton } from './components/Skeleton';
 import { getAuthRole } from './api/client';
+import MasterOnboarding from './master/pages/MasterOnboarding';
 
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
@@ -39,19 +40,6 @@ function ClientApp() {
   );
 }
 
-function UnknownRoleScreen() {
-  return (
-    <div style={{ textAlign: 'center', padding: '64px 24px' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>👋</div>
-      <p style={{ color: 'var(--tg-text)', fontSize: 18, marginBottom: 8 }}>
-        Вы не зарегистрированы
-      </p>
-      <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>
-        Зарегистрируйтесь через бота, чтобы открыть приложение
-      </p>
-    </div>
-  );
-}
 
 function RoleSkeleton() {
   return (
@@ -89,5 +77,5 @@ export default function App() {
     return <ClientApp />;
   }
 
-  return <UnknownRoleScreen />;
+  return <MasterOnboarding onRegistered={() => setRole('master')} />;
 }
