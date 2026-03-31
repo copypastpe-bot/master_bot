@@ -302,6 +302,10 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
             await accrue_welcome_bonus(master.id, client.id)
             _active_masters[tg_id] = master.id
             master_client = await get_master_client(master.id, client.id)
+            if master_client is None:
+                logger.error("master_client not found after link: master=%s client=%s", master.id, client.id)
+                await bot.send_message(message.chat.id, "Произошла ошибка. Попробуйте ещё раз.")
+                return
             await state.clear()
             await bot.send_message(
                 message.chat.id,
