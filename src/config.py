@@ -9,6 +9,7 @@ load_dotenv()
 MASTER_BOT_TOKEN: str = os.getenv("MASTER_BOT_TOKEN", "")
 CLIENT_BOT_TOKEN: str = os.getenv("CLIENT_BOT_TOKEN", "")
 CLIENT_BOT_USERNAME: str = os.getenv("CLIENT_BOT_USERNAME", "")
+MASTER_BOT_USERNAME: str = os.getenv("MASTER_BOT_USERNAME", "")
 
 # Database
 DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
