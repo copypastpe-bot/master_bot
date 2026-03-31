@@ -709,6 +709,57 @@ async def get_master_client_by_client_tg_id(client_tg_id: int) -> Optional[Maste
         await conn.close()
 
 
+async def get_client_masters(client_id: int) -> list[dict]:
+    """Get all masters linked to a client, ordered by last visit."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT m.id as master_id, m.name as master_name, m.sphere,
+                   mc.bonus_balance, mc.last_visit,
+                   (SELECT COUNT(*) FROM orders
+                    WHERE master_id = m.id AND client_id = ? AND status = 'done') as order_count
+            FROM masters m
+            JOIN master_clients mc ON m.id = mc.master_id
+            WHERE mc.client_id = ?
+            ORDER BY mc.last_visit DESC NULLS LAST
+            """,
+            (client_id, client_id),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_all_client_masters_by_tg_id(tg_id: int) -> list[dict]:
+    """Get all masters for a client by their Telegram ID. Returns [] if not found."""
+    client = await get_client_by_tg_id(tg_id)
+    if not client:
+        return []
+    return await get_client_masters(client.id)
+
+
+async def link_existing_client_to_master(client_id: int, master_id: int) -> bool:
+    """Link existing client to a new master.
+    Returns True if linked, False if already linked.
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO master_clients (master_id, client_id)
+            VALUES (?, ?)
+            ON CONFLICT(master_id, client_id) DO NOTHING
+            """,
+            (master_id, client_id),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
 async def update_master_client(master_id: int, client_id: int, **kwargs) -> None:
     """Update master-client relationship fields."""
     if not kwargs:
