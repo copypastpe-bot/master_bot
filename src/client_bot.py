@@ -155,8 +155,8 @@ async def get_client_context(tg_id: int, master_id: int = None) -> tuple:
     """Get client, master, and master_client for a user.
 
     If master_id specified → use that master.
-    If client has 1 master → use that one (backward compat).
-    If client has multiple and no master_id → return (client, None, None).
+    Otherwise → master with latest last_visit (masters[0], sorted by DB).
+    Returns (None, None, None) if client not found or has no masters.
     """
     client = await get_client_by_tg_id(tg_id)
     if not client:
@@ -170,11 +170,8 @@ async def get_client_context(tg_id: int, master_id: int = None) -> tuple:
         entry = next((m for m in masters if m["master_id"] == master_id), None)
         if not entry:
             return client, None, None
-    elif len(masters) == 1:
-        master_id = masters[0]["master_id"]
     else:
-        # Multiple masters, no selection — caller must handle
-        return client, None, None
+        master_id = masters[0]["master_id"]  # latest last_visit (sorted by DB)
 
     master = await get_master_by_id(master_id)
     if not master:
