@@ -107,7 +107,8 @@ async def show_home(bot: Bot, client, master, master_client, chat_id: int, force
         force_new: If True, always send new message (delete old if exists)
     """
     text = await build_home_text(client, master, master_client)
-    keyboard = home_client_kb()
+    all_masters = await get_all_client_masters_by_tg_id(client.tg_id)
+    keyboard = home_client_kb(multi_master=len(all_masters) > 1)
 
     # Delete old message if force_new
     if force_new and master_client.home_message_id:
@@ -183,6 +184,29 @@ async def get_client_context(tg_id: int, master_id: int = None) -> tuple:
     return client, master, master_client
 
 
+async def show_master_select(bot: Bot, tg_id: int, chat_id: int) -> None:
+    """Show inline keyboard for selecting active master."""
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    masters = await get_all_client_masters_by_tg_id(tg_id)
+    if not masters:
+        await bot.send_message(chat_id, "Вы не привязаны ни к одному мастеру.")
+        return
+
+    buttons = [
+        [InlineKeyboardButton(
+            text=f"{m['master_name']}" + (f" · {m['sphere']}" if m.get('sphere') else ""),
+            callback_data=f"select_master:{m['master_id']}",
+        )]
+        for m in masters
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await bot.send_message(
+        chat_id,
+        "👥 У вас несколько мастеров. Выберите:",
+        reply_markup=keyboard,
+    )
+
+
 class HomeButtonMiddleware(BaseMiddleware):
     """Middleware to intercept Home button before any FSM handlers."""
 
@@ -237,6 +261,13 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         # Show home menu (force_new to show at bottom of chat)
         await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
         return
+
+    # Multi-master: registered but no master selected
+    if client and not master:
+        masters = await get_all_client_masters_by_tg_id(tg_id)
+        if masters:
+            await show_master_select(bot, tg_id, message.chat.id)
+            return
 
     # Extract invite token
     args = message.text.split(maxsplit=1)
@@ -617,7 +648,35 @@ async def cb_home(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
         return
 
     text = await build_home_text(client, master, master_client)
-    await edit_home_message(callback, text, home_client_kb())
+    all_masters = await get_all_client_masters_by_tg_id(client.tg_id)
+    await edit_home_message(callback, text, home_client_kb(multi_master=len(all_masters) > 1))
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("select_master:"))
+async def cb_select_master(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+    """Handle master selection from multi-master picker."""
+    tg_id = callback.from_user.id
+    master_id = int(callback.data.split(":")[1])
+
+    _active_masters[tg_id] = master_id
+
+    client, master, master_client = await get_client_context(tg_id, master_id)
+    if not client or not master or not master_client:
+        await callback.answer("Ошибка при выборе мастера")
+        return
+
+    await callback.message.delete()
+    await show_home(bot, client, master, master_client, callback.message.chat.id, force_new=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "change_master")
+async def cb_change_master(callback: CallbackQuery, bot: Bot) -> None:
+    """Show master selection screen."""
+    tg_id = callback.from_user.id
+    await callback.message.delete()
+    await show_master_select(bot, tg_id, callback.message.chat.id)
     await callback.answer()
 
 

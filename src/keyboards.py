@@ -681,9 +681,9 @@ def delete_confirm_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def home_client_kb() -> InlineKeyboardMarkup:
+def home_client_kb(multi_master: bool = False) -> InlineKeyboardMarkup:
     """Main menu keyboard for client."""
-    return InlineKeyboardMarkup(inline_keyboard=[
+    buttons = [
         [
             InlineKeyboardButton(text="💰 Мои бонусы", callback_data="bonuses"),
             InlineKeyboardButton(text="📋 История", callback_data="history"),
@@ -706,7 +706,10 @@ def home_client_kb() -> InlineKeyboardMarkup:
                 web_app=WebAppInfo(url=MINIAPP_URL)
             )
         ],
-    ])
+    ]
+    if multi_master:
+        buttons.append([InlineKeyboardButton(text="🔄 Сменить мастера", callback_data="change_master")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def client_settings_kb() -> InlineKeyboardMarkup:
