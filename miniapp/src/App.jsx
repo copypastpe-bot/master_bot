@@ -6,15 +6,16 @@ import Bonuses from './pages/Bonuses';
 import Promos from './pages/Promos';
 import BottomNav from './components/BottomNav';
 import { Skeleton } from './components/Skeleton';
-import { getAuthRole } from './api/client';
+import { getAuthRole, getClientMasters, linkToMaster, setActiveMasterId } from './api/client';
 import MasterOnboarding from './master/pages/MasterOnboarding';
+import MasterSelectScreen from './pages/MasterSelectScreen';
 
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
 
 const clientPages = { home: Home, booking: Booking, bonuses: Bonuses, promos: Promos };
 
-function ClientApp() {
+function ClientApp({ masters, activeMasterId, onMasterChange }) {
   const [page, setPage] = useState('home');
 
   // Telegram BackButton — show on all pages except home
@@ -34,7 +35,12 @@ function ClientApp() {
 
   return (
     <div>
-      <Page onNavigate={setPage} />
+      <Page
+        onNavigate={setPage}
+        masters={masters}
+        activeMasterId={activeMasterId}
+        onMasterChange={onMasterChange}
+      />
       <BottomNav active={page} onNavigate={setPage} />
     </div>
   );
@@ -53,7 +59,9 @@ function RoleSkeleton() {
 }
 
 export default function App() {
-  const [role, setRole] = useState(null); // null = loading, 'master'|'client'|'unknown'
+  const [role, setRole] = useState(null); // null = loading
+  const [masters, setMasters] = useState(null); // null = not yet loaded
+  const [activeMasterId, setActiveMasterIdState] = useState(null);
 
   useEffect(() => {
     getAuthRole()
@@ -61,9 +69,45 @@ export default function App() {
       .catch(() => setRole('unknown'));
   }, []);
 
-  if (role === null) {
-    return <RoleSkeleton />;
-  }
+  useEffect(() => {
+    if (role !== 'client') return;
+
+    // Deep link: start_param = "invite_TOKEN"
+    const startParam = WebApp?.initDataUnsafe?.start_param;
+    const token = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
+
+    const load = async () => {
+      if (token) {
+        try {
+          await linkToMaster(token);
+        } catch (e) {
+          // 409 = already linked — not an error, continue
+          if (e?.response?.status !== 409) {
+            console.error('linkToMaster failed', e);
+          }
+        }
+      }
+      const data = await getClientMasters();
+      setMasters(data.masters || []);
+    };
+
+    load().catch(() => setMasters([]));
+  }, [role]);
+
+  // Auto-select when exactly 1 master
+  useEffect(() => {
+    if (!masters || masters.length !== 1) return;
+    const id = masters[0].master_id;
+    setActiveMasterId(id);       // module var in client.js
+    setActiveMasterIdState(id);  // React state for re-render
+  }, [masters]);
+
+  const handleMasterChange = (masterId) => {
+    setActiveMasterId(masterId);      // module var
+    setActiveMasterIdState(masterId); // React state
+  };
+
+  if (role === null) return <RoleSkeleton />;
 
   if (role === 'master') {
     return (
@@ -74,7 +118,37 @@ export default function App() {
   }
 
   if (role === 'client') {
-    return <ClientApp />;
+    if (masters === null) return <RoleSkeleton />;
+
+    if (masters.length === 0) {
+      return (
+        <div style={{ padding: '24px 16px', textAlign: 'center', marginTop: 60 }}>
+          <p style={{ fontSize: 40, marginBottom: 16 }}>👋</p>
+          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Нет мастеров</p>
+          <p style={{ color: 'var(--tg-hint)', fontSize: 14, lineHeight: 1.5 }}>
+            Попросите мастера отправить вам ссылку для подключения
+          </p>
+        </div>
+      );
+    }
+
+    // 2+ masters, none selected yet → show selection screen
+    if (!activeMasterId) {
+      return (
+        <MasterSelectScreen
+          masters={masters}
+          onSelect={handleMasterChange}
+        />
+      );
+    }
+
+    return (
+      <ClientApp
+        masters={masters}
+        activeMasterId={activeMasterId}
+        onMasterChange={handleMasterChange}
+      />
+    );
   }
 
   return <MasterOnboarding onRegistered={() => setRole('master')} />;
