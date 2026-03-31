@@ -166,7 +166,7 @@ async def get_client_context(tg_id: int, master_id: int = None) -> tuple:
     if not masters:
         return client, None, None
 
-    if master_id:
+    if master_id is not None:
         entry = next((m for m in masters if m["master_id"] == master_id), None)
         if not entry:
             return client, None, None
