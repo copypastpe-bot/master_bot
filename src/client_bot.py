@@ -620,6 +620,7 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     master_client = await link_client_to_master(master_id, client.id)
     master = await get_master_by_id(master_id)
 
+    _active_masters[tg_id] = master_id
     await state.clear()
 
     # "Регистрация завершена!" — with reply keyboard, no separate house message
