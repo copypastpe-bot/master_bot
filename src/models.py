@@ -30,6 +30,8 @@ class Master:
     gc_connected: bool = False
     gc_credentials: Optional[str] = None
     home_message_id: Optional[int] = None
+    onboarding_skipped_first_client: bool = False
+    onboarding_banner_shown: bool = False
     created_at: Optional[datetime] = None
 
 

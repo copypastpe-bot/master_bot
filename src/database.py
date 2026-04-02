@@ -24,6 +24,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "gc_connected", "gc_credentials",
     "bonus_welcome", "timezone", "welcome_message", "welcome_photo_id",
     "birthday_message", "birthday_photo_id", "home_message_id", "currency",
+    "onboarding_skipped_first_client", "onboarding_banner_shown",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -108,6 +109,8 @@ def _parse_master_row(row) -> Master:
         gc_connected=bool(row["gc_connected"]),
         gc_credentials=row["gc_credentials"],
         home_message_id=row["home_message_id"] if "home_message_id" in row.keys() else None,
+        onboarding_skipped_first_client=bool(row["onboarding_skipped_first_client"]) if "onboarding_skipped_first_client" in row.keys() else False,
+        onboarding_banner_shown=bool(row["onboarding_banner_shown"]) if "onboarding_banner_shown" in row.keys() else False,
         created_at=row["created_at"],
     )
 
