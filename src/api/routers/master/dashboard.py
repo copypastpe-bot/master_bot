@@ -9,6 +9,7 @@ from src.database import (
     get_orders_by_date,
     get_reports,
     count_pending_requests,
+    count_done_orders,
 )
 from src.models import Master
 from src.config import CLIENT_BOT_USERNAME
@@ -96,6 +97,7 @@ async def get_master_dashboard(
     week_report = await get_reports(master.id, week_start, week_end)
     month_report = await get_reports(master.id, month_start, month_end)
     pending_requests = await count_pending_requests(master.id)
+    total_done = await count_done_orders(master.id)
 
     return {
         "master_name": master.name,
@@ -108,6 +110,12 @@ async def get_master_dashboard(
             "month_orders": month_report.get("order_count", 0),
             "total_clients": week_report.get("total_clients", 0),
             "pending_requests": pending_requests,
+        },
+        "total_done_orders": total_done,
+        "onboarding_banner": {
+            "show": master.onboarding_skipped_first_client and not master.onboarding_banner_shown,
+            "skipped_first_client": master.onboarding_skipped_first_client,
+            "banner_shown": master.onboarding_banner_shown,
         },
     }
 
