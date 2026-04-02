@@ -62,18 +62,18 @@ master-bot/
 │       └── master/                — мастерский интерфейс
 │           ├── MasterApp.jsx      — корневой компонент мастера, таб-навигация
 │           ├── pages/
-│           │   ├── Dashboard.jsx  — сводка дня, статистика, кнопка создания заказа
+│           │   ├── Dashboard.jsx  — сводка дня, статистика (для новых мастеров — мотивационный блок вместо KPI), кнопка создания заказа, онбординг-баннер
 │           │   ├── Calendar.jsx   — WeekStrip + список заказов на выбранный день
 │           │   ├── OrderDetail.jsx — карточка заказа, проведение/перенос/отмена
 │           │   ├── OrderCreate.jsx — 4-шаговое создание заказа (клиент, услуги, дата, подтверждение)
-│           │   ├── Broadcast.jsx  — 4-шаговая рассылка (текст, медиа, сегмент, отправка)
+│           │   ├── Broadcast.jsx  — 4-шаговая рассылка (текст, медиа, сегмент, отправка); empty state при 0 клиентов с TG (инвайт-ссылка)
 │           │   ├── Reports.jsx    — аналитика: выручка, заказы, клиенты, график
 │           │   ├── ClientsList.jsx — список клиентов с поиском и пагинацией
 │           │   ├── ClientCard.jsx — карточка клиента: история, бонусы, редактирование
 │           │   ├── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
-│           │   └── MasterOnboarding.jsx — 3-шаговый онбординг нового мастера (имя → детали → профиль создан + инвайт-ссылка)
+│           │   └── MasterOnboarding.jsx — 4-шаговый онбординг нового мастера (имя → ниша-чипсы → первый клиент+запись → финал); шаг 3 можно пропустить
 │           ├── components/
-│           │   ├── MasterNav.jsx  — нижняя навигация (4 таба)
+│           │   ├── MasterNav.jsx  — нижняя навигация: Главная / Календарь / Рассылки (иконка конверт MailIcon) / Другое
 │           │   ├── WeekStrip.jsx  — горизонтальная лента дней недели
 │           │   ├── DaySchedule.jsx — список заказов дня
 │           │   ├── OrderCard.jsx  — карточка заказа в списке
@@ -111,18 +111,19 @@ master-bot/
     │       ├── auth_router.py     — GET /api/auth/role → {role: master|client|unknown}
     │       ├── client_masters.py  — GET /api/client/masters, POST /api/client/link
     │       └── master/            — API для мастера
-    │           ├── dashboard.py   — GET /api/master/me, /api/master/dashboard, /api/master/invite-link; POST /api/master/register
+    │           ├── auth.py        — POST /api/master/register (без dev-bypass, требует реальный initData)
+│           ├── dashboard.py   — GET /api/master/me, /api/master/dashboard (+ total_done_orders, onboarding_banner), /api/master/invite-link
     │           ├── calendar.py    — GET /api/master/orders/dates
     │           ├── orders.py      — CRUD заказов мастера
     │           ├── clients.py     — GET /api/master/clients, /api/master/clients/{id}/last-address
     │           ├── services_router.py — GET /api/master/services
-    │           ├── broadcast.py   — POST /api/master/broadcast/preview (JSON), /send (multipart/form-data с опциональным UploadFile), /segments
+    │           ├── broadcast.py   — GET /can-send; GET /segments; POST /preview (JSON), /send (multipart/form-data с опциональным UploadFile)
 │           └── reports.py     — GET /api/master/reports (параметры: period или date_from/date_to)
     │
     └── handlers/                  — обработчики master_bot по разделам
         ├── __init__.py
-        ├── common.py              — общие хендлеры (home, навигация)
-        ├── registration.py        — регистрация мастера
+        ├── common.py              — /start → фото-баннер + кнопка Mini App (FSM регистрации отключён)
+        ├── registration.py        — FSM регистрации (отключён, код закомментирован)
         ├── orders.py              — заказы (создание, проведение, перенос, отмена)
         ├── clients.py             — блок клиентов (карточка, история, бонусы)
         ├── marketing.py           — рассылки и акции
@@ -202,7 +203,7 @@ APP_ENV=production           — development включает dev bypass в API 
 
 | Таблица | Назначение |
 |---|---|
-| `masters` | Мастера: профиль, настройки бонусов, GC credentials |
+| `masters` | Мастера: профиль, настройки бонусов, GC credentials, `onboarding_skipped_first_client`, `onboarding_banner_shown` |
 | `clients` | Клиенты: tg_id, имя, телефон, ДР |
 | `master_clients` | Связка мастер↔клиент: баланс бонусов, настройки уведомлений |
 | `orders` | Заказы: статус, время, сумма, оплата, бонусы |
@@ -217,12 +218,17 @@ APP_ENV=production           — development включает dev bypass в API 
 
 ---
 
-## UI паттерны (боты)
+## UI паттерны
 
-- **Гибридный UI:** Home — постоянное сообщение, редактируется. FSM-сценарии — новые сообщения, удаляются после завершения.
-- **Callback data формат:** `раздел:действие:параметр` (например `orders:view:12`)
-- **Навигация:** везде есть `[◀️ Назад]` и `[🏠 Главная]`
-- **Reply-кнопка** `[🏠 Домой]` — постоянно видна, прерывает любой FSM
+### Бот (master_bot)
+- `/start` и `/home` — только фото-баннер + кнопка "Открыть приложение →" (WebApp кнопка)
+- FSM регистрации отключён — весь онбординг в Mini App
+- Оставшиеся FSM-хендлеры: настройки профиля, бонусы, услуги, GC — в `handlers/`
+
+### Mini App (мастерский)
+- **Навигация:** таб-бар — Главная / Календарь / Рассылки (конверт) / Другое
+- **Nested screens:** `navStack` в `MasterApp.jsx`; Telegram BackButton через `useBackButton`
+- **Dashboard empty states:** новый мастер (0 done-заказов) видит 📊-блок вместо KPI и "Пока записей нет" вместо расписания
 
 ---
 
@@ -232,21 +238,26 @@ APP_ENV=production           — development включает dev bypass в API 
 - **Mini App бэкенд (клиентский)** — FastAPI (`src/api/`), эндпоинты `/api/me`, `/api/orders`, `/api/bonuses`, `/api/promos`, `/api/services`, `/api/orders/request`. Авторизация через Telegram initData (HMAC-SHA256). Dev bypass через `APP_ENV=development`.
 - **Mini App фронтенд (клиентский)** — React 19 + Vite (`miniapp/`), 4 экрана, Telegram WebApp API, адаптивная тема.
 - **Master Mini App** — полный мастерский интерфейс (`miniapp/src/master/`):
-  - Dashboard — сводка дня, статистика (неделя/месяц), ближайшие заказы
+  - Dashboard — сводка дня; для новых мастеров (0 done-заказов): мотивационный блок 📊 вместо KPI, empty states в расписании с кнопкой "Добавить первую запись"; онбординг-баннер если пропустил шаг 3
   - Calendar — WeekStrip + список заказов на выбранный день
   - OrderDetail — карточка заказа, провести / перенести / отменить с bottom sheet
   - OrderCreate — 4-шаговое создание заказа (поиск клиента, услуги, дата/время, подтверждение)
-  - Broadcast — 4-шаговая рассылка (текст, медиа фото/видео, сегмент, предпросмотр и отправка); `/send` принимает `multipart/form-data`
+  - Broadcast — 4-шаговая рассылка (текст, медиа фото/видео, сегмент, предпросмотр и отправка); при 0 клиентов с TG — empty state с инвайт-ссылкой; `/send` принимает `multipart/form-data`
   - Reports (Аналитика) — выручка, заказы, новые клиенты, топ услуг, график по дням; доступ через клики на StatCard Dashboard
   - ClientsList — список клиентов с поиском и бесконечной прокруткой
   - ClientCard — карточка клиента: история заказов, бонусы, редактирование
   - ClientAddSheet — bottom sheet добавления клиента; обрабатывает 409 (дубликат, архивный)
   - More — профиль мастера, инвайт-ссылка, поддержка
   - Telegram BackButton на всех nested экранах (хук `useBackButton`)
-- **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard, calendar, orders (CRUD), clients (GET list + POST create), services, broadcast, reports, invite-link
-- **Регистрация мастера** — два пути:
-  - через `master_bot`: FSM `/start` → имя → сфера → профиль создан
-  - через Mini App: `MasterOnboarding.jsx` (3 шага) → POST `/api/master/register` → `onRegistered()` → MasterApp
+- **Master Mini App бэкенд** — `src/api/routers/master/`: dashboard (+ total_done_orders, onboarding_banner), calendar, orders (CRUD), clients (GET list + POST create), services, broadcast (+ GET /can-send), reports, invite-link; регистрация в `auth.py`
+- **Empty states для новых мастеров** — Dashboard: мотивационный блок 📊, "Пока записей нет" + кнопка первой записи, онбординг-баннер; Рассылки: экран с инвайт-ссылкой при 0 клиентов с TG
+- **Навигация** — вкладка "Рассылки" с иконкой конверта (MailIcon) вместо рупора (MegaphoneIcon)
+- **Регистрация мастера** — только через Mini App:
+  - `master_bot /start` → фото-баннер + кнопка "Открыть приложение →" (FSM регистрации удалён)
+  - Mini App: `GET /api/auth/role` → `unknown` → `MasterOnboarding.jsx` (4 шага: имя → ниша → первый клиент/пропустить → финал) → POST `/api/master/register` → `onRegistered()` → `MasterApp`
+  - Путь "Пропустить" (шаг 3): `PUT /api/master/profile { onboarding_skipped_first_client: true }` → Dashboard показывает баннер "Добавь первого клиента..."
+  - Баннер скрывается через `PUT /api/master/profile { onboarding_banner_shown: true }`
+  - 12 ниш + "Другое": Клининг, Химчистка, Парикмахер, Маникюр, Груминг, Массаж, Ремонт бытовой техники, Мастер на час, Репетитор, Фотограф, Психолог, Садовник, Другое
 - **Мультимастерность (подход C)** — клиент может быть привязан к нескольким мастерам:
   - Привязка через бот: `/start {invite_token}` → `link_existing_client_to_master` + `_active_masters[tg_id]`
   - Привязка через Mini App: `start_param=invite_TOKEN` → POST `/api/client/link` с `{invite_token}` → обновление списка
@@ -268,7 +279,7 @@ APP_ENV=production           — development включает dev bypass в API 
 - Рефакторинг: master_bot разбит на handlers/
 
 ### В разработке 🔄
-- **Mini App деплой** — сборка `miniapp/dist/` и раздача через nginx на `app.crmfit.ru`
+- Нет активных задач
 
 ### Запланировано 📋
 - Список клиентов с пагинацией по алфавиту
