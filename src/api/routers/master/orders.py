@@ -104,9 +104,6 @@ async def create_master_order(
     master: Master = Depends(get_current_master),
 ):
     """Create a new order."""
-    if not body.services:
-        raise HTTPException(status_code=400, detail="At least one service is required")
-
     # Validate client belongs to this master
     mc = await get_master_client(master.id, body.client_id)
     if not mc:
