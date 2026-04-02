@@ -16,9 +16,10 @@ const CalendarIcon = () => (
   </svg>
 );
 
-const MegaphoneIcon = () => (
+const MailIcon = () => (
   <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 11l19-9-9 19-2-8-8-2z"/>
+    <rect x="2" y="4" width="20" height="16" rx="2"/>
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
   </svg>
 );
 
@@ -33,7 +34,7 @@ const MoreIcon = () => (
 const tabs = [
   { id: 'home', label: 'Главная', Icon: HomeIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
-  { id: 'marketing', label: 'Рассылки', Icon: MegaphoneIcon },
+  { id: 'marketing', label: 'Рассылки', Icon: MailIcon },
   { id: 'more', label: 'Ещё', Icon: MoreIcon },
 ];
 
