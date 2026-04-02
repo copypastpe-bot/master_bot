@@ -45,6 +45,7 @@ class ProfileUpdateBody(BaseModel):
     contacts: Optional[str] = None
     socials: Optional[str] = None
     work_hours: Optional[str] = None
+    onboarding_banner_shown: Optional[bool] = None
 
     @field_validator("name")
     @classmethod
