@@ -96,6 +96,7 @@ export default function MasterOnboarding({ onRegistered }) {
     WebApp?.HapticFeedback?.selectionChanged();
 
     if (niche !== 'Другое') {
+      clearTimeout(autoAdvanceTimer.current);
       autoAdvanceTimer.current = setTimeout(() => doRegister(niche), 300);
     }
   };
