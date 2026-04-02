@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { getMasterDashboard } from '../../api/client';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getMasterDashboard, updateMasterProfile } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import StatCard from '../components/StatCard';
 import OrderCard from '../components/OrderCard';
@@ -26,7 +27,7 @@ function formatDate(d) {
   return `${dayNameCap}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
 
-function OrdersSection({ title, orders, onNavigate }) {
+function OrdersSection({ title, orders, onNavigate, emptyContent }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{
@@ -60,7 +61,7 @@ function OrdersSection({ title, orders, onNavigate }) {
           fontSize: 14,
           textAlign: 'center',
         }}>
-          Свободный день! 🎉
+          {emptyContent ?? 'Свободный день! 🎉'}
         </div>
       ) : (
         <div style={{
@@ -143,8 +144,27 @@ export default function Dashboard({ onNavigate }) {
     );
   }
 
+  return <DashboardContent data={data} onNavigate={onNavigate} />;
+}
+
+function DashboardContent({ data, onNavigate }) {
+  const queryClient = useQueryClient();
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
+  const dismissBannerMutation = useMutation({
+    mutationFn: () => updateMasterProfile({ onboarding_banner_shown: true }),
+    onSuccess: () => {
+      setBannerDismissed(true);
+      queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
+    },
+  });
+
   const stats = data?.stats || {};
   const today = new Date();
+  const totalDoneOrders = data?.total_done_orders ?? 0;
+  const todayOrders = data?.today_orders || [];
+  const tomorrowOrders = data?.tomorrow_orders || [];
+  const showBanner = !bannerDismissed && (data?.onboarding_banner?.show === true);
 
   const handleNewOrder = () => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
@@ -181,8 +201,70 @@ export default function Dashboard({ onNavigate }) {
     onNavigate('clients');
   };
 
+  const handleBannerDismiss = () => {
+    dismissBannerMutation.mutate();
+  };
+
+  const handleBannerAdd = () => {
+    handleNewOrder();
+    dismissBannerMutation.mutate();
+  };
+
   return (
     <div style={{ padding: '16px 16px 100px' }}>
+      {/* Onboarding banner */}
+      {showBanner && (
+        <div style={{
+          background: 'var(--tg-secondary-bg-color, var(--tg-surface))',
+          borderRadius: 'var(--radius-card)',
+          padding: '12px 14px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <p style={{
+            flex: 1,
+            color: 'var(--tg-text)',
+            fontSize: 13,
+            margin: 0,
+            lineHeight: 1.4,
+          }}>
+            Добавь первого клиента, чтобы увидеть как работают напоминания
+          </p>
+          <button
+            onClick={handleBannerAdd}
+            style={{
+              background: 'var(--tg-button)',
+              color: 'var(--tg-button-text)',
+              border: 'none',
+              borderRadius: 8,
+              padding: '7px 12px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Добавить →
+          </button>
+          <button
+            onClick={handleBannerDismiss}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--tg-hint)',
+              fontSize: 18,
+              cursor: 'pointer',
+              padding: '0 2px',
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Block 1: Greeting */}
       <div style={{ marginBottom: 20 }}>
         <h2 style={{
@@ -203,51 +285,101 @@ export default function Dashboard({ onNavigate }) {
         </p>
       </div>
 
-      {/* Block 2: Stats 2x2 grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 8,
-        marginBottom: 24,
-      }}>
-        <StatCard
-          icon="💰"
-          value={formatCurrency(stats.week_revenue || 0)}
-          label="Выручка за неделю"
-          onClick={handleReportsWeek}
-        />
-        <StatCard
-          icon="📅"
-          value={formatCurrency(stats.month_revenue || 0)}
-          label="Выручка за месяц"
-          onClick={handleReportsMonth}
-        />
-        <StatCard
-          icon="✅"
-          value={stats.week_orders || 0}
-          label="Заказов за неделю"
-          // TODO: onClick={() => onNavigate('orders_week')} — список выполненных заказов за неделю
-        />
-        <StatCard
-          icon="👥"
-          value={stats.total_clients || 0}
-          label="Всего клиентов"
-          onClick={handleClients}
-        />
-      </div>
+      {/* Block 2: KPI or motivational block */}
+      {totalDoneOrders > 0 ? (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 8,
+          marginBottom: 24,
+        }}>
+          <StatCard
+            icon="💰"
+            value={formatCurrency(stats.week_revenue || 0)}
+            label="Выручка за неделю"
+            onClick={handleReportsWeek}
+          />
+          <StatCard
+            icon="📅"
+            value={formatCurrency(stats.month_revenue || 0)}
+            label="Выручка за месяц"
+            onClick={handleReportsMonth}
+          />
+          <StatCard
+            icon="✅"
+            value={stats.week_orders || 0}
+            label="Заказов за неделю"
+          />
+          <StatCard
+            icon="👥"
+            value={stats.total_clients || 0}
+            label="Всего клиентов"
+            onClick={handleClients}
+          />
+        </div>
+      ) : (
+        <div style={{
+          background: 'var(--tg-secondary-bg-color, var(--tg-surface))',
+          borderRadius: 'var(--radius-card)',
+          padding: '16px',
+          marginBottom: 24,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+        }}>
+          <span style={{ fontSize: 24, lineHeight: 1 }}>📊</span>
+          <p style={{
+            color: 'var(--tg-hint)',
+            fontSize: 14,
+            margin: 0,
+            lineHeight: 1.4,
+          }}>
+            Выполни первый заказ и увидишь показатели своей работы в цифрах
+          </p>
+        </div>
+      )}
 
       {/* Block 3: Today's orders */}
       <OrdersSection
         title="Сегодня"
-        orders={data?.today_orders || []}
+        orders={todayOrders}
         onNavigate={onNavigate}
+        emptyContent={
+          totalDoneOrders === 0 && todayOrders.length === 0 && tomorrowOrders.length === 0
+            ? (
+              <div>
+                <p style={{ margin: '0 0 10px', color: 'var(--tg-hint)' }}>
+                  Пока записей нет
+                </p>
+                <button
+                  onClick={handleNewOrder}
+                  style={{
+                    background: 'var(--tg-button)',
+                    color: 'var(--tg-button-text)',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '8px 16px',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Добавить первую запись
+                </button>
+              </div>
+            )
+            : todayOrders.length === 0
+              ? 'Записей на сегодня нет'
+              : null
+        }
       />
 
       {/* Block 4: Tomorrow's orders */}
       <OrdersSection
         title="Завтра"
-        orders={data?.tomorrow_orders || []}
+        orders={tomorrowOrders}
         onNavigate={onNavigate}
+        emptyContent="Записей на завтра нет"
       />
 
       {/* Block 5: Quick actions */}
