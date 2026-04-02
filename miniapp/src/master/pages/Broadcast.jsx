@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { getBroadcastSegments, previewBroadcast, sendBroadcast } from '../../api/client';
+import { getBroadcastCanSend, getBroadcastSegments, previewBroadcast, sendBroadcast } from '../../api/client';
+import { Skeleton } from '../../components/Skeleton';
 import { useBackButton } from '../hooks/useBackButton';
 
 const WebApp = window.Telegram?.WebApp;
@@ -573,6 +574,16 @@ export default function Broadcast() {
   }, [step]);
   useBackButton(handleBack, step > 1 && !sendResult);
 
+  // Can-send check — has master any clients with Telegram?
+  const {
+    data: canSendData,
+    isLoading: canSendLoading,
+  } = useQuery({
+    queryKey: ['broadcast-can-send'],
+    queryFn: getBroadcastCanSend,
+    staleTime: 60_000,
+  });
+
   // Load segments on mount
   const {
     data: segmentsData,
@@ -660,6 +671,111 @@ export default function Broadcast() {
 
   if (sendResult) {
     return <SuccessScreen result={sendResult} onReset={handleReset} />;
+  }
+
+  // Loading state for can-send check
+  if (canSendLoading) {
+    return (
+      <div style={{ padding: '16px 16px 100px' }}>
+        <Skeleton height={200} style={{ marginBottom: 16 }} />
+      </div>
+    );
+  }
+
+  // Empty state — no clients with Telegram
+  if (canSendData?.can_send === false) {
+    return (
+      <div style={{
+        padding: '48px 24px 100px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 56, marginBottom: 16 }}>✉️</div>
+        <h2 style={{
+          color: 'var(--tg-text)',
+          fontSize: 20,
+          fontWeight: 700,
+          margin: '0 0 8px',
+        }}>
+          Массовые рассылки
+        </h2>
+        <p style={{
+          color: 'var(--tg-hint)',
+          fontSize: 14,
+          margin: '0 0 24px',
+          lineHeight: 1.5,
+        }}>
+          Добавьте клиентов, чтобы делать массовые рассылки
+        </p>
+
+        <div style={{
+          width: '100%',
+          height: 1,
+          background: 'var(--tg-hint)',
+          opacity: 0.2,
+          marginBottom: 24,
+        }} />
+
+        <div style={{
+          width: '100%',
+          background: 'var(--tg-surface)',
+          borderRadius: 'var(--radius-card)',
+          padding: '16px',
+          textAlign: 'left',
+        }}>
+          <p style={{
+            color: 'var(--tg-text)',
+            fontSize: 14,
+            fontWeight: 600,
+            margin: '0 0 4px',
+          }}>
+            Ссылка-приглашение для клиентов
+          </p>
+          <p style={{
+            color: 'var(--tg-hint)',
+            fontSize: 13,
+            margin: '0 0 12px',
+          }}>
+            Отправьте ссылку, чтобы пригласить клиента
+          </p>
+          <div style={{
+            background: 'var(--tg-bg)',
+            borderRadius: 8,
+            padding: '10px 12px',
+            marginBottom: 10,
+            wordBreak: 'break-all',
+            fontSize: 13,
+            color: 'var(--tg-hint)',
+          }}>
+            {canSendData?.invite_link || ''}
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(canSendData?.invite_link || '');
+              const tgWebApp = window.Telegram?.WebApp;
+              if (typeof tgWebApp?.HapticFeedback?.notificationOccurred === 'function') {
+                tgWebApp.HapticFeedback.notificationOccurred('success');
+              }
+            }}
+            style={{
+              width: '100%',
+              background: 'var(--tg-button)',
+              color: 'var(--tg-button-text)',
+              border: 'none',
+              borderRadius: 10,
+              padding: '12px',
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Копировать ссылку
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const stepTitles = ['', 'Текст', 'Медиа', 'Аудитория', 'Предпросмотр'];
