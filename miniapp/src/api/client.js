@@ -79,6 +79,8 @@ export const sendBroadcast = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120000,
   }).then(r => r.data);
+export const getBroadcastCanSend = () =>
+  api.get('/api/master/broadcast/can-send').then(r => r.data);
 
 export const getMasterInviteLink = () =>
   api.get('/api/master/invite-link').then(r => r.data);
