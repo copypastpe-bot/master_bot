@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
-from src.database import get_clients_by_segment, save_campaign
+from src.config import CLIENT_BOT_USERNAME
+from src.database import get_clients_by_segment, save_campaign, get_broadcast_recipients_count
 from src.models import Master
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,21 @@ def _abbreviate_name(name: str) -> str:
     if len(parts) >= 2:
         return f"{parts[0]} {parts[1][0]}."
     return name
+
+
+@router.get("/master/broadcast/can-send")
+async def get_broadcast_can_send(
+    master: Master = Depends(get_current_master),
+):
+    """Check if master can send broadcasts (has clients with Telegram)."""
+    count = await get_broadcast_recipients_count(master.id, "all")
+    bot_username = CLIENT_BOT_USERNAME or "client_bot"
+    invite_link = f"https://t.me/{bot_username}?start=invite_{master.invite_token}"
+    return {
+        "can_send": count > 0,
+        "clients_with_telegram": count,
+        "invite_link": invite_link,
+    }
 
 
 @router.get("/master/broadcast/segments")
