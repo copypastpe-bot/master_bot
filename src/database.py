@@ -9,6 +9,8 @@ import calendar
 
 from src.models import Master, Client, MasterClient, Service, Order, BonusLog, Campaign
 from src.config import DATABASE_URL
+import logging
+logger = logging.getLogger(__name__)
 
 # Extract database path from URL
 DB_PATH = DATABASE_URL.replace("sqlite:///", "") if DATABASE_URL.startswith("sqlite:///") else "db.sqlite3"
@@ -77,8 +79,8 @@ async def init_db() -> None:
             sql = migration_file.read_text()
             try:
                 await conn.executescript(sql)
-            except Exception:
-                pass  # Ignore errors for already applied migrations
+            except Exception as e:
+                logger.warning("Migration %s skipped: %s", migration_file.name, e)
         await conn.commit()
     finally:
         await conn.close()
