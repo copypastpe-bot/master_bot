@@ -178,7 +178,7 @@ function BookingForm({ onSuccess, keyboardOpen }) {
       <button onClick={handleSubmit} disabled={submitting}
         style={{
           position: 'fixed',
-          bottom: keyboardOpen ? 'env(safe-area-inset-bottom, 8px)' : 'calc(80px + env(safe-area-inset-bottom))',
+          bottom: keyboardOpen ? 'calc(14px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))',
           left: 16, right: 16, padding: '14px',
           background: 'var(--tg-button)', color: 'var(--tg-button-text)',
           border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 600,
@@ -243,7 +243,7 @@ function QuestionForm({ onSuccess, keyboardOpen }) {
       <button onClick={handleSubmit} disabled={submitting || !text.trim()}
         style={{
           position: 'fixed',
-          bottom: keyboardOpen ? 'env(safe-area-inset-bottom, 8px)' : 'calc(80px + env(safe-area-inset-bottom))',
+          bottom: keyboardOpen ? 'calc(14px + env(safe-area-inset-bottom))' : 'calc(80px + env(safe-area-inset-bottom))',
           left: 16, right: 16, padding: '14px',
           background: 'var(--tg-button)', color: 'var(--tg-button-text)',
           border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 600,
