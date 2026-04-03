@@ -1,15 +1,17 @@
 """Async database layer for Master CRM Bot."""
 
-import aiosqlite
+import calendar
+import logging
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
-from datetime import datetime, date, timedelta
+
+import aiosqlite
 from dateutil.relativedelta import relativedelta
-import calendar
 
 from src.models import Master, Client, MasterClient, Service, Order, BonusLog, Campaign
 from src.config import DATABASE_URL
-import logging
+
 logger = logging.getLogger(__name__)
 
 # Extract database path from URL
@@ -80,7 +82,7 @@ async def init_db() -> None:
             try:
                 await conn.executescript(sql)
             except Exception as e:
-                logger.warning("Migration %s skipped: %s", migration_file.name, e)
+                logger.debug("Migration %s skipped: %s", migration_file.name, e)
         await conn.commit()
     finally:
         await conn.close()
