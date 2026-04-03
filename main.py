@@ -44,7 +44,7 @@ async def run_oauth_server():
 async def run_api_server():
     """Run FastAPI server for Mini App."""
     from aiogram import Bot
-    from src.config import MASTER_BOT_TOKEN
+    from src.config import MASTER_BOT_TOKEN, CLIENT_BOT_TOKEN
     from src.api.app import app as fastapi_app
     from src.api.routers.orders import set_master_bot as orders_set_bot
     from src.api.routers.requests import set_master_bot as requests_set_bot
@@ -53,6 +53,10 @@ async def run_api_server():
     bot = Bot(token=MASTER_BOT_TOKEN)
     orders_set_bot(bot)
     requests_set_bot(bot)
+
+    # Pass client_bot into app.state for broadcast notifications
+    client_bot = Bot(token=CLIENT_BOT_TOKEN)
+    fastapi_app.state.client_bot = client_bot
 
     config = uvicorn.Config(
         fastapi_app,
