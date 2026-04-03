@@ -32,16 +32,16 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
     }
   }, [page]);
 
-  // Hide BottomNav when keyboard is open (detected via viewport change)
+  // Hide BottomNav when keyboard is open
+  // visualViewport.height shrinks on iOS when keyboard opens; window.innerHeight stays the same
   useEffect(() => {
-    if (typeof WebApp?.onEvent !== 'function') return;
+    const vv = window.visualViewport;
+    if (!vv) return;
     const handler = () => {
-      const stable = WebApp.viewportStableHeight;
-      const current = WebApp.viewportHeight;
-      setKeyboardOpen(typeof stable === 'number' && typeof current === 'number' && stable - current > 80);
+      setKeyboardOpen(window.innerHeight - vv.height > 150);
     };
-    WebApp.onEvent('viewportChanged', handler);
-    return () => WebApp.offEvent('viewportChanged', handler);
+    vv.addEventListener('resize', handler);
+    return () => vv.removeEventListener('resize', handler);
   }, []);
 
   const Page = clientPages[page];
