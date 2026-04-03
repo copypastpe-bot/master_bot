@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 const WebApp = window.Telegram?.WebApp;
 import Home from './pages/Home';
-import Booking from './pages/Booking';
+import Contact from './pages/Contact';
 import Bonuses from './pages/Bonuses';
 import Promos from './pages/Promos';
 import BottomNav from './components/BottomNav';
@@ -13,7 +13,7 @@ import MasterSelectScreen from './pages/MasterSelectScreen';
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
 
-const clientPages = { home: Home, booking: Booking, bonuses: Bonuses, promos: Promos };
+const clientPages = { home: Home, contact: Contact, bonuses: Bonuses, promos: Promos };
 
 function ClientApp({ masters, activeMasterId, onMasterChange }) {
   const [page, setPage] = useState('home');
@@ -21,7 +21,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
   // Telegram BackButton — show on all pages except home
   useEffect(() => {
     if (!WebApp?.BackButton) return;
-    if (page === 'home') {
+    if (page === 'home' || page === 'contact') {
       WebApp.BackButton.hide();
     } else {
       WebApp.BackButton.show();

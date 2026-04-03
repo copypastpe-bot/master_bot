@@ -1,12 +1,12 @@
 """Orders endpoints - history and order requests."""
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Form, UploadFile, File
 from typing import Optional
 
 from src.api.dependencies import get_current_client
 from src.database import get_client_orders, save_inbound_request
 from src.models import Client, Master, MasterClient
+from aiogram.types import BufferedInputFile
 
 router = APIRouter(tags=["orders"])
 
@@ -18,13 +18,6 @@ def set_master_bot(bot):
     """Set master bot instance for notifications."""
     global _master_bot
     _master_bot = bot
-
-
-class OrderRequest(BaseModel):
-    """Order request from Mini App."""
-    service_name: str
-    master_id: Optional[int] = None  # для мультимастерных клиентов
-    comment: Optional[str] = None
 
 
 @router.get("/orders")
@@ -52,39 +45,68 @@ async def get_orders(
 
 @router.post("/orders/request")
 async def create_order_request(
-    request: OrderRequest,
+    service_name: str = Form(...),
+    comment: Optional[str] = Form(None),
+    desired_date: Optional[str] = Form(None),
+    desired_time: Optional[str] = Form(None),
+    media: Optional[UploadFile] = File(None),
+    media_type: Optional[str] = Form(None),
     data: tuple[Client, Master, MasterClient] = Depends(get_current_client)
 ):
     """Create an order request (inbound request to master)."""
     client, master, master_client = data
 
-    # Save to inbound_requests
+    file_id = None
+
+    # Send media to master via master_bot and get file_id
+    if media and media_type and _master_bot:
+        media_bytes = await media.read()
+        caption = f"📎 Файл к заявке от {client.name}"
+        try:
+            if media_type == "photo":
+                msg = await _master_bot.send_photo(
+                    master.tg_id,
+                    photo=BufferedInputFile(media_bytes, filename=media.filename or "photo.jpg"),
+                    caption=caption,
+                )
+                file_id = msg.photo[-1].file_id
+            elif media_type == "video":
+                msg = await _master_bot.send_video(
+                    master.tg_id,
+                    video=BufferedInputFile(media_bytes, filename=media.filename or "video.mp4"),
+                    caption=caption,
+                )
+                file_id = msg.video.file_id
+        except Exception:
+            pass  # не блокируем заявку если медиа не отправилось
+
     await save_inbound_request(
         master_id=master.id,
         client_id=client.id,
         type="order_request",
-        service_name=request.service_name,
-        text=request.comment,
+        text=comment,
+        service_name=service_name,
+        file_id=file_id,
+        desired_date=desired_date,
+        desired_time=desired_time,
+        media_type=media_type,
     )
 
-    # Send notification to master
-    if _master_bot:
-        comment_line = f"\n💬 {request.comment}" if request.comment else ""
-        phone_line = f"\n📞 {client.phone}" if client.phone else ""
-
-        notification_text = (
-            f"🛎 Новая заявка из Mini App!\n\n"
-            f"👤 {client.name}{phone_line}\n"
-            f"🛠 Услуга: {request.service_name}{comment_line}"
+    # Text notification to master (media caption was already sent above)
+    if _master_bot and not (media and media_type):
+        date_line = f"\n📅 {desired_date}" if desired_date else ""
+        time_line = f" в {desired_time}" if desired_time else ""
+        comment_line = f"\n💬 {comment}" if comment else ""
+        notify_text = (
+            f"🛎 Новая заявка на запись!\n\n"
+            f"👤 {client.name}\n"
+            f"📞 {client.phone or '—'}\n"
+            f"🛠 Услуга: {service_name}"
+            f"{date_line}{time_line}{comment_line}"
         )
-
         try:
-            await _master_bot.send_message(
-                chat_id=master.tg_id,
-                text=notification_text
-            )
+            await _master_bot.send_message(master.tg_id, notify_text)
         except Exception:
-            # Don't fail the request if notification fails
             pass
 
     return {"success": True}

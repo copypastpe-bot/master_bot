@@ -16,6 +16,7 @@ import PromosList from './pages/PromosList';
 import PromoCreate from './pages/PromoCreate';
 import PromoCard from './pages/PromoCard';
 import Reports from './pages/Reports';
+import Requests from './pages/Requests';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -216,13 +217,14 @@ export default function MasterApp() {
       );
     }
 
+    if (type === 'requests') {
+      return <Requests onBack={handleBack} />;
+    }
+
     // Fallback
     return (
-      <div style={{ padding: '24px 16px' }}>
-        <button onClick={handleBack} style={{ background: 'none', border: 'none', color: 'var(--tg-accent)', fontSize: 15, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
-          ← Назад
-        </button>
-        <p style={{ color: 'var(--tg-hint)', textAlign: 'center', marginTop: 48 }}>Скоро</p>
+      <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--tg-hint)', marginTop: 48 }}>Раздел в разработке</p>
       </div>
     );
   }

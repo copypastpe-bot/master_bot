@@ -2128,7 +2128,10 @@ async def save_inbound_request(
     type: str,
     text: str = None,
     service_name: str = None,
-    file_id: str = None
+    file_id: str = None,
+    desired_date: str = None,
+    desired_time: str = None,
+    media_type: str = None,
 ) -> int:
     """Save inbound request from client.
 
@@ -2139,13 +2142,68 @@ async def save_inbound_request(
     try:
         cursor = await conn.execute(
             """
-            INSERT INTO inbound_requests (master_id, client_id, type, text, service_name, file_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO inbound_requests
+                (master_id, client_id, type, text, service_name, file_id,
+                 desired_date, desired_time, media_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (master_id, client_id, type, text, service_name, file_id)
+            (master_id, client_id, type, text, service_name, file_id,
+             desired_date, desired_time, media_type)
         )
         await conn.commit()
         return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def get_inbound_requests(master_id: int, limit: int = 50) -> list[dict]:
+    """Get inbound requests for a master, newest first."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT r.id, r.type, r.text, r.service_name, r.file_id, r.media_type,
+                   r.desired_date, r.desired_time, r.is_read,
+                   r.created_at,
+                   c.name as client_name, c.phone as client_phone,
+                   c.tg_id as client_tg_id
+            FROM inbound_requests r
+            JOIN clients c ON c.id = r.client_id
+            WHERE r.master_id = ?
+            ORDER BY r.id DESC
+            LIMIT ?
+            """,
+            (master_id, limit)
+        )
+        rows = await cursor.fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        await conn.close()
+
+
+async def mark_request_read(request_id: int, master_id: int) -> bool:
+    """Mark a request as read. Returns True if found and updated."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "UPDATE inbound_requests SET is_read = TRUE WHERE id = ? AND master_id = ?",
+            (request_id, master_id)
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
+async def mark_all_requests_read(master_id: int) -> None:
+    """Mark all requests for a master as read."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE inbound_requests SET is_read = TRUE WHERE master_id = ?",
+            (master_id,)
+        )
+        await conn.commit()
     finally:
         await conn.close()
 

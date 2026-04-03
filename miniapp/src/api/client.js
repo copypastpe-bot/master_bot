@@ -37,8 +37,32 @@ export const getOrders = () => api.get('/api/orders', { params: masterParams() }
 export const getBonuses = () => api.get('/api/bonuses', { params: masterParams() }).then(r => r.data);
 export const getPromos = () => api.get('/api/promos', { params: masterParams() }).then(r => r.data);
 export const getServices = () => api.get('/api/services', { params: masterParams() }).then(r => r.data);
-export const createOrderRequest = (data) =>
-  api.post('/api/orders/request', data).then(r => r.data);
+export async function createOrderRequest({ service_name, comment, desired_date, desired_time, file, media_type }) {
+  const fd = new FormData();
+  fd.append('service_name', service_name);
+  if (comment) fd.append('comment', comment);
+  if (desired_date) fd.append('desired_date', desired_date);
+  if (desired_time) fd.append('desired_time', desired_time);
+  if (file && media_type) {
+    fd.append('media', file, file.name);
+    fd.append('media_type', media_type);
+  }
+  return api.post('/api/orders/request', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+}
+
+export async function createQuestion({ text, file, media_type }) {
+  const fd = new FormData();
+  fd.append('text', text);
+  if (file && media_type) {
+    fd.append('media', file, file.name);
+    fd.append('media_type', media_type);
+  }
+  return api.post('/api/requests/question', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+}
 
 // Multi-master
 export const getClientMasters = () => api.get('/api/client/masters').then(r => r.data);
@@ -151,3 +175,11 @@ export const restoreArchivedClient = (clientId) =>
 // Master registration (onboarding)
 export const registerMaster = (data) =>
   api.post('/api/master/register', data).then(r => r.data);
+
+// Inbound requests (заявки клиентов)
+export const getMasterRequests = () =>
+  api.get('/api/master/requests').then(r => r.data);
+export const markRequestRead = (id) =>
+  api.put(`/api/master/requests/${id}/read`).then(r => r.data);
+export const markAllRequestsRead = () =>
+  api.put('/api/master/requests/read-all').then(r => r.data);
