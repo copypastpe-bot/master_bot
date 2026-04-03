@@ -17,6 +17,7 @@ const clientPages = { home: Home, contact: Contact, bonuses: Bonuses, promos: Pr
 
 function ClientApp({ masters, activeMasterId, onMasterChange }) {
   const [page, setPage] = useState('home');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   // Telegram BackButton — show on all pages except home
   useEffect(() => {
@@ -31,6 +32,18 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
     }
   }, [page]);
 
+  // Hide BottomNav when keyboard is open (detected via viewport change)
+  useEffect(() => {
+    if (typeof WebApp?.onEvent !== 'function') return;
+    const handler = () => {
+      const stable = WebApp.viewportStableHeight;
+      const current = WebApp.viewportHeight;
+      setKeyboardOpen(typeof stable === 'number' && typeof current === 'number' && stable - current > 80);
+    };
+    WebApp.onEvent('viewportChanged', handler);
+    return () => WebApp.offEvent('viewportChanged', handler);
+  }, []);
+
   const Page = clientPages[page];
 
   return (
@@ -40,8 +53,9 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
         masters={masters}
         activeMasterId={activeMasterId}
         onMasterChange={onMasterChange}
+        keyboardOpen={keyboardOpen}
       />
-      <BottomNav active={page} onNavigate={setPage} />
+      {!keyboardOpen && <BottomNav active={page} onNavigate={setPage} />}
     </div>
   );
 }

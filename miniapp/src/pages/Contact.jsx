@@ -74,7 +74,7 @@ function FilePicker({ file, fileType, onFile, onRemove }) {
 
 // ── Booking form ──────────────────────────────────────────────────────────────
 
-function BookingForm({ onSuccess }) {
+function BookingForm({ onSuccess, keyboardOpen }) {
   const [selectedService, setSelectedService] = useState(null);
   const [desiredDate, setDesiredDate] = useState('');
   const [desiredTime, setDesiredTime] = useState('');
@@ -177,7 +177,8 @@ function BookingForm({ onSuccess }) {
 
       <button onClick={handleSubmit} disabled={submitting}
         style={{
-          position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom))',
+          position: 'fixed',
+          bottom: keyboardOpen ? 'env(safe-area-inset-bottom, 8px)' : 'calc(80px + env(safe-area-inset-bottom))',
           left: 16, right: 16, padding: '14px',
           background: 'var(--tg-button)', color: 'var(--tg-button-text)',
           border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 600,
@@ -191,7 +192,7 @@ function BookingForm({ onSuccess }) {
 
 // ── Question form ─────────────────────────────────────────────────────────────
 
-function QuestionForm({ onSuccess }) {
+function QuestionForm({ onSuccess, keyboardOpen }) {
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
   const [fileType, setFileType] = useState(null);
@@ -241,7 +242,8 @@ function QuestionForm({ onSuccess }) {
 
       <button onClick={handleSubmit} disabled={submitting || !text.trim()}
         style={{
-          position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom))',
+          position: 'fixed',
+          bottom: keyboardOpen ? 'env(safe-area-inset-bottom, 8px)' : 'calc(80px + env(safe-area-inset-bottom))',
           left: 16, right: 16, padding: '14px',
           background: 'var(--tg-button)', color: 'var(--tg-button-text)',
           border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 600,
@@ -293,7 +295,7 @@ const modeCardStyle = {
 
 // ── Root Contact page ─────────────────────────────────────────────────────────
 
-export default function Contact({ onNavigate }) {
+export default function Contact({ onNavigate, keyboardOpen }) {
   const [mode, setMode] = useState(null);  // null | 'booking' | 'question'
   const [done, setDone] = useState(false);
 
@@ -309,7 +311,7 @@ export default function Contact({ onNavigate }) {
           </button>
           <h2 style={{ color: 'var(--tg-text)', margin: '8px 0 16px', fontSize: 20, fontWeight: 700 }}>Записаться</h2>
         </div>
-        <BookingForm onSuccess={() => setDone(true)} />
+        <BookingForm onSuccess={() => setDone(true)} keyboardOpen={keyboardOpen} />
       </div>
     );
   }
@@ -324,7 +326,7 @@ export default function Contact({ onNavigate }) {
           </button>
           <h2 style={{ color: 'var(--tg-text)', margin: '8px 0 16px', fontSize: 20, fontWeight: 700 }}>Задать вопрос</h2>
         </div>
-        <QuestionForm onSuccess={() => setDone(true)} />
+        <QuestionForm onSuccess={() => setDone(true)} keyboardOpen={keyboardOpen} />
       </div>
     );
   }

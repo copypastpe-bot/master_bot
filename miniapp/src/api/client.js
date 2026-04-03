@@ -48,7 +48,7 @@ export async function createOrderRequest({ service_name, comment, desired_date, 
     fd.append('media_type', media_type);
   }
   return api.post('/api/orders/request', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    params: masterParams(),
   }).then(r => r.data);
 }
 
@@ -60,7 +60,7 @@ export async function createQuestion({ text, file, media_type }) {
     fd.append('media_type', media_type);
   }
   return api.post('/api/requests/question', fd, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    params: masterParams(),
   }).then(r => r.data);
 }
 
