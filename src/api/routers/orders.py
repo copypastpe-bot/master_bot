@@ -92,8 +92,8 @@ async def create_order_request(
         media_type=media_type,
     )
 
-    # Text notification to master (media caption was already sent above)
-    if _master_bot and not (media and media_type):
+    # Text notification to master (always, even when media was sent)
+    if _master_bot:
         date_line = f"\n📅 {desired_date}" if desired_date else ""
         time_line = f" в {desired_time}" if desired_time else ""
         comment_line = f"\n💬 {comment}" if comment else ""
