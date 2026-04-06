@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Form, UploadFile, File
 from typing import Optional
 
 from src.api.dependencies import get_current_client
-from src.database import save_inbound_request
+from src.database import save_inbound_request, update_inbound_request_notification_id
+from src.keyboards import request_notify_kb
 from src.models import Client, Master, MasterClient
 from aiogram.types import BufferedInputFile
 
@@ -29,7 +30,6 @@ async def create_question(
     client, master, master_client = data
 
     file_id = None
-    media_sent = False
 
     if media and media_type and _master_bot:
         media_bytes = await media.read()
@@ -49,11 +49,10 @@ async def create_question(
                     caption=caption,
                 )
                 file_id = msg.video.file_id
-            media_sent = True
         except Exception:
             pass
 
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master.id,
         client_id=client.id,
         type="question",
@@ -62,8 +61,8 @@ async def create_question(
         media_type=media_type,
     )
 
-    # Text notification: always send if no media, or if media send failed
-    if _master_bot and not media_sent:
+    # Text notification with action keyboard (always sent)
+    if _master_bot:
         notify_text = (
             f"❓ Вопрос от клиента\n\n"
             f"👤 {client.name}\n"
@@ -71,7 +70,11 @@ async def create_question(
             f"{text}"
         )
         try:
-            await _master_bot.send_message(master.tg_id, notify_text)
+            sent = await _master_bot.send_message(
+                master.tg_id, notify_text,
+                reply_markup=request_notify_kb(request_id)
+            )
+            await update_inbound_request_notification_id(request_id, sent.message_id)
         except Exception:
             pass
 

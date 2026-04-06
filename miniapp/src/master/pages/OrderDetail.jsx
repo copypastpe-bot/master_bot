@@ -243,6 +243,51 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
 }
 
 // ============================================================
+// Date/time display helpers
+// ============================================================
+const DATE_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+function formatDateDisplay(iso) {
+  if (!iso) return 'Выберите дату';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${DATE_MONTHS[m - 1]} ${y}`;
+}
+
+function DatePickerField({ label, value, onChange, inputStyle, labelStyle }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {label && <label style={labelStyle}>{label}</label>}
+      <div style={{ position: 'relative' }}>
+        <div style={{ ...inputStyle, pointerEvents: 'none' }}>{formatDateDisplay(value)}</div>
+        <input
+          type="date"
+          value={value}
+          onChange={onChange}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TimePickerField({ label, value, onChange, inputStyle, labelStyle }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      {label && <label style={labelStyle}>{label}</label>}
+      <div style={{ position: 'relative' }}>
+        <div style={{ ...inputStyle, pointerEvents: 'none' }}>{value || '00:00'}</div>
+        <input
+          type="time"
+          value={value}
+          onChange={onChange}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Move Order Sheet
 // ============================================================
 function MoveSheet({ order, onClose, onSuccess }) {
@@ -273,24 +318,20 @@ function MoveSheet({ order, onClose, onSuccess }) {
 
   return (
     <>
-      <div style={{ marginBottom: 16 }}>
-        <label style={styles.label}>Новая дата</label>
-        <input
-          type="date"
-          value={newDate}
-          onChange={e => setNewDate(e.target.value)}
-          style={styles.input}
-        />
-      </div>
-      <div style={{ marginBottom: 16 }}>
-        <label style={styles.label}>Новое время</label>
-        <input
-          type="time"
-          value={newTime}
-          onChange={e => setNewTime(e.target.value)}
-          style={styles.input}
-        />
-      </div>
+      <DatePickerField
+        label="Новая дата"
+        value={newDate}
+        onChange={e => setNewDate(e.target.value)}
+        inputStyle={styles.input}
+        labelStyle={styles.label}
+      />
+      <TimePickerField
+        label="Новое время"
+        value={newTime}
+        onChange={e => setNewTime(e.target.value)}
+        inputStyle={styles.input}
+        labelStyle={styles.label}
+      />
 
       {error && <p style={{ color: '#e74c3c', fontSize: 13, marginBottom: 8 }}>{error}</p>}
 
@@ -351,10 +392,12 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
     }
   };
 
+  const hasTgBack = typeof WebApp?.BackButton?.show === 'function';
+
   if (isLoading) {
     return (
       <div style={{ padding: '16px' }}>
-        <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>
+        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>}
         <div style={{ marginTop: 24 }}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{ ...styles.skeleton, marginBottom: 12, height: 60, borderRadius: 12 }} />
@@ -367,7 +410,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
   if (error || !order) {
     return (
       <div style={{ padding: '16px' }}>
-        <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>
+        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>}
         <p style={{ color: '#e74c3c', marginTop: 24 }}>
           {error?.response?.data?.detail || 'Заказ не найден'}
         </p>
@@ -382,12 +425,14 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
 
   return (
     <div style={{ paddingBottom: 80 }}>
-      {/* Back */}
-      <div style={{ padding: '12px 16px 0' }}>
-        <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>
-          ← Назад
-        </button>
-      </div>
+      {/* Back — only shown when Telegram BackButton unavailable */}
+      {!hasTgBack && (
+        <div style={{ padding: '12px 16px 0' }}>
+          <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>
+            ← Назад
+          </button>
+        </div>
+      )}
 
       {/* Block 1: Status + DateTime */}
       <div style={{ padding: '12px 16px 0' }}>

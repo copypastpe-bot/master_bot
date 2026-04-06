@@ -73,7 +73,7 @@ function OrdersSection({ title, orders, onNavigate, emptyContent }) {
             <OrderCard
               key={order.id}
               order={order}
-              onClick={() => onNavigate('order', order.id)}
+              onClick={() => onNavigate('order', { id: order.id })}
               style={idx === orders.length - 1 ? { borderBottom: 'none' } : {}}
             />
           ))}

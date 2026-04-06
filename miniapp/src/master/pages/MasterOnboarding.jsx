@@ -33,6 +33,11 @@ const S = {
     border: '1.5px solid var(--tg-hint)', background: 'transparent',
     color: 'var(--tg-hint)', fontSize: 15, cursor: 'pointer', marginTop: 10,
   },
+  backBtn: {
+    background: 'none', border: 'none', color: 'var(--tg-button)',
+    fontSize: 15, cursor: 'pointer', padding: 0, marginBottom: 20,
+    display: 'flex', alignItems: 'center', gap: 4,
+  },
   error: { color: '#e53935', fontSize: 13, marginBottom: 12 },
 };
 
@@ -54,6 +59,50 @@ const NICHES = [
   'Другое',
 ];
 
+// ─── Date/Time helpers ───────────────────────────────────────────────────────
+
+const DATE_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+
+function formatDateDisplay(iso) {
+  if (!iso) return 'Выберите дату';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${DATE_MONTHS[m - 1]} ${y}`;
+}
+
+function DatePickerField({ label, value, onChange }) {
+  return (
+    <div style={{ flex: 1 }}>
+      {label && <label style={S.label}>{label}</label>}
+      <div style={{ position: 'relative' }}>
+        <div style={S.input}>{formatDateDisplay(value)}</div>
+        <input
+          type="date"
+          value={value}
+          onChange={onChange}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TimePickerField({ label, value, onChange }) {
+  return (
+    <div style={{ flex: 1 }}>
+      {label && <label style={S.label}>{label}</label>}
+      <div style={{ position: 'relative' }}>
+        <div style={S.input}>{value || '00:00'}</div>
+        <input
+          type="time"
+          value={value}
+          onChange={onChange}
+          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Utils ───────────────────────────────────────────────────────────────────
 
 function tomorrowDate() {
@@ -70,8 +119,8 @@ export default function MasterOnboarding({ onRegistered }) {
   // Step 1
   const [name, setName] = useState('');
 
-  // Step 2
-  const [selectedNiche, setSelectedNiche] = useState(null);
+  // Step 2 — multi-select up to 3 niches
+  const [selectedNiches, setSelectedNiches] = useState([]);
   const [customNiche, setCustomNiche] = useState('');
 
   // Step 3
@@ -84,37 +133,39 @@ export default function MasterOnboarding({ onRegistered }) {
   // Shared
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const autoAdvanceTimer = useRef(null);
 
-  // ── Cleanup timer on unmount
-  useEffect(() => () => clearTimeout(autoAdvanceTimer.current), []);
+  // ── Cleanup on unmount
+  useEffect(() => () => {}, []);
 
-  // ── Step 2 → register master after niche selected
-  const handleNicheSelect = async (niche) => {
+  // ── Toggle niche selection (max 3)
+  const toggleNiche = (niche) => {
     if (loading) return;
-    setSelectedNiche(niche);
     WebApp?.HapticFeedback?.selectionChanged();
-
-    if (niche !== 'Другое') {
-      clearTimeout(autoAdvanceTimer.current);
-      autoAdvanceTimer.current = setTimeout(() => doRegister(niche), 300);
-    }
+    setSelectedNiches(prev => {
+      if (prev.includes(niche)) {
+        if (niche === 'Другое') setCustomNiche('');
+        return prev.filter(n => n !== niche);
+      }
+      if (prev.length >= 3) return prev;
+      return [...prev, niche];
+    });
+    setError('');
   };
 
-  const doRegister = async (sphere) => {
+  const doRegister = async () => {
     setLoading(true);
     setError('');
+    const sphereParts = selectedNiches.map(n => n === 'Другое' ? customNiche.trim() : n);
+    const sphere = sphereParts.join(', ');
     try {
       await registerMaster({ name: name.trim(), sphere });
       setStep(3);
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Ошибка регистрации. Попробуйте ещё раз.';
-      // 409 = already registered — still proceed
       if (err?.response?.status === 409) {
         setStep(3);
       } else {
+        const msg = err?.response?.data?.detail || 'Ошибка регистрации. Попробуйте ещё раз.';
         setError(msg);
-        setSelectedNiche(null);
       }
     } finally {
       setLoading(false);
@@ -165,6 +216,8 @@ export default function MasterOnboarding({ onRegistered }) {
     return () => { WebApp.MainButton.offClick(handleStart); WebApp.MainButton.hide(); };
   }, [step]);
 
+  const step2Ready = selectedNiches.length > 0 &&
+    (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
   const step3Ready = clientName.trim() && clientPhone.trim() && clientDate && clientTime;
 
   return (
@@ -202,33 +255,40 @@ export default function MasterOnboarding({ onRegistered }) {
       {/* ── Step 2: Niche ─────────────────────────────── */}
       {step === 2 && (
         <>
+          <button style={S.backBtn} onClick={() => { setError(''); setStep(1); }}>
+            ← Назад
+          </button>
           <div style={S.h1}>Чем занимаешься?</div>
-          <div style={S.sub}>Настроим шаблоны напоминаний под тебя</div>
+          <div style={S.sub}>Выбери до 3 направлений</div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-            {NICHES.map((niche) => (
-              <button
-                key={niche}
-                disabled={loading}
-                onClick={() => handleNicheSelect(niche)}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: 20,
-                  border: `1.5px solid ${selectedNiche === niche ? 'var(--tg-button)' : 'var(--tg-hint)'}`,
-                  background: selectedNiche === niche ? 'var(--tg-button)' : 'transparent',
-                  color: selectedNiche === niche ? 'var(--tg-button-text)' : 'var(--tg-text)',
-                  fontSize: 14,
-                  cursor: loading ? 'default' : 'pointer',
-                  transition: 'all 0.15s',
-                  opacity: loading && selectedNiche !== niche ? 0.5 : 1,
-                }}
-              >
-                {niche}
-              </button>
-            ))}
+            {NICHES.map((niche) => {
+              const isSelected = selectedNiches.includes(niche);
+              const isDisabled = loading || (!isSelected && selectedNiches.length >= 3);
+              return (
+                <button
+                  key={niche}
+                  disabled={isDisabled}
+                  onClick={() => toggleNiche(niche)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 20,
+                    border: `1.5px solid ${isSelected ? 'var(--tg-button)' : 'var(--tg-hint)'}`,
+                    background: isSelected ? 'var(--tg-button)' : 'transparent',
+                    color: isSelected ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                    fontSize: 14,
+                    cursor: isDisabled ? 'default' : 'pointer',
+                    transition: 'all 0.15s',
+                    opacity: isDisabled && !isSelected ? 0.4 : 1,
+                  }}
+                >
+                  {niche}
+                </button>
+              );
+            })}
           </div>
 
-          {selectedNiche === 'Другое' && (
+          {selectedNiches.includes('Другое') && (
             <div style={{ marginBottom: 16 }}>
               <input
                 style={S.input}
@@ -242,29 +302,24 @@ export default function MasterOnboarding({ onRegistered }) {
 
           {error && <div style={S.error}>{error}</div>}
 
-          {selectedNiche === 'Другое' && (
-            <button
-              style={S.btnPrimary(!customNiche.trim() || loading)}
-              disabled={!customNiche.trim() || loading}
-              onClick={() => doRegister(customNiche.trim())}
-            >
-              {loading ? 'Сохраняем...' : 'Продолжить'}
-            </button>
-          )}
-
-          {loading && selectedNiche !== 'Другое' && (
-            <div style={{ textAlign: 'center', color: 'var(--tg-hint)', fontSize: 14, marginTop: 8 }}>
-              Сохраняем...
-            </div>
-          )}
+          <button
+            style={S.btnPrimary(!step2Ready || loading)}
+            disabled={!step2Ready || loading}
+            onClick={doRegister}
+          >
+            {loading ? 'Сохраняем...' : 'Продолжить'}
+          </button>
         </>
       )}
 
       {/* ── Step 3: First Client ───────────────────────── */}
       {step === 3 && (
         <>
+          <button style={S.backBtn} onClick={() => { setError(''); setStep(2); }}>
+            ← Назад
+          </button>
           <div style={S.h1}>Добавим первого клиента?</div>
-          <div style={S.sub}>Увидишь как придёт напоминание — это главная фишка</div>
+          <div style={S.sub}>Создай свою первую запись сейчас или позже</div>
 
           {[
             { label: 'Имя клиента', type: 'text', value: clientName, set: setClientName, placeholder: 'Например: Мария' },
@@ -277,14 +332,16 @@ export default function MasterOnboarding({ onRegistered }) {
           ))}
 
           <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-            <div style={{ flex: 1 }}>
-              <label style={S.label}>Дата записи</label>
-              <input style={S.input} type="date" value={clientDate} onChange={(e) => setClientDate(e.target.value)} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={S.label}>Время</label>
-              <input style={S.input} type="time" value={clientTime} onChange={(e) => setClientTime(e.target.value)} />
-            </div>
+            <DatePickerField
+              label="Дата записи"
+              value={clientDate}
+              onChange={(e) => setClientDate(e.target.value)}
+            />
+            <TimePickerField
+              label="Время"
+              value={clientTime}
+              onChange={(e) => setClientTime(e.target.value)}
+            />
           </div>
 
           {error && <div style={S.error}>{error}</div>}
@@ -312,7 +369,7 @@ export default function MasterOnboarding({ onRegistered }) {
             </div>
             <div style={{ fontSize: 14, color: 'var(--tg-hint)', marginTop: 8 }}>
               {clientAdded
-                ? 'Напоминание отправится клиенту автоматически — можешь проверить'
+                ? 'Остались вопросы? Пиши нам @pastushenko12'
                 : 'Добавь первого клиента — это займёт 30 секунд'}
             </div>
           </div>

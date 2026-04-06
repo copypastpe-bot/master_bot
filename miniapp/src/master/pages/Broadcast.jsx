@@ -134,25 +134,64 @@ function StepSegment({ segments, selected, onSelect, onNext }) {
   );
 }
 
-// ─── Step 2: Text input ───────────────────────────────────────────────────────
+// ─── Step 1: Text input ───────────────────────────────────────────────────────
 
 function StepText({ text, onTextChange, onNext }) {
+  const textareaRef = useRef(null);
   const remaining = MAX_TEXT - text.length;
   const canContinue = text.trim().length > 0 && text.length <= MAX_TEXT;
 
+  const insertName = () => {
+    haptic();
+    const el = textareaRef.current;
+    if (!el) {
+      onTextChange(text + '{name}');
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const newText = text.slice(0, start) + '{name}' + text.slice(end);
+    onTextChange(newText);
+    // Restore cursor after React re-render
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + '{name}'.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
   return (
     <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
-      <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 4px' }}>
-        Текст сообщения
-      </p>
-      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 10px' }}>
-        Используйте <code style={{ background: 'var(--tg-secondary-bg)', padding: '1px 4px', borderRadius: 4 }}>{'{name}'}</code> — вставит имя клиента
+      <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: '0 0 14px', lineHeight: 1.4 }}>
+        Введите текст сообщения, которое хотите отправить
       </p>
 
+      {/* {name} insert button */}
+      <button
+        onClick={insertName}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '6px 12px',
+          marginBottom: 10,
+          background: 'var(--tg-secondary-bg)',
+          border: '1px solid var(--tg-button)',
+          borderRadius: 20,
+          color: 'var(--tg-button)',
+          fontSize: 13,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        + Имя клиента
+      </button>
+
       <textarea
+        ref={textareaRef}
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Введите текст рассылки..."
+        placeholder="Например: Привет, {name}! Напоминаем о записи..."
         rows={8}
         style={{
           width: '100%',
@@ -778,34 +817,27 @@ export default function Broadcast() {
     );
   }
 
-  const stepTitles = ['', 'Текст', 'Медиа', 'Аудитория', 'Предпросмотр'];
+  const hasTgBack = typeof WebApp?.BackButton?.show === 'function';
 
   return (
     <div>
       {/* Header */}
       <div style={{ padding: '12px 16px 0' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 4,
-        }}>
-          {step > 1 ? (
-            <BackBtn onClick={handleBack} />
-          ) : (
-            <div style={{ width: 60 }} />
+        <div style={{ marginBottom: 4 }}>
+          {/* Manual back — only when Telegram BackButton unavailable */}
+          {step > 1 && !hasTgBack && (
+            <div style={{ marginBottom: 6 }}>
+              <BackBtn onClick={handleBack} />
+            </div>
           )}
           <h2 style={{
             margin: 0,
-            fontSize: 17,
+            fontSize: 20,
             fontWeight: 700,
             color: 'var(--tg-text)',
-            textAlign: 'center',
-            flex: 1,
           }}>
-            {stepTitles[step]}
+            Массовые рассылки
           </h2>
-          <div style={{ width: 60 }} />
         </div>
 
         <ProgressBar step={step} />

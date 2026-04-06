@@ -2136,6 +2136,7 @@ async def save_inbound_request(
     desired_date: str = None,
     desired_time: str = None,
     media_type: str = None,
+    notification_message_id: int = None,
 ) -> int:
     """Save inbound request from client.
 
@@ -2148,11 +2149,11 @@ async def save_inbound_request(
             """
             INSERT INTO inbound_requests
                 (master_id, client_id, type, text, service_name, file_id,
-                 desired_date, desired_time, media_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 desired_date, desired_time, media_type, notification_message_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (master_id, client_id, type, text, service_name, file_id,
-             desired_date, desired_time, media_type)
+             desired_date, desired_time, media_type, notification_message_id)
         )
         await conn.commit()
         return cursor.lastrowid
@@ -2160,27 +2161,202 @@ async def save_inbound_request(
         await conn.close()
 
 
-async def get_inbound_requests(master_id: int, limit: int = 50) -> list[dict]:
-    """Get inbound requests for a master, newest first."""
+async def _table_has_column(conn: aiosqlite.Connection, table: str, column: str) -> bool:
+    """Check whether a table has a specific column."""
+    cursor = await conn.execute(f"PRAGMA table_info({table})")
+    rows = await cursor.fetchall()
+    return any(row["name"] == column for row in rows)
+
+
+async def update_inbound_request_notification_id(
+    request_id: int,
+    notification_message_id: int
+) -> None:
+    """Update telegram message_id for master notification."""
     conn = await get_connection()
     try:
+        await conn.execute(
+            "UPDATE inbound_requests SET notification_message_id = ? WHERE id = ?",
+            (notification_message_id, request_id),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+def _validate_inbound_status_filter(status: Optional[str]) -> None:
+    """Validate inbound request status filter."""
+    if status is None:
+        return
+    if status not in {"new", "closed"}:
+        raise ValueError("status must be one of: new, closed")
+
+
+async def get_inbound_requests(
+    master_id: int,
+    status: str = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> list[dict]:
+    """Get inbound requests for a master with optional status filter."""
+    _validate_inbound_status_filter(status)
+
+    conn = await get_connection()
+    try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        has_notification_message_id = await _table_has_column(
+            conn, "inbound_requests", "notification_message_id"
+        )
+        has_client_username = await _table_has_column(conn, "clients", "username")
+
+        status_select = (
+            "ir.status AS status"
+            if has_status
+            else "CASE WHEN ir.is_read = TRUE THEN 'closed' ELSE 'new' END AS status"
+        )
+        notification_select = (
+            "ir.notification_message_id AS notification_message_id"
+            if has_notification_message_id
+            else "NULL AS notification_message_id"
+        )
+        client_username_select = (
+            "c.username AS client_username"
+            if has_client_username
+            else "NULL AS client_username"
+        )
+
+        where_parts = ["ir.master_id = ?"]
+        params: list = [master_id]
+        if status is not None:
+            if has_status:
+                where_parts.append("ir.status = ?")
+                params.append(status)
+            elif status == "new":
+                where_parts.append("ir.is_read = FALSE")
+            else:
+                where_parts.append("ir.is_read = TRUE")
+
+        where_sql = " AND ".join(where_parts)
+
         cursor = await conn.execute(
-            """
-            SELECT r.id, r.type, r.text, r.service_name, r.file_id, r.media_type,
-                   r.desired_date, r.desired_time, r.is_read,
-                   r.created_at,
-                   c.name as client_name, c.phone as client_phone,
-                   c.tg_id as client_tg_id
-            FROM inbound_requests r
-            JOIN clients c ON c.id = r.client_id
-            WHERE r.master_id = ?
-            ORDER BY r.id DESC
-            LIMIT ?
+            f"""
+            SELECT
+                ir.id,
+                ir.type,
+                ir.text,
+                ir.service_name,
+                ir.file_id,
+                ir.media_type,
+                ir.desired_date,
+                ir.desired_time,
+                {status_select},
+                ir.is_read,
+                ir.created_at,
+                {notification_select},
+                c.id AS client_id,
+                c.name AS client_name,
+                c.phone AS client_phone,
+                c.tg_id AS client_tg_id,
+                {client_username_select}
+            FROM inbound_requests ir
+            JOIN clients c ON c.id = ir.client_id
+            WHERE {where_sql}
+            ORDER BY ir.created_at DESC
+            LIMIT ? OFFSET ?
             """,
-            (master_id, limit)
+            (*params, limit, offset),
         )
         rows = await cursor.fetchall()
         return [dict(r) for r in rows]
+    finally:
+        await conn.close()
+
+
+async def get_inbound_requests_total(master_id: int, status: str = None) -> int:
+    """Count inbound requests for a master with optional status filter."""
+    _validate_inbound_status_filter(status)
+
+    conn = await get_connection()
+    try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+
+        where_parts = ["master_id = ?"]
+        params: list = [master_id]
+        if status is not None:
+            if has_status:
+                where_parts.append("status = ?")
+                params.append(status)
+            elif status == "new":
+                where_parts.append("is_read = FALSE")
+            else:
+                where_parts.append("is_read = TRUE")
+
+        where_sql = " AND ".join(where_parts)
+        cursor = await conn.execute(
+            f"SELECT COUNT(*) AS cnt FROM inbound_requests WHERE {where_sql}",
+            tuple(params),
+        )
+        row = await cursor.fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        await conn.close()
+
+
+async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional[dict]:
+    """Get one inbound request by id scoped to master."""
+    conn = await get_connection()
+    try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        has_notification_message_id = await _table_has_column(
+            conn, "inbound_requests", "notification_message_id"
+        )
+        has_client_username = await _table_has_column(conn, "clients", "username")
+
+        status_select = (
+            "ir.status AS status"
+            if has_status
+            else "CASE WHEN ir.is_read = TRUE THEN 'closed' ELSE 'new' END AS status"
+        )
+        notification_select = (
+            "ir.notification_message_id AS notification_message_id"
+            if has_notification_message_id
+            else "NULL AS notification_message_id"
+        )
+        client_username_select = (
+            "c.username AS client_username"
+            if has_client_username
+            else "NULL AS client_username"
+        )
+
+        cursor = await conn.execute(
+            f"""
+            SELECT
+                ir.id,
+                ir.type,
+                ir.text,
+                ir.service_name,
+                ir.file_id,
+                ir.media_type,
+                ir.desired_date,
+                ir.desired_time,
+                {status_select},
+                ir.is_read,
+                ir.created_at,
+                {notification_select},
+                c.id AS client_id,
+                c.name AS client_name,
+                c.phone AS client_phone,
+                c.tg_id AS client_tg_id,
+                {client_username_select}
+            FROM inbound_requests ir
+            JOIN clients c ON c.id = ir.client_id
+            WHERE ir.id = ? AND ir.master_id = ?
+            LIMIT 1
+            """,
+            (request_id, master_id),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
     finally:
         await conn.close()
 
@@ -2189,9 +2365,16 @@ async def mark_request_read(request_id: int, master_id: int) -> bool:
     """Mark a request as read. Returns True if found and updated."""
     conn = await get_connection()
     try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        sql = (
+            "UPDATE inbound_requests SET is_read = TRUE, status = 'closed' "
+            "WHERE id = ? AND master_id = ?"
+            if has_status
+            else "UPDATE inbound_requests SET is_read = TRUE WHERE id = ? AND master_id = ?"
+        )
         cursor = await conn.execute(
-            "UPDATE inbound_requests SET is_read = TRUE WHERE id = ? AND master_id = ?",
-            (request_id, master_id)
+            sql,
+            (request_id, master_id),
         )
         await conn.commit()
         return cursor.rowcount > 0
@@ -2203,8 +2386,14 @@ async def mark_all_requests_read(master_id: int) -> None:
     """Mark all requests for a master as read."""
     conn = await get_connection()
     try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        sql = (
+            "UPDATE inbound_requests SET is_read = TRUE, status = 'closed' WHERE master_id = ?"
+            if has_status
+            else "UPDATE inbound_requests SET is_read = TRUE WHERE master_id = ?"
+        )
         await conn.execute(
-            "UPDATE inbound_requests SET is_read = TRUE WHERE master_id = ?",
+            sql,
             (master_id,)
         )
         await conn.commit()
@@ -2212,18 +2401,48 @@ async def mark_all_requests_read(master_id: int) -> None:
         await conn.close()
 
 
-async def count_pending_requests(master_id: int) -> int:
-    """Count pending (new) inbound requests for a master."""
+async def get_unread_requests_count(master_id: int) -> int:
+    """Count unread/new inbound requests for a master."""
     conn = await get_connection()
     try:
-        cursor = await conn.execute(
-            "SELECT COUNT(*) as cnt FROM inbound_requests WHERE master_id = ? AND is_read = FALSE",
-            (master_id,)
-        )
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        if has_status:
+            cursor = await conn.execute(
+                "SELECT COUNT(*) AS cnt FROM inbound_requests WHERE master_id = ? AND status = 'new'",
+                (master_id,),
+            )
+        else:
+            cursor = await conn.execute(
+                "SELECT COUNT(*) AS cnt FROM inbound_requests WHERE master_id = ? AND is_read = FALSE",
+                (master_id,),
+            )
         row = await cursor.fetchone()
         return row["cnt"] if row else 0
     finally:
         await conn.close()
+
+
+async def close_inbound_request(request_id: int, master_id: int) -> bool:
+    """Close request and mark it as read. Returns True if request exists for master."""
+    conn = await get_connection()
+    try:
+        has_status = await _table_has_column(conn, "inbound_requests", "status")
+        sql = (
+            "UPDATE inbound_requests SET status = 'closed', is_read = TRUE "
+            "WHERE id = ? AND master_id = ?"
+            if has_status
+            else "UPDATE inbound_requests SET is_read = TRUE WHERE id = ? AND master_id = ?"
+        )
+        cursor = await conn.execute(sql, (request_id, master_id))
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
+async def count_pending_requests(master_id: int) -> int:
+    """Count pending (new) inbound requests for a master."""
+    return await get_unread_requests_count(master_id)
 
 
 async def count_done_orders(master_id: int) -> int:

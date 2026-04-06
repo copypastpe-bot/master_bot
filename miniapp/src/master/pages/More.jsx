@@ -93,12 +93,17 @@ export default function More({ onNavigate }) {
         />
       </div>
 
+      <SectionTitle>Маркетинг</SectionTitle>
+      <div style={{ overflow: 'hidden' }}>
+        <Cell icon="📨" label="Рассылки" onClick={() => onNavigate('broadcast')} />
+        <Cell icon="📣" label="Акции" onClick={() => onNavigate('promos')} />
+      </div>
+
       <SectionTitle>Настройки</SectionTitle>
       <div style={{ overflow: 'hidden' }}>
         <Cell icon="⚙️" label="Профиль мастера" onClick={() => onNavigate('profile')} />
         <Cell icon="🎁" label="Бонусная программа" onClick={() => onNavigate('bonus')} />
         <Cell icon="🛠" label="Справочник услуг" onClick={() => onNavigate('services')} />
-        <Cell icon="📣" label="Акции" onClick={() => onNavigate('promos')} />
       </div>
 
       <SectionTitle>Поддержка</SectionTitle>

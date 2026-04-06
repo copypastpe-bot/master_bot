@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import MasterNav from './components/MasterNav';
+import { getMasterRequestsUnreadCount } from '../api/client';
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import OrderDetail from './pages/OrderDetail';
@@ -42,8 +43,20 @@ export default function MasterApp() {
   // navStack: array of { type, id?, ...params }
   // Empty stack = tab root. Push = navigate forward. Pop = back.
   const [navStack, setNavStack] = useState([]);
+  const [requestsBadge, setRequestsBadge] = useState(0);
 
   const queryClient = useQueryClient();
+
+  const refreshBadge = useCallback(async () => {
+    try {
+      const data = await getMasterRequestsUnreadCount();
+      setRequestsBadge(data.count ?? 0);
+    } catch {
+      // badge is best-effort
+    }
+  }, []);
+
+  useEffect(() => { refreshBadge(); }, []);
 
   // ---------------------------------------------------------------------------
   // Telegram BackButton integration
@@ -218,7 +231,11 @@ export default function MasterApp() {
     }
 
     if (type === 'requests') {
-      return <Requests onBack={handleBack} />;
+      return <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />;
+    }
+
+    if (type === 'broadcast') {
+      return <Broadcast />;
     }
 
     // Fallback
@@ -238,8 +255,8 @@ export default function MasterApp() {
         return <Dashboard onNavigate={(t, p) => push(t, p)} />;
       case 'calendar':
         return <Calendar onNavigate={(t, p) => push(t, p)} />;
-      case 'marketing':
-        return <Broadcast />;
+      case 'requests':
+        return <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />;
       case 'more':
         return <More onNavigate={(t, p) => push(t, p)} />;
       default:
@@ -250,7 +267,7 @@ export default function MasterApp() {
   return (
     <div>
       {renderTab()}
-      <MasterNav active={tab} onNavigate={switchTab} />
+      <MasterNav active={tab} onNavigate={switchTab} requestsBadge={requestsBadge} />
     </div>
   );
 }

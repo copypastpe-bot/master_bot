@@ -279,9 +279,55 @@ async def cmd_home(message: Message, state: FSMContext, bot: Bot) -> None:
 
 
 from aiogram import F
+from src.database import get_inbound_request_by_id, close_inbound_request
 
 
 @router.callback_query(F.data == "noop")
 async def cb_noop(callback: CallbackQuery) -> None:
     """Do nothing callback for non-interactive buttons."""
     await callback.answer()
+
+
+# =============================================================================
+# Request notification callbacks
+# =============================================================================
+
+@router.callback_query(F.data.regexp(r"^req:contact:\d+$"))
+async def cb_req_contact(callback: CallbackQuery) -> None:
+    """Open chat with client from request notification."""
+    request_id = int(callback.data.split(":")[2])
+    master = await get_master_by_tg_id(callback.from_user.id)
+    if not master:
+        await callback.answer("Ошибка авторизации")
+        return
+    req = await get_inbound_request_by_id(request_id, master.id)
+    if not req:
+        await callback.answer("Заявка не найдена")
+        return
+    client_tg_id = req["client_tg_id"]
+    await callback.answer(url=f"tg://user?id={client_tg_id}", cache_time=0)
+
+
+@router.callback_query(F.data.regexp(r"^req:close:\d+$"))
+async def cb_req_close(callback: CallbackQuery) -> None:
+    """Close request and remove buttons from notification message."""
+    request_id = int(callback.data.split(":")[2])
+    master = await get_master_by_tg_id(callback.from_user.id)
+    if not master:
+        await callback.answer("Ошибка авторизации")
+        return
+    closed = await close_inbound_request(request_id, master.id)
+    if not closed:
+        await callback.answer("Заявка не найдена или уже закрыта")
+        return
+    try:
+        msg = callback.message
+        if msg.text:
+            await msg.edit_text(msg.text + "\n\n✅ Закрыто", reply_markup=None)
+        elif msg.caption:
+            await msg.edit_caption(caption=msg.caption + "\n\n✅ Закрыто", reply_markup=None)
+        else:
+            await msg.edit_reply_markup(reply_markup=None)
+    except TelegramBadRequest:
+        pass
+    await callback.answer("Заявка закрыта")

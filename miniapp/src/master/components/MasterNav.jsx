@@ -16,10 +16,10 @@ const CalendarIcon = () => (
   </svg>
 );
 
-const MailIcon = () => (
+const BellIcon = () => (
   <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="4" width="20" height="16" rx="2"/>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
   </svg>
 );
 
@@ -34,11 +34,11 @@ const MoreIcon = () => (
 const tabs = [
   { id: 'home', label: 'Главная', Icon: HomeIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
-  { id: 'marketing', label: 'Рассылки', Icon: MailIcon },
+  { id: 'requests', label: 'Заявки', Icon: BellIcon },
   { id: 'more', label: 'Ещё', Icon: MoreIcon },
 ];
 
-export default function MasterNav({ active, onNavigate = () => {} }) {
+export default function MasterNav({ active, onNavigate = () => {}, requestsBadge = 0 }) {
   const handleTab = (id) => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
       WebApp.HapticFeedback.impactOccurred('light');
@@ -60,6 +60,7 @@ export default function MasterNav({ active, onNavigate = () => {} }) {
     }}>
       {tabs.map(({ id, label, Icon }) => {
         const isActive = active === id;
+        const badge = id === 'requests' && requestsBadge > 0 ? requestsBadge : 0;
         return (
           <button
             key={id}
@@ -78,9 +79,33 @@ export default function MasterNav({ active, onNavigate = () => {} }) {
               color: isActive ? 'var(--tg-accent)' : 'var(--tg-hint)',
               fontSize: 11,
               transition: 'color 0.15s',
+              position: 'relative',
             }}
           >
-            <Icon />
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <Icon />
+              {badge > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -8,
+                  background: 'var(--tg-destructive, #ff3b30)',
+                  color: '#fff',
+                  borderRadius: 10,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  minWidth: 16,
+                  height: 16,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 4px',
+                  lineHeight: 1,
+                }}>
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
+            </span>
             <span>{label}</span>
           </button>
         );

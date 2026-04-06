@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, Form, UploadFile, File
 from typing import Optional
 
 from src.api.dependencies import get_current_client
-from src.database import get_client_orders, save_inbound_request
+from src.database import get_client_orders, save_inbound_request, update_inbound_request_notification_id
+from src.keyboards import request_notify_kb
 from src.models import Client, Master, MasterClient
 from aiogram.types import BufferedInputFile
 
@@ -80,7 +81,7 @@ async def create_order_request(
         except Exception:
             pass  # не блокируем заявку если медиа не отправилось
 
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master.id,
         client_id=client.id,
         type="order_request",
@@ -105,7 +106,11 @@ async def create_order_request(
             f"{date_line}{time_line}{comment_line}"
         )
         try:
-            await _master_bot.send_message(master.tg_id, notify_text)
+            sent = await _master_bot.send_message(
+                master.tg_id, notify_text,
+                reply_markup=request_notify_kb(request_id)
+            )
+            await update_inbound_request_notification_id(request_id, sent.message_id)
         except Exception:
             pass
 

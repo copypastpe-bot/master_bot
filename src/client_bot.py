@@ -27,6 +27,7 @@ from src.keyboards import (
     client_reschedule_minutes_kb, client_reschedule_confirm_kb,
     client_cancel_reason_kb, client_cancel_confirm_kb,
     consent_kb, delete_confirm_kb, back_kb,
+    request_notify_kb,
 )
 from src.database import (
     init_db,
@@ -49,6 +50,7 @@ from src.database import (
     get_order_for_confirmation,
     get_master_services_for_client,
     save_inbound_request,
+    update_inbound_request_notification_id,
     mark_order_confirmed_by_client,
     update_order_schedule,
     update_order_status,
@@ -1151,7 +1153,7 @@ async def cb_order_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     comment = data.get("comment")
 
     # Save to database
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="order_request",
@@ -1181,7 +1183,11 @@ async def cb_order_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     master_blocked = False
     if master_bot:
         try:
-            await master_bot.send_message(master.tg_id, notify_text)
+            sent = await master_bot.send_message(
+                master.tg_id, notify_text,
+                reply_markup=request_notify_kb(request_id)
+            )
+            await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
             master_blocked = True
         except Exception as e:
@@ -1252,7 +1258,7 @@ async def fsm_question_text(message: Message, state: FSMContext) -> None:
     client_id = data.get("client_id")
 
     # Save to database
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="question",
@@ -1282,7 +1288,11 @@ async def fsm_question_text(message: Message, state: FSMContext) -> None:
     master_blocked = False
     if master_bot:
         try:
-            await master_bot.send_message(master.tg_id, notify_text, parse_mode="Markdown")
+            sent = await master_bot.send_message(
+                master.tg_id, notify_text, parse_mode="Markdown",
+                reply_markup=request_notify_kb(request_id)
+            )
+            await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
             master_blocked = True
         except Exception as e:
@@ -1459,7 +1469,7 @@ async def send_media_to_master(callback: CallbackQuery, state: FSMContext) -> No
     comment = data.get("comment")
 
     # Save to database
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="media",
@@ -1496,25 +1506,30 @@ async def send_media_to_master(callback: CallbackQuery, state: FSMContext) -> No
                 async with session.get(file_url) as resp:
                     if resp.status == 200:
                         media_bytes = await resp.read()
+                        kb = request_notify_kb(request_id)
 
                         if media_type == "photo":
-                            await master_bot.send_photo(
+                            sent = await master_bot.send_photo(
                                 master.tg_id,
                                 photo=BufferedInputFile(media_bytes, filename="photo.jpg"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
                         elif media_type == "video":
-                            await master_bot.send_video(
+                            sent = await master_bot.send_video(
                                 master.tg_id,
                                 video=BufferedInputFile(media_bytes, filename="video.mp4"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
                         else:
-                            await master_bot.send_document(
+                            sent = await master_bot.send_document(
                                 master.tg_id,
                                 document=BufferedInputFile(media_bytes, filename="file"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
+                        await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
             master_blocked = True
         except Exception as e:
@@ -1551,7 +1566,7 @@ async def send_media_to_master_from_message(message: Message, state: FSMContext)
     home_message_id = data.get("home_message_id")
 
     # Save to database
-    await save_inbound_request(
+    request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="media",
@@ -1588,25 +1603,30 @@ async def send_media_to_master_from_message(message: Message, state: FSMContext)
                 async with session.get(file_url) as resp:
                     if resp.status == 200:
                         media_bytes = await resp.read()
+                        kb = request_notify_kb(request_id)
 
                         if media_type == "photo":
-                            await master_bot.send_photo(
+                            sent = await master_bot.send_photo(
                                 master.tg_id,
                                 photo=BufferedInputFile(media_bytes, filename="photo.jpg"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
                         elif media_type == "video":
-                            await master_bot.send_video(
+                            sent = await master_bot.send_video(
                                 master.tg_id,
                                 video=BufferedInputFile(media_bytes, filename="video.mp4"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
                         else:
-                            await master_bot.send_document(
+                            sent = await master_bot.send_document(
                                 master.tg_id,
                                 document=BufferedInputFile(media_bytes, filename="file"),
-                                caption=caption
+                                caption=caption,
+                                reply_markup=kb
                             )
+                        await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
             master_blocked = True
         except Exception as e:

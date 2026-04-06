@@ -458,6 +458,14 @@ def report_period_cancel_kb() -> InlineKeyboardMarkup:
     ])
 
 
+def request_notify_kb(request_id: int) -> InlineKeyboardMarkup:
+    """Keyboard for master notification about new inbound request."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💬 Написать клиенту", callback_data=f"req:contact:{request_id}")],
+        [InlineKeyboardButton(text="✅ Закрыть заявку", callback_data=f"req:close:{request_id}")],
+    ])
+
+
 def settings_kb() -> InlineKeyboardMarkup:
     """Settings section keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[

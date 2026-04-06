@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMasterOrders, getMasterOrderDates } from '../../api/client';
-import WeekStrip from '../components/WeekStrip';
+import MonthCalendar from '../components/MonthCalendar';
 import DaySchedule from '../components/DaySchedule';
 
 const WebApp = window.Telegram?.WebApp;
@@ -13,66 +13,92 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
-function getYearMonth(dateStr) {
-  // dateStr: "2026-03-24" → { year: 2026, month: 3 }
-  const [y, m] = dateStr.split('-').map(Number);
-  return { year: y, month: m };
-}
-
 export default function Calendar({ onNavigate }) {
-  const [selectedDate, setSelectedDate] = useState(() => toYMD(new Date()));
+  const today = new Date();
+  const todayStr = toYMD(today);
 
-  const { year, month } = getYearMonth(selectedDate);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [viewYear, setViewYear]   = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
 
-  // Fetch active dates for the current month (for dot markers)
-  const {
-    data: datesData,
-  } = useQuery({
-    queryKey: ['masterOrderDates', year, month],
-    queryFn: () => getMasterOrderDates(year, month),
-    staleTime: 2 * 60 * 1000, // 2 minutes
+  // Fetch active dates for the displayed month (dot markers)
+  const { data: datesData } = useQuery({
+    queryKey: ['masterOrderDates', viewYear, viewMonth],
+    queryFn: () => getMasterOrderDates(viewYear, viewMonth),
+    staleTime: 2 * 60 * 1000,
   });
 
   // Fetch orders for selected date
-  const {
-    data: ordersData,
-    isFetching: ordersLoading,
-  } = useQuery({
+  const { data: ordersData, isFetching: ordersLoading } = useQuery({
     queryKey: ['masterOrders', selectedDate],
     queryFn: () => getMasterOrders(selectedDate),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 60 * 1000,
   });
 
   const activeDates = datesData?.dates || [];
   const orders = ordersData?.orders || [];
 
+  // When user taps a date — if it's in a different month, jump there
+  const handleSelectDate = useCallback((dateStr) => {
+    setSelectedDate(dateStr);
+    const y = parseInt(dateStr.slice(0, 4), 10);
+    const m = parseInt(dateStr.slice(5, 7), 10);
+    setViewYear(y);
+    setViewMonth(m);
+  }, []);
+
+  const handleGoToToday = useCallback(() => {
+    const t = new Date();
+    setSelectedDate(todayStr);
+    setViewYear(t.getFullYear());
+    setViewMonth(t.getMonth() + 1);
+  }, [todayStr]);
+
+  const handlePrevMonth = useCallback(() => {
+    if (viewMonth === 1) {
+      setViewYear(y => y - 1);
+      setViewMonth(12);
+    } else {
+      setViewMonth(m => m - 1);
+    }
+  }, [viewMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    if (viewMonth === 12) {
+      setViewYear(y => y + 1);
+      setViewMonth(1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
+  }, [viewMonth]);
+
   const handleOrderClick = useCallback((orderId) => {
-    onNavigate('order', orderId);
+    onNavigate('order', { id: orderId });
   }, [onNavigate]);
 
   const handleCreateOrder = useCallback(() => {
     onNavigate('create_order', { date: selectedDate });
   }, [onNavigate, selectedDate]);
 
-  const handleFabClick = () => {
-    if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
-      WebApp.HapticFeedback.impactOccurred('light');
-    }
-    onNavigate('create_order', { date: selectedDate });
-  };
-
   return (
     <div style={{ paddingBottom: 80, minHeight: '100vh', background: 'var(--tg-bg)' }}>
-      {/* Sticky week strip */}
+
+      {/* Sticky month calendar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <WeekStrip
+        <MonthCalendar
           selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
+          onSelectDate={handleSelectDate}
+          viewYear={viewYear}
+          viewMonth={viewMonth}
+          onPrevMonth={handlePrevMonth}
+          onNextMonth={handleNextMonth}
+          onGoToToday={handleGoToToday}
           activeDates={activeDates}
+          todayStr={todayStr}
         />
       </div>
 
-      {/* Day schedule */}
+      {/* Orders for selected day */}
       <DaySchedule
         dateStr={selectedDate}
         orders={orders}
@@ -81,9 +107,14 @@ export default function Calendar({ onNavigate }) {
         onCreateOrder={handleCreateOrder}
       />
 
-      {/* FAB "+" — above bottom nav (~58px high) + safe area */}
+      {/* FAB "+" */}
       <button
-        onClick={handleFabClick}
+        onClick={() => {
+          if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
+            WebApp.HapticFeedback.impactOccurred('light');
+          }
+          onNavigate('create_order', { date: selectedDate });
+        }}
         style={{
           position: 'fixed',
           bottom: 'calc(68px + env(safe-area-inset-bottom))',

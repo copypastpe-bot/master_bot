@@ -176,10 +176,11 @@ export const restoreArchivedClient = (clientId) =>
 export const registerMaster = (data) =>
   api.post('/api/master/register', data).then(r => r.data);
 
-// Inbound requests (заявки клиентов)
-export const getMasterRequests = () =>
-  api.get('/api/master/requests').then(r => r.data);
-export const markRequestRead = (id) =>
-  api.put(`/api/master/requests/${id}/read`).then(r => r.data);
-export const markAllRequestsRead = () =>
-  api.put('/api/master/requests/read-all').then(r => r.data);
+// Requests
+export const getMasterRequests = (status) =>
+  api.get('/api/master/requests', { params: status && status !== 'all' ? { status } : {} }).then(r => r.data);
+export const getMasterRequestsUnreadCount = () =>
+  api.get('/api/master/requests/unread_count').then(r => r.data);
+export const closeMasterRequest = (id) =>
+  api.post(`/api/master/requests/${id}/close`).then(r => r.data);
+
