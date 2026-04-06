@@ -83,8 +83,8 @@ export default function MasterApp() {
   // ---------------------------------------------------------------------------
   const invalidateOrders = () => {
     queryClient.invalidateQueries({ queryKey: ['master-dashboard'] });
-    queryClient.invalidateQueries({ queryKey: ['master-calendar'] });
-    queryClient.invalidateQueries({ queryKey: ['master-orders'] });
+    queryClient.invalidateQueries({ queryKey: ['masterOrderDates'] });
+    queryClient.invalidateQueries({ queryKey: ['masterOrders'] });
     queryClient.invalidateQueries({ queryKey: ['master-reports'] });
   };
 
