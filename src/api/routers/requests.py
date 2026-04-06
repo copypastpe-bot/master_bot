@@ -29,6 +29,7 @@ async def create_question(
     client, master, master_client = data
 
     file_id = None
+    media_sent = False
 
     if media and media_type and _master_bot:
         media_bytes = await media.read()
@@ -48,6 +49,7 @@ async def create_question(
                     caption=caption,
                 )
                 file_id = msg.video.file_id
+            media_sent = True
         except Exception:
             pass
 
@@ -60,8 +62,8 @@ async def create_question(
         media_type=media_type,
     )
 
-    # Text notification (only if no media was sent with caption above)
-    if _master_bot and not (media and media_type):
+    # Text notification: always send if no media, or if media send failed
+    if _master_bot and not media_sent:
         notify_text = (
             f"❓ Вопрос от клиента\n\n"
             f"👤 {client.name}\n"
