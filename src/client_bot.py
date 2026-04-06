@@ -253,6 +253,9 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     # Extract token early (before any DB calls)
     args = message.text.split(maxsplit=1)
     invite_token = args[1].strip() if len(args) >= 2 else None
+    # Deep links use "invite_TOKEN" format — strip prefix before DB lookup
+    if invite_token and invite_token.startswith('invite_'):
+        invite_token = invite_token[7:]
 
     # Load client (without master — token determines which master)
     client = await get_client_by_tg_id(tg_id)
