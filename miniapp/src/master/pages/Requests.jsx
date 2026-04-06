@@ -102,11 +102,7 @@ function RequestCard({ req, onClose, onNavigate }) {
   const handleContact = () => {
     haptic();
     if (req.client_tg_id) {
-      if (typeof WebApp?.openTelegramLink === 'function') {
-        WebApp.openTelegramLink(`tg://user?id=${req.client_tg_id}`);
-      } else {
-        window.open(`tg://user?id=${req.client_tg_id}`);
-      }
+      window.open(`tg://user?id=${req.client_tg_id}`);
     }
   };
 
@@ -145,9 +141,9 @@ function RequestCard({ req, onClose, onNavigate }) {
         {req.client_name}
       </div>
       {req.client_phone && (
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
+        <a href={`tel:${req.client_phone}`} style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4, display: 'block', textDecoration: 'none' }}>
           {req.client_phone}
-        </div>
+        </a>
       )}
       {req.service_name && (
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>

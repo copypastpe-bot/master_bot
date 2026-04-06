@@ -458,10 +458,15 @@ def report_period_cancel_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def request_notify_kb(request_id: int) -> InlineKeyboardMarkup:
+def request_notify_kb(request_id: int, client_tg_id: int = None) -> InlineKeyboardMarkup:
     """Keyboard for master notification about new inbound request."""
+    contact_btn = (
+        InlineKeyboardButton(text="💬 Написать клиенту", url=f"tg://user?id={client_tg_id}")
+        if client_tg_id
+        else InlineKeyboardButton(text="💬 Написать клиенту", callback_data=f"req:contact:{request_id}")
+    )
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💬 Написать клиенту", callback_data=f"req:contact:{request_id}")],
+        [contact_btn],
         [InlineKeyboardButton(text="✅ Закрыть заявку", callback_data=f"req:close:{request_id}")],
     ])
 

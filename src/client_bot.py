@@ -1185,7 +1185,7 @@ async def cb_order_confirm(callback: CallbackQuery, state: FSMContext) -> None:
         try:
             sent = await master_bot.send_message(
                 master.tg_id, notify_text,
-                reply_markup=request_notify_kb(request_id)
+                reply_markup=request_notify_kb(request_id, tg_id)
             )
             await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
@@ -1290,7 +1290,7 @@ async def fsm_question_text(message: Message, state: FSMContext) -> None:
         try:
             sent = await master_bot.send_message(
                 master.tg_id, notify_text, parse_mode="Markdown",
-                reply_markup=request_notify_kb(request_id)
+                reply_markup=request_notify_kb(request_id, tg_id)
             )
             await update_inbound_request_notification_id(request_id, sent.message_id)
         except TelegramForbiddenError:
@@ -1468,19 +1468,20 @@ async def send_media_to_master(callback: CallbackQuery, state: FSMContext) -> No
     media_type = data.get("media_type")
     comment = data.get("comment")
 
+    # Get client and master data
+    tg_id = callback.from_user.id
+    client = await get_client_by_tg_id(tg_id)
+    master = await get_master_by_id(master_id)
+
     # Save to database
     request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="media",
         text=comment,
-        file_id=file_id
+        file_id=file_id,
+        media_type=media_type,
     )
-
-    # Get client and master data
-    tg_id = callback.from_user.id
-    client = await get_client_by_tg_id(tg_id)
-    master = await get_master_by_id(master_id)
 
     # Build caption
     username = callback.from_user.username
@@ -1506,7 +1507,7 @@ async def send_media_to_master(callback: CallbackQuery, state: FSMContext) -> No
                 async with session.get(file_url) as resp:
                     if resp.status == 200:
                         media_bytes = await resp.read()
-                        kb = request_notify_kb(request_id)
+                        kb = request_notify_kb(request_id, tg_id)
 
                         if media_type == "photo":
                             sent = await master_bot.send_photo(
@@ -1565,19 +1566,20 @@ async def send_media_to_master_from_message(message: Message, state: FSMContext)
     comment = data.get("comment")
     home_message_id = data.get("home_message_id")
 
+    # Get client and master data
+    tg_id = message.from_user.id
+    client = await get_client_by_tg_id(tg_id)
+    master = await get_master_by_id(master_id)
+
     # Save to database
     request_id = await save_inbound_request(
         master_id=master_id,
         client_id=client_id,
         type="media",
         text=comment,
-        file_id=file_id
+        file_id=file_id,
+        media_type=media_type,
     )
-
-    # Get client and master data
-    tg_id = message.from_user.id
-    client = await get_client_by_tg_id(tg_id)
-    master = await get_master_by_id(master_id)
 
     # Build caption
     username = message.from_user.username
@@ -1603,7 +1605,7 @@ async def send_media_to_master_from_message(message: Message, state: FSMContext)
                 async with session.get(file_url) as resp:
                     if resp.status == 200:
                         media_bytes = await resp.read()
-                        kb = request_notify_kb(request_id)
+                        kb = request_notify_kb(request_id, tg_id)
 
                         if media_type == "photo":
                             sent = await master_bot.send_photo(

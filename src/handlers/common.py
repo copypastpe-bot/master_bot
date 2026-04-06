@@ -305,7 +305,14 @@ async def cb_req_contact(callback: CallbackQuery) -> None:
         await callback.answer("Заявка не найдена")
         return
     client_tg_id = req["client_tg_id"]
-    await callback.answer(url=f"tg://user?id={client_tg_id}", cache_time=0)
+    client_name = req.get("client_name", "клиент")
+    await callback.message.answer(
+        f"Написать {client_name}:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="💬 Открыть диалог", url=f"tg://user?id={client_tg_id}")
+        ]])
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data.regexp(r"^req:close:\d+$"))

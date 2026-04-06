@@ -1,5 +1,6 @@
 """Orders endpoints - history and order requests."""
 
+import logging
 from fastapi import APIRouter, Depends, Form, UploadFile, File
 from typing import Optional
 
@@ -8,6 +9,8 @@ from src.database import get_client_orders, save_inbound_request, update_inbound
 from src.keyboards import request_notify_kb
 from src.models import Client, Master, MasterClient
 from aiogram.types import BufferedInputFile
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["orders"])
 
@@ -78,8 +81,8 @@ async def create_order_request(
                     caption=caption,
                 )
                 file_id = msg.video.file_id
-        except Exception:
-            pass  # не блокируем заявку если медиа не отправилось
+        except Exception as e:
+            logger.warning("Failed to send media to master %s: %s", master.tg_id, e)
 
     request_id = await save_inbound_request(
         master_id=master.id,
@@ -108,10 +111,10 @@ async def create_order_request(
         try:
             sent = await _master_bot.send_message(
                 master.tg_id, notify_text,
-                reply_markup=request_notify_kb(request_id)
+                reply_markup=request_notify_kb(request_id, client.tg_id)
             )
             await update_inbound_request_notification_id(request_id, sent.message_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to send order request notification to master %s: %s", master.tg_id, e)
 
     return {"success": True}

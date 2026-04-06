@@ -935,8 +935,13 @@ function SuccessScreen({ order, onBack }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function OrderCreate({ params, onBack, onCreated }) {
-  const [step, setStep] = useState(1);
-  const [client, setClient] = useState(null);
+  const prefill = params?.prefill;
+  const prefillClient = prefill?.client_id
+    ? { id: prefill.client_id, name: prefill.client_name }
+    : null;
+
+  const [step, setStep] = useState(prefillClient ? 2 : 1);
+  const [client, setClient] = useState(prefillClient);
   const [services, setServices] = useState([]);
   const [date, setDate] = useState(params?.date || toYMD(new Date()));
   const [time, setTime] = useState('');
