@@ -63,18 +63,19 @@ master-bot/
 │           ├── MasterApp.jsx      — корневой компонент мастера, таб-навигация
 │           ├── pages/
 │           │   ├── Dashboard.jsx  — сводка дня, статистика (для новых мастеров — мотивационный блок вместо KPI), кнопка создания заказа, онбординг-баннер
-│           │   ├── Calendar.jsx   — WeekStrip + список заказов на выбранный день
-│           │   ├── OrderDetail.jsx — карточка заказа, проведение/перенос/отмена
+│           │   ├── Calendar.jsx   — MonthCalendar (полный месяц, навигация стрелками) + список заказов на выбранный день
+│           │   ├── OrderDetail.jsx — карточка заказа, провести/перенести/отменить; DatePickerField/TimePickerField для кастомного отображения нативных пикеров
 │           │   ├── OrderCreate.jsx — 4-шаговое создание заказа (клиент, услуги, дата, подтверждение)
 │           │   ├── Broadcast.jsx  — 4-шаговая рассылка (текст, медиа, сегмент, отправка); empty state при 0 клиентов с TG (инвайт-ссылка)
 │           │   ├── Reports.jsx    — аналитика: выручка, заказы, клиенты, график
 │           │   ├── ClientsList.jsx — список клиентов с поиском и пагинацией
 │           │   ├── ClientCard.jsx — карточка клиента: история, бонусы, редактирование
 │           │   ├── More.jsx       — профиль мастера, инвайт-ссылка, поддержка
-│           │   └── MasterOnboarding.jsx — 4-шаговый онбординг нового мастера (имя → ниша-чипсы → первый клиент+запись → финал); шаг 3 можно пропустить
+│           │   └── MasterOnboarding.jsx — 4-шаговый онбординг (имя → мультиселект ниш до 3 → первый клиент+запись → финал); кнопка "← Назад" на шагах 2-3; шаг 3 можно пропустить
 │           ├── components/
 │           │   ├── MasterNav.jsx  — нижняя навигация: Главная / Календарь / Рассылки (иконка конверт MailIcon) / Другое
-│           │   ├── WeekStrip.jsx  — горизонтальная лента дней недели
+│           │   ├── MonthCalendar.jsx — полный месячный календарь: сетка 7×5-6, точки на занятых днях, навигация стрелками (без свайпа)
+│           │   ├── WeekStrip.jsx  — не используется (заменён MonthCalendar)
 │           │   ├── DaySchedule.jsx — список заказов дня
 │           │   ├── OrderCard.jsx  — карточка заказа в списке
 │           │   ├── StatCard.jsx   — карточка статистики
@@ -166,13 +167,13 @@ npm run build    # сборка в miniapp/dist/
 ### Деплой на сервер
 
 ```bash
-ssh deploy@75.119.153.118
-cd /opt/master_bot
-git pull
-docker compose down && docker compose up -d --build
+git push origin main
+ssh deploy@75.119.153.118 "cd /opt/master_bot && git pull origin main --ff-only && docker compose up -d --build master_bot client_bot"
 ```
 
 Контейнеры: `master_bot` (порты 8081, 8090), `client_bot`.
+
+⚠️ **Важно:** `src/` — общая кодовая база для обоих контейнеров. При изменениях в `src/` всегда пересобирать **оба**: `--build master_bot client_bot`. Пересборка только одного оставит второй на старом коде.
 
 ---
 
@@ -229,6 +230,8 @@ APP_ENV=production           — development включает dev bypass в API 
 - **Навигация:** таб-бар — Главная / Календарь / Рассылки (конверт) / Другое
 - **Nested screens:** `navStack` в `MasterApp.jsx`; Telegram BackButton через `useBackButton`
 - **Dashboard empty states:** новый мастер (0 done-заказов) видит 📊-блок вместо KPI и "Пока записей нет" вместо расписания
+- **KPI StatCards** показываются только при `total_done_orders > 0` (хотя бы 1 проведённый заказ)
+- **Навигация к заказу:** всегда передавать объект `{ id: orderId }`, не голое число — `onNavigate('order', { id: order.id })`. Spread числа в JS молча теряет id.
 
 ---
 
@@ -239,8 +242,8 @@ APP_ENV=production           — development включает dev bypass в API 
 - **Mini App фронтенд (клиентский)** — React 19 + Vite (`miniapp/`), 4 экрана, Telegram WebApp API, адаптивная тема.
 - **Master Mini App** — полный мастерский интерфейс (`miniapp/src/master/`):
   - Dashboard — сводка дня; для новых мастеров (0 done-заказов): мотивационный блок 📊 вместо KPI, empty states в расписании с кнопкой "Добавить первую запись"; онбординг-баннер если пропустил шаг 3
-  - Calendar — WeekStrip + список заказов на выбранный день
-  - OrderDetail — карточка заказа, провести / перенести / отменить с bottom sheet
+  - Calendar — полный месячный вид (MonthCalendar): сетка, точки на занятых днях, навигация стрелками без свайпа; тап на день соседнего месяца автоматически переключает месяц
+  - OrderDetail — карточка заказа, провести / перенести / отменить с bottom sheet; кастомные DatePickerField/TimePickerField: показывают дату по-русски ("4 апреля 2026"), нативный iOS picker открывается тапом
   - OrderCreate — 4-шаговое создание заказа (поиск клиента, услуги, дата/время, подтверждение)
   - Broadcast — 4-шаговая рассылка (текст, медиа фото/видео, сегмент, предпросмотр и отправка); при 0 клиентов с TG — empty state с инвайт-ссылкой; `/send` принимает `multipart/form-data`
   - Reports (Аналитика) — выручка, заказы, новые клиенты, топ услуг, график по дням; доступ через клики на StatCard Dashboard
@@ -254,7 +257,8 @@ APP_ENV=production           — development включает dev bypass в API 
 - **Навигация** — вкладка "Рассылки" с иконкой конверта (MailIcon) вместо рупора (MegaphoneIcon)
 - **Регистрация мастера** — только через Mini App:
   - `master_bot /start` → фото-баннер + кнопка "Открыть приложение →" (FSM регистрации удалён)
-  - Mini App: `GET /api/auth/role` → `unknown` → `MasterOnboarding.jsx` (4 шага: имя → ниша → первый клиент/пропустить → финал) → POST `/api/master/register` → `onRegistered()` → `MasterApp`
+  - Mini App: `GET /api/auth/role` → `unknown` → `MasterOnboarding.jsx` (4 шага: имя → мультиселект ниш → первый клиент/пропустить → финал) → POST `/api/master/register` → `onRegistered()` → `MasterApp`
+  - Шаг 2: мультиселект до 3 ниш, сохраняются как строка через запятую ("Клининг, Массаж"); "← Назад" на шагах 2 и 3
   - Путь "Пропустить" (шаг 3): `PUT /api/master/profile { onboarding_skipped_first_client: true }` → Dashboard показывает баннер "Добавь первого клиента..."
   - Баннер скрывается через `PUT /api/master/profile { onboarding_banner_shown: true }`
   - 12 ниш + "Другое": Клининг, Химчистка, Парикмахер, Маникюр, Груминг, Массаж, Ремонт бытовой техники, Мастер на час, Репетитор, Фотограф, Психолог, Садовник, Другое
@@ -317,8 +321,8 @@ bash deploy_miniapp.sh
 
 | Изменения в | Деплой |
 |---|---|
-| `src/`, `migrations/`, `requirements.txt` | только бэкенд |
-| `miniapp/src/`, `miniapp/package.json` | только Mini App |
+| `src/`, `migrations/`, `requirements.txt` | бэкенд: `--build master_bot client_bot` (оба контейнера!) |
+| `miniapp/src/`, `miniapp/package.json` | только Mini App: `bash deploy_miniapp.sh` |
 | И то и другое | оба деплоя |
 
 ---
