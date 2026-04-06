@@ -141,9 +141,12 @@ function RequestCard({ req, onClose, onNavigate }) {
         {req.client_name}
       </div>
       {req.client_phone && (
-        <a href={`tel:${req.client_phone}`} style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4, display: 'block', textDecoration: 'none' }}>
-          {req.client_phone}
-        </a>
+        <div
+          onClick={() => { haptic(); window.location.href = `tel:${req.client_phone}`; }}
+          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, cursor: 'pointer' }}
+        >
+          📞 {req.client_phone}
+        </div>
       )}
       {req.service_name && (
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
