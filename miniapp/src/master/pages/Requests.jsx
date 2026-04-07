@@ -10,10 +10,53 @@ function haptic() {
   }
 }
 
+const iconProps = {
+  width: 14,
+  height: 14,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': 'true',
+};
+
+const TYPE_ICONS = {
+  order_request: (
+    <svg {...iconProps}>
+      <path d="M4 4h16l-2 10H6L4 4Z" />
+      <circle cx="10" cy="19" r="1.6" />
+      <circle cx="16" cy="19" r="1.6" />
+    </svg>
+  ),
+  question: (
+    <svg {...iconProps}>
+      <path d="M20.9 11.4a8.4 8.4 0 0 1-.9 3.8A8.5 8.5 0 0 1 12.5 20H4l1.9-3.8a8.5 8.5 0 1 1 15-4.8Z" />
+      <path d="M12 16h.01" />
+      <path d="M10.5 9.4a2 2 0 1 1 2.8 1.8c-.9.4-1.3.9-1.3 1.8" />
+    </svg>
+  ),
+  media: (
+    <svg {...iconProps}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m21 15-4.8-4.8a1 1 0 0 0-1.4 0L8 17" />
+    </svg>
+  ),
+  default: (
+    <svg {...iconProps}>
+      <path d="M20 8v8a2 2 0 0 1-2 2H6l-4 3V6a2 2 0 0 1 2-2h9" />
+      <path d="M17 2v6" />
+      <path d="M14 5h6" />
+    </svg>
+  ),
+};
+
 const REQUEST_TYPES = {
-  order_request: { emoji: '🛎', title: 'Заявка на заказ' },
-  question:      { emoji: '', title: 'Вопрос от клиента' },
-  media:         { emoji: '📸', title: 'Медиафайл' },
+  order_request: { title: 'Заявка на заказ' },
+  question: { title: 'Вопрос от клиента' },
+  media: { title: 'Медиафайл' },
 };
 
 const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн',
@@ -30,7 +73,7 @@ function formatDate(isoString) {
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
   if (d.toDateString() === yesterday.toDateString()) return `вчера ${time}`;
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${time}`;
 }
 
 function FilterTabs({ active, onChange }) {
@@ -39,36 +82,24 @@ function FilterTabs({ active, onChange }) {
     { key: 'all', label: 'Все' },
     { key: 'closed', label: 'Закрытые' },
   ];
+
   return (
-    <div style={{
-      display: 'flex',
-      borderBottom: '1px solid var(--tg-secondary-bg)',
-      background: 'var(--tg-bg)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 10,
-    }}>
-      {filters.map(({ key, label }) => (
-        <button
-          key={key}
-          onClick={() => { haptic(); onChange(key); }}
-          style={{
-            flex: 1,
-            padding: '12px 0',
-            background: 'none',
-            border: 'none',
-            borderBottom: active === key
-              ? '2px solid var(--tg-accent)' : '2px solid transparent',
-            color: active === key ? 'var(--tg-accent)' : 'var(--tg-hint)',
-            fontSize: 14,
-            fontWeight: active === key ? 600 : 400,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="requests-filter-wrap">
+      <div className="requests-filter">
+        {filters.map(({ key, label }) => {
+          const isActive = key === active;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { haptic(); onChange(key); }}
+              className={`requests-filter-btn${isActive ? ' is-active' : ''}`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -76,19 +107,9 @@ function FilterTabs({ active, onChange }) {
 function ActionBtn({ children, onClick, accent, small }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      style={{
-        flex: 1,
-        padding: small ? '8px 10px' : '10px 12px',
-        background: accent ? 'var(--tg-accent)' : 'var(--tg-secondary-bg)',
-        color: accent ? '#fff' : 'var(--tg-text)',
-        border: 'none',
-        borderRadius: 10,
-        fontSize: 13,
-        fontWeight: 500,
-        cursor: 'pointer',
-        textAlign: 'center',
-      }}
+      className={`requests-action-btn${accent ? ' is-accent' : ''}${small ? ' is-small' : ''}`}
     >
       {children}
     </button>
@@ -132,37 +153,28 @@ function MediaPreview({ reqId }) {
     setZoom(1);
   };
 
-  if (isLoading) return (
-    <div style={{ height: 120, background: 'var(--tg-secondary-bg)', borderRadius: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <span style={{ color: 'var(--tg-hint)', fontSize: 13 }}>Загрузка...</span>
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <div className="requests-media-loading">
+        <span>Загрузка вложений...</span>
+      </div>
+    );
+  }
+
   if (!media.length) return null;
 
   return (
     <>
-      <div style={{
-        marginTop: 8,
-        display: 'grid',
-        gridTemplateColumns: media.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-        gap: 8,
-      }}>
+      <div className="requests-media-grid">
         {media.map((item, index) => {
           const isPhoto = item.media_type === 'photo';
           if (isPhoto) {
             return (
               <button
+                type="button"
                 key={`${item.file_id}-${index}`}
                 onClick={() => openViewer(index)}
-                style={{
-                  border: 'none',
-                  padding: 0,
-                  background: 'none',
-                  borderRadius: 10,
-                  overflow: 'hidden',
-                  cursor: 'pointer',
-                  aspectRatio: '4 / 3',
-                }}
+                className="requests-media-photo"
               >
                 <img
                   src={item.url}
@@ -179,40 +191,18 @@ function MediaPreview({ reqId }) {
               src={item.url}
               controls
               preload="metadata"
-              style={{ width: '100%', borderRadius: 10, background: '#000', maxHeight: 220 }}
+              className="requests-media-video"
             />
           );
         })}
       </div>
 
       {activeMedia && activeMedia.media_type === 'photo' && (
-        <div
-          onClick={closeViewer}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 1000,
-            background: 'rgba(0, 0, 0, 0.92)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '56px 12px 84px',
-          }}
-        >
+        <div onClick={closeViewer} className="requests-viewer-overlay">
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); closeViewer(); }}
-            style={{
-              position: 'absolute',
-              top: 12,
-              right: 12,
-              border: 'none',
-              borderRadius: 10,
-              background: 'rgba(255,255,255,0.16)',
-              color: '#fff',
-              fontSize: 14,
-              padding: '8px 10px',
-              cursor: 'pointer',
-            }}
+            className="requests-viewer-btn-close"
           >
             Закрыть
           </button>
@@ -220,40 +210,16 @@ function MediaPreview({ reqId }) {
           {media.length > 1 && (
             <>
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); prevMedia(); }}
-                style={{
-                  position: 'absolute',
-                  left: 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  border: 'none',
-                  borderRadius: 999,
-                  width: 36,
-                  height: 36,
-                  background: 'rgba(255,255,255,0.22)',
-                  color: '#fff',
-                  fontSize: 20,
-                  cursor: 'pointer',
-                }}
+                className="requests-viewer-nav prev"
               >
                 {'<'}
               </button>
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); nextMedia(); }}
-                style={{
-                  position: 'absolute',
-                  right: 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  border: 'none',
-                  borderRadius: 999,
-                  width: 36,
-                  height: 36,
-                  background: 'rgba(255,255,255,0.22)',
-                  color: '#fff',
-                  fontSize: 20,
-                  cursor: 'pointer',
-                }}
+                className="requests-viewer-nav next"
               >
                 {'>'}
               </button>
@@ -274,57 +240,26 @@ function MediaPreview({ reqId }) {
             }}
           />
 
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              position: 'absolute',
-              bottom: 16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+          <div onClick={(e) => e.stopPropagation()} className="requests-viewer-zoom">
             <button
+              type="button"
               onClick={() => { haptic(); setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2))); }}
-              style={{
-                border: 'none',
-                borderRadius: 10,
-                padding: '8px 12px',
-                background: 'rgba(255,255,255,0.2)',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
+              className="requests-viewer-zoom-btn"
             >
               -
             </button>
-            <div style={{ color: '#fff', fontSize: 13, minWidth: 58, textAlign: 'center' }}>
-              {Math.round(zoom * 100)}%
-            </div>
+            <div className="requests-viewer-zoom-value">{Math.round(zoom * 100)}%</div>
             <button
+              type="button"
               onClick={() => { haptic(); setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2))); }}
-              style={{
-                border: 'none',
-                borderRadius: 10,
-                padding: '8px 12px',
-                background: 'rgba(255,255,255,0.2)',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
+              className="requests-viewer-zoom-btn"
             >
               +
             </button>
             <button
+              type="button"
               onClick={() => { haptic(); setZoom(1); }}
-              style={{
-                border: 'none',
-                borderRadius: 10,
-                padding: '8px 10px',
-                background: 'rgba(255,255,255,0.2)',
-                color: '#fff',
-                cursor: 'pointer',
-              }}
+              className="requests-viewer-zoom-btn"
             >
               1:1
             </button>
@@ -338,7 +273,7 @@ function MediaPreview({ reqId }) {
 function RequestCard({ req, onClose, onNavigate }) {
   const [showMedia, setShowMedia] = useState(false);
   const isClosed = req.status === 'closed';
-  const typeInfo = REQUEST_TYPES[req.type] || { emoji: '📩', title: 'Заявка' };
+  const typeInfo = REQUEST_TYPES[req.type] || { title: 'Заявка' };
   const mediaCount = Number(req.media_count || 0);
   const hasMedia = mediaCount > 0 || Boolean(req.file_id);
 
@@ -366,88 +301,57 @@ function RequestCard({ req, onClose, onNavigate }) {
     });
   };
 
+  const typeIcon = TYPE_ICONS[req.type] || TYPE_ICONS.default;
+
   return (
-    <div style={{
-      background: 'var(--tg-section-bg)',
-      borderRadius: 14,
-      margin: '0 0 10px',
-      padding: '14px 16px',
-      opacity: isClosed ? 0.65 : 1,
-      transition: 'opacity 0.2s',
-    }}>
-      {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)' }}>
-          {typeInfo.emoji ? `${typeInfo.emoji} ` : ''}{typeInfo.title}
-        </span>
-        <span style={{ fontSize: 12, color: 'var(--tg-hint)', flexShrink: 0, marginLeft: 8 }}>
-          {formatDate(req.created_at)}
-        </span>
+    <article className={`requests-card${isClosed ? ' is-closed' : ''}`}>
+      <div className="requests-card-head">
+        <div className="requests-card-type">
+          <span className="requests-card-type-icon">{typeIcon}</span>
+          <span>{typeInfo.title}</span>
+        </div>
+        <span className="requests-card-time">{formatDate(req.created_at)}</span>
       </div>
 
-      {/* Client */}
-      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 2 }}>
-        {req.client_name}
-      </div>
-      {req.client_phone && (
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
-          📞 {req.client_phone}
-        </div>
-      )}
-      {req.service_name && (
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
-          🛠 {req.service_name}
-        </div>
-      )}
+      <div className="requests-card-client">{req.client_name}</div>
+
+      {req.client_phone && <div className="requests-card-meta">Тел: {req.client_phone}</div>}
+      {req.service_name && <div className="requests-card-meta">Услуга: {req.service_name}</div>}
       {req.desired_date && (
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
-          📅 {req.desired_date}{req.desired_time ? ` в ${req.desired_time}` : ''}
+        <div className="requests-card-meta">
+          Когда: {req.desired_date}{req.desired_time ? ` в ${req.desired_time}` : ''}
         </div>
       )}
-      {req.text && (
-        <div style={{
-          fontSize: 14,
-          color: 'var(--tg-text)',
-          background: 'var(--tg-secondary-bg)',
-          borderRadius: 8,
-          padding: '8px 10px',
-          marginTop: 6,
-          marginBottom: 6,
-          lineHeight: 1.4,
-        }}>
-          "{req.text}"
-        </div>
-      )}
+      {req.text && <div className="requests-card-message">"{req.text}"</div>}
+
       {hasMedia && (
         <div>
-          <div
+          <button
+            type="button"
             onClick={() => { haptic(); setShowMedia(v => !v); }}
-            style={{ fontSize: 13, color: 'var(--tg-accent)', marginTop: 4, cursor: 'pointer' }}
+            className="requests-media-toggle"
           >
-            📎 Вложения{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
-          </div>
+            Вложения{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
+          </button>
           {showMedia && <MediaPreview reqId={req.id} />}
         </div>
       )}
 
-      {/* Actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <ActionBtn onClick={handleContact} accent>💬 Написать</ActionBtn>
-          {req.client_id && (
-            <ActionBtn onClick={handleOpenClient}>👤 Клиент</ActionBtn>
-          )}
+      <div className="requests-actions">
+        <div className="requests-actions-row">
+          <ActionBtn onClick={handleContact} accent>Написать</ActionBtn>
+          {req.client_id && <ActionBtn onClick={handleOpenClient}>Клиент</ActionBtn>}
         </div>
         {req.type === 'order_request' && !isClosed && (
-          <ActionBtn onClick={handleCreateOrder}>📋 Создать заказ</ActionBtn>
+          <ActionBtn onClick={handleCreateOrder}>Создать заказ</ActionBtn>
         )}
         {!isClosed && (
-          <ActionBtn onClick={() => { haptic(); onClose(req.id); }}>
-            ✅ Закрыть заявку
+          <ActionBtn onClick={() => { haptic(); onClose(req.id); }} small>
+            Закрыть заявку
           </ActionBtn>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -486,9 +390,9 @@ export default function Requests({ onNavigate, onBadgeChange }) {
         return {
           ...old,
           unread_count: newUnread,
-          requests: old.requests.map(r =>
+          requests: old.requests.map(r => (
             r.id === requestId ? { ...r, status: 'closed' } : r
-          ),
+          )),
         };
       });
       queryClient.invalidateQueries({ queryKey: ['master-requests'] });
@@ -499,53 +403,44 @@ export default function Requests({ onNavigate, onBadgeChange }) {
   const unreadCount = data?.unread_count ?? 0;
 
   const handleNavigate = useCallback(
-    (type, params) => { if (onNavigate) onNavigate(type, params); },
-    [onNavigate]
+    (type, params) => {
+      if (onNavigate) onNavigate(type, params);
+    },
+    [onNavigate],
   );
 
   return (
-    <div style={{ paddingBottom: 80 }}>
-      {/* Header */}
-      <div style={{ padding: '16px 16px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tg-text)' }}>🔔 Заявки</div>
-        {unreadCount > 0 && (
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-            Новых: {unreadCount}
-          </div>
-        )}
+    <div className="requests-page">
+      <div className="requests-header">
+        <h1>Заявки</h1>
+        {unreadCount > 0 && <span className="requests-unread-pill">Новых: {unreadCount}</span>}
       </div>
 
       <FilterTabs active={filter} onChange={setFilter} />
 
-      <div style={{ padding: '12px 12px 0' }}>
+      <div className="requests-list-wrap">
         {isLoading && (
-          <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-            Загрузка...
+          <div className="requests-screen-state">
+            <p>Загрузка...</p>
           </div>
         )}
 
         {isError && (
-          <div style={{ padding: '48px 16px', textAlign: 'center' }}>
-            <p style={{ color: 'var(--tg-hint)', marginBottom: 12 }}>Не удалось загрузить заявки</p>
-            <button
-              onClick={() => refetch()}
-              style={{ color: 'var(--tg-accent)', background: 'none', border: 'none', fontSize: 14, cursor: 'pointer' }}
-            >
+          <div className="requests-screen-state">
+            <p>Не удалось загрузить заявки</p>
+            <button type="button" onClick={() => refetch()} className="requests-retry-btn">
               Повторить
             </button>
           </div>
         )}
 
         {!isLoading && !isError && requests.length === 0 && (
-          <div style={{ padding: '64px 16px', textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-            <p style={{ color: 'var(--tg-hint)', fontSize: 15 }}>
-              {filter === 'new' ? 'Новых заявок нет' : 'Заявок нет'}
-            </p>
+          <div className="requests-screen-state">
+            <p>{filter === 'new' ? 'Новых заявок нет' : 'Заявок нет'}</p>
           </div>
         )}
 
-        {!isLoading && !isError && requests.map(req => (
+        {!isLoading && !isError && requests.map((req) => (
           <RequestCard
             key={req.id}
             req={req}

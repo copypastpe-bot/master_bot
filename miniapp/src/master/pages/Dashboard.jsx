@@ -215,7 +215,8 @@ function DashboardContent({ data, onNavigate }) {
       {/* Onboarding banner */}
       {showBanner && (
         <div style={{
-          background: 'var(--tg-secondary-bg-color, var(--tg-surface))',
+          background: 'var(--tg-secondary-bg)',
+          border: '1px solid var(--tg-enterprise-border)',
           borderRadius: 'var(--radius-card)',
           padding: '12px 14px',
           marginBottom: 16,
@@ -319,7 +320,8 @@ function DashboardContent({ data, onNavigate }) {
         </div>
       ) : (
         <div style={{
-          background: 'var(--tg-secondary-bg-color, var(--tg-surface))',
+          background: 'var(--tg-secondary-bg)',
+          border: '1px solid var(--tg-enterprise-border)',
           borderRadius: 'var(--radius-card)',
           padding: '16px',
           marginBottom: 24,
