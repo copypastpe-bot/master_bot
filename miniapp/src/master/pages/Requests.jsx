@@ -138,10 +138,15 @@ function RequestCard({ req, onClose, onNavigate }) {
 
   const handlePhone = () => {
     haptic();
-    if (typeof WebApp?.openLink === 'function') {
-      try { WebApp.openLink(`tel:${req.client_phone}`); return; } catch {}
+    if (typeof navigator?.clipboard?.writeText === 'function') {
+      navigator.clipboard.writeText(req.client_phone);
     }
-    window.location.href = `tel:${req.client_phone}`;
+    if (typeof WebApp?.showPopup === 'function') {
+      WebApp.showPopup({
+        message: req.client_phone,
+        buttons: [{ type: 'ok', text: 'Скопировано' }],
+      });
+    }
   };
 
   const handleCreateOrder = () => {
