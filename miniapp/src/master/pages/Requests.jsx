@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMasterRequests, closeMasterRequest, getMasterRequestMediaUrl } from '../../api/client';
+import { getMasterRequests, closeMasterRequest, getMasterRequestMedia } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -95,32 +95,243 @@ function ActionBtn({ children, onClick, accent, small }) {
   );
 }
 
-function MediaPreview({ reqId, mediaType }) {
+function MediaPreview({ reqId }) {
+  const [viewerIndex, setViewerIndex] = useState(null);
+  const [zoom, setZoom] = useState(1);
+
   const { data, isLoading } = useQuery({
     queryKey: ['request-media', reqId],
-    queryFn: () => getMasterRequestMediaUrl(reqId),
+    queryFn: () => getMasterRequestMedia(reqId),
     staleTime: 10 * 60_000,
     retry: false,
   });
+
+  const media = data?.media || [];
+  const activeMedia = viewerIndex == null ? null : media[viewerIndex] || null;
+
+  const openViewer = (index) => {
+    haptic();
+    setViewerIndex(index);
+    setZoom(1);
+  };
+  const closeViewer = () => {
+    haptic();
+    setViewerIndex(null);
+    setZoom(1);
+  };
+  const nextMedia = () => {
+    if (!media.length) return;
+    haptic();
+    setViewerIndex((prev) => ((prev ?? 0) + 1) % media.length);
+    setZoom(1);
+  };
+  const prevMedia = () => {
+    if (!media.length) return;
+    haptic();
+    setViewerIndex((prev) => ((prev ?? 0) - 1 + media.length) % media.length);
+    setZoom(1);
+  };
 
   if (isLoading) return (
     <div style={{ height: 120, background: 'var(--tg-secondary-bg)', borderRadius: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <span style={{ color: 'var(--tg-hint)', fontSize: 13 }}>Загрузка...</span>
     </div>
   );
-  if (!data?.url) return null;
+  if (!media.length) return null;
 
-  if (mediaType === 'photo') {
-    return (
-      <a href={data.url} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8 }}>
-        <img src={data.url} alt="фото" style={{ width: '100%', borderRadius: 8, maxHeight: 200, objectFit: 'cover' }} />
-      </a>
-    );
-  }
   return (
-    <a href={data.url} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8, padding: '10px 12px', background: 'var(--tg-secondary-bg)', borderRadius: 8, color: 'var(--tg-accent)', fontSize: 13, textDecoration: 'none' }}>
-      🎥 Скачать видео
-    </a>
+    <>
+      <div style={{
+        marginTop: 8,
+        display: 'grid',
+        gridTemplateColumns: media.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
+        gap: 8,
+      }}>
+        {media.map((item, index) => {
+          const isPhoto = item.media_type === 'photo';
+          if (isPhoto) {
+            return (
+              <button
+                key={`${item.file_id}-${index}`}
+                onClick={() => openViewer(index)}
+                style={{
+                  border: 'none',
+                  padding: 0,
+                  background: 'none',
+                  borderRadius: 10,
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  aspectRatio: '4 / 3',
+                }}
+              >
+                <img
+                  src={item.url}
+                  alt={`фото ${index + 1}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </button>
+            );
+          }
+
+          return (
+            <video
+              key={`${item.file_id}-${index}`}
+              src={item.url}
+              controls
+              preload="metadata"
+              style={{ width: '100%', borderRadius: 10, background: '#000', maxHeight: 220 }}
+            />
+          );
+        })}
+      </div>
+
+      {activeMedia && activeMedia.media_type === 'photo' && (
+        <div
+          onClick={closeViewer}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.92)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '56px 12px 84px',
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); closeViewer(); }}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              border: 'none',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.16)',
+              color: '#fff',
+              fontSize: 14,
+              padding: '8px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            Закрыть
+          </button>
+
+          {media.length > 1 && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); prevMedia(); }}
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  border: 'none',
+                  borderRadius: 999,
+                  width: 36,
+                  height: 36,
+                  background: 'rgba(255,255,255,0.22)',
+                  color: '#fff',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                }}
+              >
+                {'<'}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); nextMedia(); }}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  border: 'none',
+                  borderRadius: 999,
+                  width: 36,
+                  height: 36,
+                  background: 'rgba(255,255,255,0.22)',
+                  color: '#fff',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                }}
+              >
+                {'>'}
+              </button>
+            </>
+          )}
+
+          <img
+            onClick={(e) => e.stopPropagation()}
+            src={activeMedia.url}
+            alt={`фото ${viewerIndex + 1}`}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              objectFit: 'contain',
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center',
+              transition: 'transform 0.15s ease-out',
+            }}
+          />
+
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              bottom: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            <button
+              onClick={() => { haptic(); setZoom((z) => Math.max(1, +(z - 0.25).toFixed(2))); }}
+              style={{
+                border: 'none',
+                borderRadius: 10,
+                padding: '8px 12px',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              -
+            </button>
+            <div style={{ color: '#fff', fontSize: 13, minWidth: 58, textAlign: 'center' }}>
+              {Math.round(zoom * 100)}%
+            </div>
+            <button
+              onClick={() => { haptic(); setZoom((z) => Math.min(4, +(z + 0.25).toFixed(2))); }}
+              style={{
+                border: 'none',
+                borderRadius: 10,
+                padding: '8px 12px',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              +
+            </button>
+            <button
+              onClick={() => { haptic(); setZoom(1); }}
+              style={{
+                border: 'none',
+                borderRadius: 10,
+                padding: '8px 10px',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                cursor: 'pointer',
+              }}
+            >
+              1:1
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -128,6 +339,8 @@ function RequestCard({ req, onClose, onNavigate }) {
   const [showMedia, setShowMedia] = useState(false);
   const isClosed = req.status === 'closed';
   const typeInfo = REQUEST_TYPES[req.type] || { emoji: '📩', title: 'Заявка' };
+  const mediaCount = Number(req.media_count || 0);
+  const hasMedia = mediaCount > 0 || Boolean(req.file_id);
 
   const handleContact = () => {
     haptic();
@@ -207,15 +420,15 @@ function RequestCard({ req, onClose, onNavigate }) {
           "{req.text}"
         </div>
       )}
-      {req.file_id && (
+      {hasMedia && (
         <div>
           <div
             onClick={() => { haptic(); setShowMedia(v => !v); }}
             style={{ fontSize: 13, color: 'var(--tg-accent)', marginTop: 4, cursor: 'pointer' }}
           >
-            {req.media_type === 'photo' ? '🖼 Фото' : '🎥 Видео'} {showMedia ? '▲' : '▼'}
+            📎 Вложения{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
           </div>
-          {showMedia && <MediaPreview reqId={req.id} mediaType={req.media_type} />}
+          {showMedia && <MediaPreview reqId={req.id} />}
         </div>
       )}
 

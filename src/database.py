@@ -2145,6 +2145,7 @@ async def save_inbound_request(
     """
     conn = await get_connection()
     try:
+        has_media_table = await _table_exists(conn, "inbound_request_media")
         cursor = await conn.execute(
             """
             INSERT INTO inbound_requests
@@ -2155,8 +2156,20 @@ async def save_inbound_request(
             (master_id, client_id, type, text, service_name, file_id,
              desired_date, desired_time, media_type, notification_message_id)
         )
+        request_id = cursor.lastrowid
+
+        if has_media_table and file_id:
+            await conn.execute(
+                """
+                INSERT OR IGNORE INTO inbound_request_media
+                    (request_id, file_id, media_type, position, notification_message_id)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (request_id, file_id, media_type or "photo", 0, notification_message_id),
+            )
+
         await conn.commit()
-        return cursor.lastrowid
+        return request_id
     finally:
         await conn.close()
 
@@ -2166,6 +2179,15 @@ async def _table_has_column(conn: aiosqlite.Connection, table: str, column: str)
     cursor = await conn.execute(f"PRAGMA table_info({table})")
     rows = await cursor.fetchall()
     return any(row["name"] == column for row in rows)
+
+
+async def _table_exists(conn: aiosqlite.Connection, table: str) -> bool:
+    """Check whether a table exists."""
+    cursor = await conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+        (table,),
+    )
+    return await cursor.fetchone() is not None
 
 
 async def update_inbound_request_notification_id(
@@ -2178,6 +2200,43 @@ async def update_inbound_request_notification_id(
         await conn.execute(
             "UPDATE inbound_requests SET notification_message_id = ? WHERE id = ?",
             (notification_message_id, request_id),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def save_inbound_request_media(
+    request_id: int,
+    file_id: str,
+    media_type: str,
+    position: int = 0,
+    notification_message_id: int = None,
+) -> None:
+    """Save one media item for an inbound request."""
+    if not file_id:
+        return
+
+    conn = await get_connection()
+    try:
+        has_media_table = await _table_exists(conn, "inbound_request_media")
+        if not has_media_table:
+            return
+
+        await conn.execute(
+            """
+            INSERT INTO inbound_request_media
+                (request_id, file_id, media_type, position, notification_message_id)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(request_id, file_id) DO UPDATE SET
+                media_type = excluded.media_type,
+                position = excluded.position,
+                notification_message_id = COALESCE(
+                    excluded.notification_message_id,
+                    inbound_request_media.notification_message_id
+                )
+            """,
+            (request_id, file_id, media_type or "photo", position, notification_message_id),
         )
         await conn.commit()
     finally:
@@ -2208,6 +2267,7 @@ async def get_inbound_requests(
             conn, "inbound_requests", "notification_message_id"
         )
         has_client_username = await _table_has_column(conn, "clients", "username")
+        has_media_table = await _table_exists(conn, "inbound_request_media")
 
         status_select = (
             "ir.status AS status"
@@ -2223,6 +2283,22 @@ async def get_inbound_requests(
             "c.username AS client_username"
             if has_client_username
             else "NULL AS client_username"
+        )
+        media_count_select = (
+            "COALESCE(irm.media_count, CASE WHEN ir.file_id IS NOT NULL THEN 1 ELSE 0 END) AS media_count"
+            if has_media_table
+            else "CASE WHEN ir.file_id IS NOT NULL THEN 1 ELSE 0 END AS media_count"
+        )
+        media_join = (
+            """
+            LEFT JOIN (
+                SELECT request_id, COUNT(*) AS media_count
+                FROM inbound_request_media
+                GROUP BY request_id
+            ) irm ON irm.request_id = ir.id
+            """
+            if has_media_table
+            else ""
         )
 
         where_parts = ["ir.master_id = ?"]
@@ -2247,6 +2323,7 @@ async def get_inbound_requests(
                 ir.service_name,
                 ir.file_id,
                 ir.media_type,
+                {media_count_select},
                 ir.desired_date,
                 ir.desired_time,
                 {status_select},
@@ -2260,6 +2337,7 @@ async def get_inbound_requests(
                 {client_username_select}
             FROM inbound_requests ir
             JOIN clients c ON c.id = ir.client_id
+            {media_join}
             WHERE {where_sql}
             ORDER BY ir.created_at DESC
             LIMIT ? OFFSET ?
@@ -2311,6 +2389,7 @@ async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional
             conn, "inbound_requests", "notification_message_id"
         )
         has_client_username = await _table_has_column(conn, "clients", "username")
+        has_media_table = await _table_exists(conn, "inbound_request_media")
 
         status_select = (
             "ir.status AS status"
@@ -2327,6 +2406,22 @@ async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional
             if has_client_username
             else "NULL AS client_username"
         )
+        media_count_select = (
+            "COALESCE(irm.media_count, CASE WHEN ir.file_id IS NOT NULL THEN 1 ELSE 0 END) AS media_count"
+            if has_media_table
+            else "CASE WHEN ir.file_id IS NOT NULL THEN 1 ELSE 0 END AS media_count"
+        )
+        media_join = (
+            """
+            LEFT JOIN (
+                SELECT request_id, COUNT(*) AS media_count
+                FROM inbound_request_media
+                GROUP BY request_id
+            ) irm ON irm.request_id = ir.id
+            """
+            if has_media_table
+            else ""
+        )
 
         cursor = await conn.execute(
             f"""
@@ -2337,6 +2432,7 @@ async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional
                 ir.service_name,
                 ir.file_id,
                 ir.media_type,
+                {media_count_select},
                 ir.desired_date,
                 ir.desired_time,
                 {status_select},
@@ -2350,6 +2446,7 @@ async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional
                 {client_username_select}
             FROM inbound_requests ir
             JOIN clients c ON c.id = ir.client_id
+            {media_join}
             WHERE ir.id = ? AND ir.master_id = ?
             LIMIT 1
             """,
@@ -2357,6 +2454,68 @@ async def get_inbound_request_by_id(request_id: int, master_id: int) -> Optional
         )
         row = await cursor.fetchone()
         return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def get_inbound_request_media(request_id: int, master_id: int) -> list[dict]:
+    """Get media list for inbound request scoped to master."""
+    conn = await get_connection()
+    try:
+        has_media_table = await _table_exists(conn, "inbound_request_media")
+
+        if has_media_table:
+            cursor = await conn.execute(
+                """
+                SELECT
+                    irm.id,
+                    irm.request_id,
+                    irm.file_id,
+                    irm.media_type,
+                    irm.position,
+                    irm.notification_message_id,
+                    irm.created_at
+                FROM inbound_request_media irm
+                JOIN inbound_requests ir ON ir.id = irm.request_id
+                WHERE irm.request_id = ? AND ir.master_id = ?
+                ORDER BY irm.position ASC, irm.id ASC
+                """,
+                (request_id, master_id),
+            )
+            rows = await cursor.fetchall()
+            if rows:
+                return [dict(row) for row in rows]
+
+        has_notification_message_id = await _table_has_column(
+            conn, "inbound_requests", "notification_message_id"
+        )
+        notification_select = (
+            "notification_message_id"
+            if has_notification_message_id
+            else "NULL AS notification_message_id"
+        )
+        cursor = await conn.execute(
+            f"""
+            SELECT file_id, media_type, created_at, {notification_select}
+            FROM inbound_requests
+            WHERE id = ? AND master_id = ?
+            LIMIT 1
+            """,
+            (request_id, master_id),
+        )
+        row = await cursor.fetchone()
+        if not row or not row["file_id"]:
+            return []
+
+        return [{
+            "id": None,
+            "request_id": request_id,
+            "file_id": row["file_id"],
+            "media_type": row["media_type"] or "photo",
+            "position": 0,
+            "notification_message_id": row["notification_message_id"],
+            "created_at": row["created_at"],
+        }]
     finally:
         await conn.close()
 

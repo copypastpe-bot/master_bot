@@ -185,6 +185,8 @@ export const registerMaster = (data) =>
 // Requests
 export const getMasterRequests = (status) =>
   api.get('/api/master/requests', { params: status && status !== 'all' ? { status } : {} }).then(r => r.data);
+export const getMasterRequestMedia = (id) =>
+  api.get(`/api/master/requests/${id}/media`).then(r => r.data);
 export const getMasterRequestMediaUrl = (id) =>
   api.get(`/api/master/requests/${id}/media-url`).then(r => r.data);
 export const getMasterRequestsUnreadCount = () =>

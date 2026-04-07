@@ -1,5 +1,6 @@
 """Master requests endpoints — list, counters, detail, close."""
 
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from src.api.dependencies import get_current_master
 from src.database import (
     close_inbound_request,
+    get_inbound_request_media,
     get_inbound_request_by_id,
     get_inbound_requests,
     get_inbound_requests_total,
@@ -16,6 +18,7 @@ from src.database import (
 from src.models import Master
 
 router = APIRouter(tags=["master"])
+logger = logging.getLogger(__name__)
 
 _master_bot = None
 
@@ -36,6 +39,13 @@ def _normalize_status_filter(status: Optional[str]) -> Optional[str]:
     if normalized not in {"new", "closed"}:
         raise HTTPException(status_code=400, detail="status must be one of: new, closed, all")
     return normalized
+
+
+async def _resolve_media_url(file_id: str) -> str:
+    """Build Telegram file URL from Bot API file_id."""
+    file_info = await _master_bot.get_file(file_id)
+    from src.config import MASTER_BOT_TOKEN
+    return f"https://api.telegram.org/file/bot{MASTER_BOT_TOKEN}/{file_info.file_path}"
 
 
 @router.get("/master/requests")
@@ -101,19 +111,72 @@ async def get_request_media_url(
     master: Master = Depends(get_current_master),
 ):
     """Return Telegram file URL for a request's attached media."""
-    req = await get_inbound_request_by_id(request_id, master.id)
-    if not req:
+    request_data = await get_inbound_request_by_id(request_id, master.id)
+    if not request_data:
         raise HTTPException(status_code=404, detail="Not found")
-    file_id = req.get("file_id")
-    if not file_id or not _master_bot:
+    if not _master_bot:
         raise HTTPException(status_code=404, detail="No media")
-    try:
-        file_info = await _master_bot.get_file(file_id)
-        from src.config import MASTER_BOT_TOKEN
-        url = f"https://api.telegram.org/file/bot{MASTER_BOT_TOKEN}/{file_info.file_path}"
-        return {"url": url}
-    except Exception:
-        raise HTTPException(status_code=404, detail="Media unavailable")
+
+    media_items = await get_inbound_request_media(request_id, master.id)
+    if not media_items:
+        raise HTTPException(status_code=404, detail="No media")
+
+    for media_item in media_items:
+        file_id = media_item.get("file_id")
+        if not file_id:
+            continue
+        try:
+            return {"url": await _resolve_media_url(file_id)}
+        except Exception as e:
+            logger.warning(
+                "Failed to resolve media URL for request_id=%s file_id=%s: %s",
+                request_id, file_id, e,
+            )
+
+    raise HTTPException(status_code=404, detail="Media unavailable")
+
+
+@router.get("/master/requests/{request_id}/media")
+async def get_request_media(
+    request_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Return all media items for a request with resolved URLs."""
+    request_data = await get_inbound_request_by_id(request_id, master.id)
+    if not request_data:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not _master_bot:
+        raise HTTPException(status_code=404, detail="No media")
+
+    media_items = await get_inbound_request_media(request_id, master.id)
+    if not media_items:
+        return {"media": []}
+
+    resolved_media: list[dict] = []
+    for media_item in media_items:
+        file_id = media_item.get("file_id")
+        if not file_id:
+            continue
+        try:
+            url = await _resolve_media_url(file_id)
+        except Exception as e:
+            logger.warning(
+                "Failed to resolve media URL for request_id=%s file_id=%s: %s",
+                request_id, file_id, e,
+            )
+            continue
+
+        resolved_media.append({
+            "id": media_item.get("id"),
+            "file_id": file_id,
+            "media_type": media_item.get("media_type"),
+            "position": media_item.get("position"),
+            "notification_message_id": media_item.get("notification_message_id"),
+            "created_at": media_item.get("created_at"),
+            "url": url,
+        })
+
+    return {"media": resolved_media}
 
 
 @router.put("/master/requests/read-all")

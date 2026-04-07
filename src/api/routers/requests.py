@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, Form, UploadFile, File
 from typing import Optional
 
 from src.api.dependencies import get_current_client
-from src.database import save_inbound_request, update_inbound_request_notification_id
+from src.database import (
+    save_inbound_request,
+    save_inbound_request_media,
+    update_inbound_request_notification_id,
+)
 from src.keyboards import request_notify_kb
 from src.models import Client, Master, MasterClient
 from aiogram.types import BufferedInputFile
@@ -35,6 +39,7 @@ async def create_question(
     file_id = None
     stored_media_type = None
     media_files = media or []
+    sent_media: list[dict] = []
 
     if media_files and _master_bot:
         caption = f"❓ Вопрос от {client.name}:\n{text}"
@@ -70,6 +75,13 @@ async def create_question(
                 if file_id is None:
                     file_id = current_file_id
                     stored_media_type = current_type
+
+                sent_media.append({
+                    "file_id": current_file_id,
+                    "media_type": current_type,
+                    "notification_message_id": msg.message_id,
+                    "position": len(sent_media),
+                })
             except Exception as e:
                 logger.warning("Failed to send question media to master %s: %s", master.tg_id, e)
 
@@ -81,6 +93,14 @@ async def create_question(
         file_id=file_id,
         media_type=stored_media_type,
     )
+    for media_item in sent_media:
+        await save_inbound_request_media(
+            request_id=request_id,
+            file_id=media_item["file_id"],
+            media_type=media_item["media_type"],
+            notification_message_id=media_item["notification_message_id"],
+            position=media_item["position"],
+        )
 
     # Text notification with action keyboard (always sent)
     if _master_bot:
