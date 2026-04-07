@@ -53,7 +53,7 @@ async def create_order_request(
     comment: Optional[str] = Form(None),
     desired_date: Optional[str] = Form(None),
     desired_time: Optional[str] = Form(None),
-    media: Optional[UploadFile] = File(None),
+    media: Optional[list[UploadFile]] = File(None),
     media_type: Optional[str] = Form(None),
     data: tuple[Client, Master, MasterClient] = Depends(get_current_client)
 ):
@@ -61,28 +61,46 @@ async def create_order_request(
     client, master, master_client = data
 
     file_id = None
+    stored_media_type = None
+    media_files = media or []
 
-    # Send media to master via master_bot and get file_id
-    if media and media_type and _master_bot:
-        media_bytes = await media.read()
+    # Send all attached files to master. Keep first file_id for miniapp preview.
+    if media_files and _master_bot:
         caption = f"📎 Файл к заявке от {client.name}"
-        try:
-            if media_type == "photo":
-                msg = await _master_bot.send_photo(
-                    master.tg_id,
-                    photo=BufferedInputFile(media_bytes, filename=media.filename or "photo.jpg"),
-                    caption=caption,
-                )
-                file_id = msg.photo[-1].file_id
-            elif media_type == "video":
-                msg = await _master_bot.send_video(
-                    master.tg_id,
-                    video=BufferedInputFile(media_bytes, filename=media.filename or "video.mp4"),
-                    caption=caption,
-                )
-                file_id = msg.video.file_id
-        except Exception as e:
-            logger.warning("Failed to send media to master %s: %s", master.tg_id, e)
+        for item in media_files:
+            try:
+                content_type = (item.content_type or "").lower()
+                inferred_type = "photo" if content_type.startswith("image/") else "video" if content_type.startswith("video/") else None
+                current_type = inferred_type or media_type
+
+                if current_type not in {"photo", "video"}:
+                    logger.warning(
+                        "Unsupported media type in order request: filename=%s content_type=%s media_type=%s",
+                        item.filename, item.content_type, media_type
+                    )
+                    continue
+
+                media_bytes = await item.read()
+                if current_type == "photo":
+                    msg = await _master_bot.send_photo(
+                        master.tg_id,
+                        photo=BufferedInputFile(media_bytes, filename=item.filename or "photo.jpg"),
+                        caption=caption,
+                    )
+                    current_file_id = msg.photo[-1].file_id
+                else:
+                    msg = await _master_bot.send_video(
+                        master.tg_id,
+                        video=BufferedInputFile(media_bytes, filename=item.filename or "video.mp4"),
+                        caption=caption,
+                    )
+                    current_file_id = msg.video.file_id
+
+                if file_id is None:
+                    file_id = current_file_id
+                    stored_media_type = current_type
+            except Exception as e:
+                logger.warning("Failed to send media to master %s: %s", master.tg_id, e)
 
     request_id = await save_inbound_request(
         master_id=master.id,
@@ -93,7 +111,7 @@ async def create_order_request(
         file_id=file_id,
         desired_date=desired_date,
         desired_time=desired_time,
-        media_type=media_type,
+        media_type=stored_media_type,
     )
 
     # Text notification to master (always, even when media was sent)

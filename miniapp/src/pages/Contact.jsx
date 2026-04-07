@@ -22,42 +22,108 @@ function formatDateDisplay(iso) {
 
 // ── File picker ───────────────────────────────────────────────────────────────
 
-function FilePicker({ file, fileType, onFile, onRemove }) {
+function FilePicker({ files, onFilesChange }) {
   const inputRef = useRef(null);
 
   const handleChange = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const isPhoto = f.type.startsWith('image/');
-    const isVideo = f.type === 'video/mp4';
-    if (!isPhoto && !isVideo) { alert('Только JPEG, PNG или MP4'); return; }
-    if (isPhoto && f.size > 10 * 1024 * 1024) { alert('Фото до 10 МБ'); e.target.value = ''; return; }
-    if (isVideo && f.size > 50 * 1024 * 1024) { alert('Видео до 50 МБ'); e.target.value = ''; return; }
+    const selected = Array.from(e.target.files || []);
+    if (!selected.length) return;
+
+    const valid = [];
+    for (const f of selected) {
+      const isPhoto = f.type.startsWith('image/');
+      const isVideo = f.type === 'video/mp4';
+      if (!isPhoto && !isVideo) {
+        alert('Только JPEG, PNG или MP4');
+        continue;
+      }
+      if (isPhoto && f.size > 10 * 1024 * 1024) {
+        alert(`Фото "${f.name}" больше 10 МБ`);
+        continue;
+      }
+      if (isVideo && f.size > 50 * 1024 * 1024) {
+        alert(`Видео "${f.name}" больше 50 МБ`);
+        continue;
+      }
+      valid.push(f);
+    }
+    if (!valid.length) {
+      e.target.value = '';
+      return;
+    }
+
     haptic();
-    onFile(f, isPhoto ? 'photo' : 'video');
+    onFilesChange([...(files || []), ...valid]);
+    e.target.value = '';
   };
 
-  if (file) {
+  const removeFile = (index) => {
+    haptic();
+    onFilesChange((files || []).filter((_, i) => i !== index));
+  };
+
+  if (files?.length) {
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 14px', background: 'var(--tg-surface)',
+        padding: '10px 14px',
+        background: 'var(--tg-surface)',
         borderRadius: 12, marginBottom: 14,
       }}>
-        <span style={{ fontSize: 14, color: 'var(--tg-text)' }}>
-          {fileType === 'photo' ? '🖼️' : '🎥'} {file.name}
-        </span>
-        <button onClick={() => { haptic(); onRemove(); }}
-          style={{ background: 'none', border: 'none', color: '#e74c3c', fontSize: 13, cursor: 'pointer' }}>
-          Удалить
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {files.map((f, i) => {
+            const isPhoto = f.type.startsWith('image/');
+            return (
+              <div key={`${f.name}-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <span style={{ fontSize: 14, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {isPhoto ? '🖼️' : '🎥'} {f.name}
+                </span>
+                <button
+                  onClick={() => removeFile(i)}
+                  style={{ background: 'none', border: 'none', color: '#e74c3c', fontSize: 13, cursor: 'pointer', flexShrink: 0 }}
+                >
+                  Удалить
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <button
+            onClick={() => { haptic(); inputRef.current?.click(); }}
+            style={{
+              flex: 1, padding: '9px 10px', borderRadius: 10, border: '1px solid var(--tg-hint)',
+              background: 'transparent', color: 'var(--tg-text)', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            + Добавить
+          </button>
+          <button
+            onClick={() => { haptic(); onFilesChange([]); }}
+            style={{
+              flex: 1, padding: '9px 10px', borderRadius: 10, border: 'none',
+              background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            Очистить
+          </button>
+        </div>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,video/mp4"
+          multiple
+          style={{ display: 'none' }}
+          onChange={handleChange}
+        />
       </div>
     );
   }
 
   return (
     <>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,video/mp4"
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,video/mp4" multiple
         style={{ display: 'none' }} onChange={handleChange} />
       <button onClick={() => { haptic(); inputRef.current?.click(); }}
         style={{
@@ -79,8 +145,7 @@ function BookingForm({ onSuccess, keyboardOpen }) {
   const [desiredDate, setDesiredDate] = useState('');
   const [desiredTime, setDesiredTime] = useState('');
   const [comment, setComment] = useState('');
-  const [file, setFile] = useState(null);
-  const [fileType, setFileType] = useState(null);
+  const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -100,8 +165,7 @@ function BookingForm({ onSuccess, keyboardOpen }) {
         comment: comment || undefined,
         desired_date: desiredDate || undefined,
         desired_time: desiredTime || undefined,
-        file: file || undefined,
-        media_type: fileType || undefined,
+        files: files.length ? files : undefined,
       });
       onSuccess();
     } catch {
@@ -169,9 +233,10 @@ function BookingForm({ onSuccess, keyboardOpen }) {
           resize: 'none', outline: 'none', boxSizing: 'border-box',
         }} />
 
-      <FilePicker file={file} fileType={fileType}
-        onFile={(f, t) => { setFile(f); setFileType(t); }}
-        onRemove={() => { setFile(null); setFileType(null); }} />
+      <FilePicker
+        files={files}
+        onFilesChange={setFiles}
+      />
 
       {error && <p style={{ color: '#e74c3c', fontSize: 13, marginBottom: 8 }}>{error}</p>}
 
@@ -194,8 +259,7 @@ function BookingForm({ onSuccess, keyboardOpen }) {
 
 function QuestionForm({ onSuccess, keyboardOpen }) {
   const [text, setText] = useState('');
-  const [file, setFile] = useState(null);
-  const [fileType, setFileType] = useState(null);
+  const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -207,8 +271,7 @@ function QuestionForm({ onSuccess, keyboardOpen }) {
     try {
       await createQuestion({
         text: text.trim(),
-        file: file || undefined,
-        media_type: fileType || undefined,
+        files: files.length ? files : undefined,
       });
       onSuccess();
     } catch {
@@ -234,9 +297,10 @@ function QuestionForm({ onSuccess, keyboardOpen }) {
           resize: 'none', outline: 'none', boxSizing: 'border-box',
         }} />
 
-      <FilePicker file={file} fileType={fileType}
-        onFile={(f, t) => { setFile(f); setFileType(t); }}
-        onRemove={() => { setFile(null); setFileType(null); }} />
+      <FilePicker
+        files={files}
+        onFilesChange={setFiles}
+      />
 
       {error && <p style={{ color: '#e74c3c', fontSize: 13, marginBottom: 8 }}>{error}</p>}
 

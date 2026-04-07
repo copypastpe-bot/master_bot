@@ -136,18 +136,9 @@ function RequestCard({ req, onClose, onNavigate }) {
     }
   };
 
-  const handlePhone = () => {
-    haptic();
-    if (typeof navigator?.clipboard?.writeText === 'function') {
-      navigator.clipboard.writeText(req.client_phone);
-    }
-    if (typeof WebApp?.showPopup === 'function') {
-      WebApp.showPopup({
-        message: req.client_phone,
-        buttons: [{ type: 'ok', text: 'Скопировано' }],
-      });
-    }
-  };
+  const phoneHref = req.client_phone
+    ? `tel:${String(req.client_phone).replace(/[^\d+]/g, '')}`
+    : null;
 
   const handleCreateOrder = () => {
     haptic();
@@ -183,13 +174,14 @@ function RequestCard({ req, onClose, onNavigate }) {
       <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 2 }}>
         {req.client_name}
       </div>
-      {req.client_phone && (
-        <div
-          onClick={handlePhone}
-          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, cursor: 'pointer' }}
+      {req.client_phone && phoneHref && (
+        <a
+          href={phoneHref}
+          onClick={() => haptic()}
+          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, cursor: 'pointer', display: 'block', textDecoration: 'none' }}
         >
           📞 {req.client_phone}
-        </div>
+        </a>
       )}
       {req.service_name && (
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
