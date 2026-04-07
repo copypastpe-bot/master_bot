@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { getMasterReports } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
+import MonthCalendar from '../components/MonthCalendar';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -35,6 +36,15 @@ function formatXAxisTick(dateStr, totalDays) {
 function formatTooltipDate(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatInputDate(ymd) {
+  if (!ymd) return 'Выбрать дату';
+  try {
+    return new Date(ymd + 'T00:00:00').toLocaleDateString('ru-RU');
+  } catch {
+    return ymd;
+  }
 }
 
 // ─── Period tabs ──────────────────────────────────────────────────────────────
@@ -273,6 +283,9 @@ function CustomPeriodSheet({ onApply, onClose }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [error, setError] = useState('');
+  const [pickerField, setPickerField] = useState(null); // 'from' | 'to' | null
+  const [viewYear, setViewYear] = useState(new Date().getFullYear());
+  const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1);
 
   const handleApply = () => {
     if (!from || !to) { setError('Укажите обе даты'); return; }
@@ -292,6 +305,42 @@ function CustomPeriodSheet({ onApply, onClose }) {
     background: 'var(--tg-surface)',
     color: 'var(--tg-text)',
     fontSize: 14,
+    textAlign: 'left',
+    cursor: 'pointer',
+  };
+
+  const openPicker = (field) => {
+    const base = (field === 'from' ? from : to) || today;
+    const y = parseInt(base.slice(0, 4), 10);
+    const m = parseInt(base.slice(5, 7), 10);
+    setViewYear(Number.isFinite(y) ? y : new Date().getFullYear());
+    setViewMonth(Number.isFinite(m) ? m : new Date().getMonth() + 1);
+    setPickerField(field);
+  };
+
+  const handleSelectDate = (value) => {
+    if (pickerField === 'from') setFrom(value);
+    if (pickerField === 'to') setTo(value);
+    setPickerField(null);
+    setError('');
+  };
+
+  const goPrevMonth = () => {
+    if (viewMonth === 1) {
+      setViewMonth(12);
+      setViewYear(y => y - 1);
+    } else {
+      setViewMonth(m => m - 1);
+    }
+  };
+
+  const goNextMonth = () => {
+    if (viewMonth === 12) {
+      setViewMonth(1);
+      setViewYear(y => y + 1);
+    } else {
+      setViewMonth(m => m + 1);
+    }
   };
 
   return (
@@ -319,23 +368,23 @@ function CustomPeriodSheet({ onApply, onClose }) {
         >
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Начало</div>
-            <input
-              type="date"
-              value={from}
-              max={today}
-              onChange={e => { setFrom(e.target.value); setError(''); }}
+            <button
+              type="button"
+              onClick={() => openPicker('from')}
               style={inputStyle}
-            />
+            >
+              {formatInputDate(from)}
+            </button>
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Конец</div>
-            <input
-              type="date"
-              value={to}
-              max={today}
-              onChange={e => { setTo(e.target.value); setError(''); }}
+            <button
+              type="button"
+              onClick={() => openPicker('to')}
               style={inputStyle}
-            />
+            >
+              {formatInputDate(to)}
+            </button>
           </div>
         </div>
         {error && (
@@ -358,6 +407,45 @@ function CustomPeriodSheet({ onApply, onClose }) {
           Показать
         </button>
       </div>
+
+      {pickerField && (
+        <>
+          <div
+            onClick={() => setPickerField(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 120 }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: 12,
+              right: 12,
+              top: 96,
+              zIndex: 121,
+              borderRadius: 16,
+              overflow: 'hidden',
+              border: '1px solid var(--tg-secondary-bg)',
+              background: 'var(--tg-bg)',
+              boxShadow: '0 12px 30px rgba(0,0,0,0.22)',
+            }}
+          >
+            <MonthCalendar
+              selectedDate={pickerField === 'from' ? from || today : to || today}
+              onSelectDate={handleSelectDate}
+              viewYear={viewYear}
+              viewMonth={viewMonth}
+              onPrevMonth={goPrevMonth}
+              onNextMonth={goNextMonth}
+              onGoToToday={() => {
+                const t = new Date();
+                setViewYear(t.getFullYear());
+                setViewMonth(t.getMonth() + 1);
+              }}
+              activeDates={[]}
+              todayStr={today}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 }
