@@ -46,17 +46,24 @@ const PERIODS = [
   { key: 'custom',label: 'Период'  },
 ];
 
+const ELEVATED_CARD_STYLE = {
+  background: 'var(--tg-surface)',
+  border: '1px solid var(--tg-enterprise-border, var(--tg-secondary-bg))',
+  borderRadius: 'var(--radius-card)',
+  boxShadow: 'var(--tg-enterprise-shadow, 0 6px 18px rgba(0,0,0,0.06))',
+};
+
 // ─── KPI card ─────────────────────────────────────────────────────────────────
 
 function KpiCard({ icon, value, label }) {
   return (
     <div style={{
-      background: 'var(--tg-surface)',
-      borderRadius: 'var(--radius-card)',
+      ...ELEVATED_CARD_STYLE,
       padding: '14px 12px',
       display: 'flex',
       flexDirection: 'column',
       gap: 4,
+      minHeight: 92,
     }}>
       <div style={{ fontSize: 18, lineHeight: 1 }}>{icon}</div>
       <div style={{
@@ -71,7 +78,7 @@ function KpiCard({ icon, value, label }) {
       }}>
         {value}
       </div>
-      <div style={{ color: 'var(--tg-hint)', fontSize: 11, lineHeight: 1.3 }}>
+      <div style={{ color: 'var(--tg-hint)', fontSize: 11, lineHeight: 1.3, fontWeight: 500 }}>
         {label}
       </div>
     </div>
@@ -172,16 +179,16 @@ function TopServices({ services }) {
   const max = services[0].count;
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <h3 style={{ color: 'var(--tg-text)', fontSize: 16, fontWeight: 600, margin: '0 0 12px' }}>
+    <div style={{ ...ELEVATED_CARD_STYLE, marginTop: 16, padding: '14px 14px 12px' }}>
+      <h3 style={{ color: 'var(--tg-text)', fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>
         Топ услуг
       </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {services.slice(0, 5).map((s, i) => (
-          <div key={i}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ color: 'var(--tg-text)', fontSize: 13 }}>{s.name}</span>
-              <span style={{ color: 'var(--tg-hint)', fontSize: 13 }}>{s.count}</span>
+          <div key={i} style={{ padding: '8px 6px', borderRadius: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
+              <span style={{ color: 'var(--tg-text)', fontSize: 13, fontWeight: 500 }}>{s.name}</span>
+              <span style={{ color: 'var(--tg-hint)', fontSize: 13, fontWeight: 600 }}>{s.count}</span>
             </div>
             <div style={{ background: 'var(--tg-secondary-bg)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
               <div style={{
@@ -219,9 +226,13 @@ function ReportsSkeleton() {
 function PeriodTabs({ active, onSwitch, customLabel }) {
   return (
     <div style={{
+      ...ELEVATED_CARD_STYLE,
+      padding: 6,
+      marginBottom: 20,
+    }}>
+      <div style={{
       display: 'flex',
       gap: 6,
-      marginBottom: 20,
       overflowX: 'auto',
       WebkitOverflowScrolling: 'touch',
       scrollbarWidth: 'none',
@@ -235,21 +246,22 @@ function PeriodTabs({ active, onSwitch, customLabel }) {
             onClick={() => onSwitch(key)}
             style={{
               flexShrink: 0,
-              padding: '7px 14px',
+              padding: '8px 14px',
               borderRadius: 20,
-              border: 'none',
+              border: isActive ? 'none' : '1px solid transparent',
               fontSize: 13,
-              fontWeight: isActive ? 600 : 400,
-              background: isActive ? 'var(--tg-button)' : 'var(--tg-surface)',
-              color: isActive ? 'var(--tg-button-text)' : 'var(--tg-text)',
+              fontWeight: isActive ? 700 : 500,
+              background: isActive ? 'var(--tg-button)' : 'transparent',
+              color: isActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
               cursor: 'pointer',
-              transition: 'background 0.15s',
+              transition: 'background 0.15s, color 0.15s',
             }}
           >
             {displayLabel}
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -396,7 +408,7 @@ export default function Reports({ initialPeriod = 'month' }) {
 
   if (isError) {
     return (
-      <div style={{ padding: '16px 16px 100px' }}>
+      <div style={{ padding: '16px 16px 100px', maxWidth: 760, margin: '0 auto' }}>
         <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} />
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
           <p style={{ color: 'var(--tg-hint)', marginBottom: 12 }}>Не удалось загрузить данные</p>
@@ -413,7 +425,7 @@ export default function Reports({ initialPeriod = 'month' }) {
   const hasData = (kpi.order_count || 0) > 0;
 
   return (
-    <div style={{ padding: '16px 16px 100px' }}>
+    <div style={{ padding: '16px 16px 100px', maxWidth: 760, margin: '0 auto' }}>
       <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} />
 
       {!hasData ? (
@@ -434,13 +446,13 @@ export default function Reports({ initialPeriod = 'month' }) {
 
           {/* Revenue chart */}
           <div style={{
-            background: 'var(--tg-surface)',
-            borderRadius: 'var(--radius-card)',
+            ...ELEVATED_CARD_STYLE,
             padding: '16px 8px 8px',
+            marginTop: 6,
           }}>
             <div style={{
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
               color: 'var(--tg-text)',
               marginBottom: 8,
               paddingLeft: 8,
