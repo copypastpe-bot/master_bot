@@ -35,14 +35,251 @@ input, select, textarea {
 body {
   background: var(--tg-bg);
   color: var(--tg-text);
-  font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.5;
   overflow-x: hidden;
   padding-bottom: 80px;
 }
 
+body.typeui-enterprise-body {
+  --tg-bg: #f2f5fb;
+  --tg-secondary-bg: #e8edf6;
+  --tg-section-bg: #ffffff;
+  --tg-surface: #ffffff;
+  --tg-text: #12213b;
+  --tg-hint: #60738f;
+  --tg-link: #1f5dcf;
+  --tg-button: #1f5dcf;
+  --tg-button-text: #ffffff;
+  --tg-accent: #1f5dcf;
+  --tg-destructive: #c62828;
+  --radius-card: 18px;
+  --radius-btn: 14px;
+  --tg-enterprise-border: #d4deec;
+  --tg-enterprise-shadow: 0 10px 28px rgba(16, 37, 71, 0.08);
+  background:
+    radial-gradient(1200px 360px at -20% -18%, rgba(49, 96, 194, 0.12), transparent 52%),
+    radial-gradient(1400px 420px at 110% -22%, rgba(43, 131, 197, 0.12), transparent 54%),
+    var(--tg-bg);
+  color: var(--tg-text);
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  padding-bottom: 92px;
+}
+
+body.typeui-enterprise-body .master-shell {
+  min-height: 100dvh;
+  animation: enterprise-fade-in 220ms ease-out;
+}
+
+body.typeui-enterprise-body .master-page-header {
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--tg-enterprise-border);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--tg-text);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.86));
+  backdrop-filter: blur(8px);
+}
+
+body.typeui-enterprise-body .master-page-header-back {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+body.typeui-enterprise-body .master-page-back-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--tg-accent);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body.typeui-enterprise-body .master-page-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--tg-text);
+}
+
+body.typeui-enterprise-body .master-nav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  border: 1px solid var(--tg-enterprise-border);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 18px;
+  box-shadow: var(--tg-enterprise-shadow);
+  display: flex;
+  z-index: 100;
+  padding: 4px;
+}
+
+body.typeui-enterprise-body .master-nav-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: var(--tg-hint);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease, transform 140ms ease;
+  position: relative;
+}
+
+body.typeui-enterprise-body .master-nav-button.is-active {
+  color: var(--tg-accent);
+  background: rgba(31, 93, 207, 0.12);
+}
+
+body.typeui-enterprise-body .master-nav-button:active {
+  transform: scale(0.97);
+}
+
+body.typeui-enterprise-body .master-nav-icon-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+body.typeui-enterprise-body .master-nav-badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  background: var(--tg-destructive);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+body.typeui-enterprise-body .enterprise-more-page {
+  padding-bottom: 96px;
+}
+
+body.typeui-enterprise-body .enterprise-section-title {
+  padding: 22px 16px 8px;
+  color: var(--tg-hint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+body.typeui-enterprise-body .enterprise-cell-group {
+  margin: 0 12px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--tg-enterprise-shadow);
+}
+
+body.typeui-enterprise-body .enterprise-cell {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 14px 14px 12px;
+  border: none;
+  border-bottom: 1px solid var(--tg-secondary-bg);
+  background: var(--tg-section-bg);
+  text-align: left;
+}
+
+body.typeui-enterprise-body .enterprise-cell:last-child {
+  border-bottom: none;
+}
+
+body.typeui-enterprise-body .enterprise-cell-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--tg-enterprise-border);
+  color: var(--tg-accent);
+  background: rgba(31, 93, 207, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+body.typeui-enterprise-body .enterprise-cell-label {
+  flex: 1;
+  color: var(--tg-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+body.typeui-enterprise-body .enterprise-cell-value {
+  color: var(--tg-hint);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+body.typeui-enterprise-body .enterprise-cell-chevron {
+  color: var(--tg-hint);
+  display: inline-flex;
+}
+
+body.typeui-enterprise-body .enterprise-cell.is-interactive {
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+body.typeui-enterprise-body .enterprise-cell.is-interactive:active {
+  background: rgba(31, 93, 207, 0.08);
+}
+
+body.typeui-enterprise-body button {
+  min-height: 44px;
+}
+
+body.typeui-enterprise-body *:focus-visible {
+  outline: 2px solid rgba(31, 93, 207, 0.55);
+  outline-offset: 2px;
+}
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@keyframes enterprise-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.typeui-enterprise-body .master-shell,
+  body.typeui-enterprise-body .master-nav-button,
+  body.typeui-enterprise-body .enterprise-cell.is-interactive {
+    animation: none !important;
+    transition: none !important;
+  }
 }

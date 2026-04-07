@@ -60,6 +60,13 @@ export default function MasterApp() {
 
   useEffect(() => { refreshBadge(); }, []);
 
+  useEffect(() => {
+    document.body.classList.add('typeui-enterprise-body');
+    return () => {
+      document.body.classList.remove('typeui-enterprise-body');
+    };
+  }, []);
+
   // ---------------------------------------------------------------------------
   // Telegram BackButton integration
   // ---------------------------------------------------------------------------
@@ -123,19 +130,23 @@ export default function MasterApp() {
 
     if (type === 'order') {
       return (
-        <OrderDetail orderId={id} onBack={handleBack} onUpdated={handleOrderUpdated} />
+        <div className="master-shell">
+          <OrderDetail orderId={id} onBack={handleBack} onUpdated={handleOrderUpdated} />
+        </div>
       );
     }
 
     if (type === 'create_order') {
       return (
-        <OrderCreate params={current} onBack={handleBack} onCreated={handleOrderCreated} />
+        <div className="master-shell">
+          <OrderCreate params={current} onBack={handleBack} onCreated={handleOrderCreated} />
+        </div>
       );
     }
 
     if (type === 'clients') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Клиенты" onBack={handleBack} />
           <ClientsList onNavigate={(t, p) => push(t, p)} />
         </div>
@@ -144,7 +155,7 @@ export default function MasterApp() {
 
     if (type === 'client') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Клиент" onBack={handleBack} />
           <ClientCard
             clientId={id}
@@ -157,7 +168,7 @@ export default function MasterApp() {
 
     if (type === 'profile') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Профиль мастера" onBack={handleBack} />
           <Profile />
         </div>
@@ -166,7 +177,7 @@ export default function MasterApp() {
 
     if (type === 'bonus') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Бонусная программа" onBack={handleBack} />
           <BonusSettings onNavigate={(t, p) => push(t, p)} />
         </div>
@@ -176,7 +187,7 @@ export default function MasterApp() {
     if (type === 'bonus_message') {
       const title = current.kind === 'birthday' ? 'Поздравление с ДР' : 'Приветствие';
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title={title} onBack={handleBack} />
           <BonusMessageEditor kind={current.kind || 'welcome'} />
         </div>
@@ -185,7 +196,7 @@ export default function MasterApp() {
 
     if (type === 'services') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Справочник услуг" onBack={handleBack} />
           <Services />
         </div>
@@ -194,7 +205,7 @@ export default function MasterApp() {
 
     if (type === 'promos') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Акции" onBack={handleBack} />
           <PromosList onNavigate={(t, p) => push(t, p)} />
         </div>
@@ -203,7 +214,7 @@ export default function MasterApp() {
 
     if (type === 'promo_new') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Новая акция" onBack={handleBack} />
           <PromoCreate onBack={handleBack} onCreated={() => { handleBack(); }} />
         </div>
@@ -217,7 +228,7 @@ export default function MasterApp() {
       const promo = allPromos.find(p => p.id === id);
       if (!promo) {
         return (
-          <div>
+          <div className="master-shell">
             <PageHeader title="Акция" onBack={handleBack} />
             <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
               Не найдено
@@ -226,7 +237,7 @@ export default function MasterApp() {
         );
       }
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Акция" onBack={handleBack} />
           <PromoCard promo={promo} onBack={handleBack} />
         </div>
@@ -235,7 +246,7 @@ export default function MasterApp() {
 
     if (type === 'reports') {
       return (
-        <div>
+        <div className="master-shell">
           <PageHeader title="Аналитика" onBack={handleBack} />
           <Reports initialPeriod={current.period || 'month'} />
         </div>
@@ -243,16 +254,24 @@ export default function MasterApp() {
     }
 
     if (type === 'requests') {
-      return <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />;
+      return (
+        <div className="master-shell">
+          <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />
+        </div>
+      );
     }
 
     if (type === 'broadcast') {
-      return <Broadcast />;
+      return (
+        <div className="master-shell">
+          <Broadcast />
+        </div>
+      );
     }
 
     // Fallback
     return (
-      <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+      <div className="master-shell" style={{ padding: '24px 16px', textAlign: 'center' }}>
         <p style={{ color: 'var(--tg-hint)', marginTop: 48 }}>Раздел в разработке</p>
       </div>
     );
@@ -277,7 +296,7 @@ export default function MasterApp() {
   };
 
   return (
-    <div>
+    <div className="master-shell">
       {renderTab()}
       <MasterNav active={tab} onNavigate={switchTab} requestsBadge={requestsBadge} />
     </div>
@@ -292,28 +311,16 @@ function PageHeader({ title, onBack }) {
   if (hasBackButton) {
     // Telegram BackButton handles navigation — show just the title
     return (
-      <div style={{
-        padding: '14px 16px',
-        borderBottom: '1px solid var(--tg-secondary-bg)',
-        fontSize: 17,
-        fontWeight: 600,
-        color: 'var(--tg-text)',
-        background: 'var(--tg-bg)',
-      }}>
+      <div className="master-page-header">
         {title}
       </div>
     );
   }
   // Fallback: show manual back button
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '12px 16px',
-      borderBottom: '1px solid var(--tg-secondary-bg)',
-      background: 'var(--tg-bg)',
-    }}>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--tg-accent)', fontSize: 20, cursor: 'pointer', padding: '0 4px 0 0', lineHeight: 1 }}>‹</button>
-      <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--tg-text)' }}>{title}</div>
+    <div className="master-page-header master-page-header-back">
+      <button className="master-page-back-btn" onClick={onBack}>‹</button>
+      <div className="master-page-header-title">{title}</div>
     </div>
   );
 }

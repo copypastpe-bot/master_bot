@@ -9,6 +9,7 @@ import { Skeleton } from './components/Skeleton';
 import { getAuthRole, getClientMasters, linkToMaster, setActiveMasterId } from './api/client';
 import MasterOnboarding from './master/pages/MasterOnboarding';
 import MasterSelectScreen from './pages/MasterSelectScreen';
+import MasterTypeUIProvider from './master/components/MasterTypeUIProvider';
 
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
@@ -126,7 +127,9 @@ export default function App() {
   if (role === 'master') {
     return (
       <Suspense fallback={<RoleSkeleton />}>
-        <MasterApp />
+        <MasterTypeUIProvider>
+          <MasterApp />
+        </MasterTypeUIProvider>
       </Suspense>
     );
   }

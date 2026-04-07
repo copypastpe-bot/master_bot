@@ -47,17 +47,7 @@ export default function MasterNav({ active, onNavigate = () => {}, requestsBadge
   };
 
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: 'var(--tg-surface)',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
-      display: 'flex',
-      zIndex: 100,
-      paddingBottom: 'env(safe-area-inset-bottom)',
-    }}>
+    <nav className="master-nav">
       {tabs.map(({ id, label, Icon }) => {
         const isActive = active === id;
         const badge = id === 'requests' && requestsBadge > 0 ? requestsBadge : 0;
@@ -65,43 +55,13 @@ export default function MasterNav({ active, onNavigate = () => {}, requestsBadge
           <button
             key={id}
             onClick={() => handleTab(id)}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              padding: '10px 0',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: isActive ? 'var(--tg-accent)' : 'var(--tg-hint)',
-              fontSize: 11,
-              transition: 'color 0.15s',
-              position: 'relative',
-            }}
+            className={`master-nav-button${isActive ? ' is-active' : ''}`}
+            aria-current={isActive ? 'page' : undefined}
           >
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <span className="master-nav-icon-wrap">
               <Icon />
               {badge > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -8,
-                  background: 'var(--tg-destructive, #ff3b30)',
-                  color: '#fff',
-                  borderRadius: 10,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  minWidth: 16,
-                  height: 16,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0 4px',
-                  lineHeight: 1,
-                }}>
+                <span className="master-nav-badge">
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
