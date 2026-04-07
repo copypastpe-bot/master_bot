@@ -2,10 +2,11 @@
 
 import logging
 from datetime import date, datetime
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject, MenuButtonWebApp, WebAppInfo
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject, MenuButtonWebApp, WebAppInfo, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
@@ -85,6 +86,26 @@ MONTHS_RU = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря"
 ]
+
+
+async def _send_photo_by_ref(bot: Bot, chat_id: int, photo_ref: str, caption: str, reply_markup=None):
+    """Send photo by file_id/url or local media reference."""
+    if photo_ref.startswith("local:"):
+        path = Path(photo_ref[len("local:"):]).resolve()
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f"Bonus image not found: {path}")
+        return await bot.send_photo(
+            chat_id=chat_id,
+            photo=BufferedInputFile(path.read_bytes(), filename=path.name or "bonus.jpg"),
+            caption=caption,
+            reply_markup=reply_markup,
+        )
+    return await bot.send_photo(
+        chat_id=chat_id,
+        photo=photo_ref,
+        caption=caption,
+        reply_markup=reply_markup,
+    )
 
 
 # =============================================================================
@@ -650,15 +671,34 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
                 bonus_amount=bonus_amount,
                 balance=master_client.bonus_balance,
                 currency=get_currency_symbol(master.currency),
+                welcome_bonus=master.bonus_welcome,
+                birthday_bonus=master.bonus_birthday,
             )
 
     # Show home screen: welcome text if configured, otherwise normal home text
     if home_text:
-        msg = await bot.send_message(
-            message.chat.id,
-            home_text,
-            reply_markup=home_client_kb(),
-        )
+        if master.welcome_photo_id:
+            try:
+                msg = await _send_photo_by_ref(
+                    bot=bot,
+                    chat_id=message.chat.id,
+                    photo_ref=master.welcome_photo_id,
+                    caption=home_text,
+                    reply_markup=home_client_kb(),
+                )
+            except Exception as e:
+                logger.warning("Failed to send welcome image for master %s: %s", master.id, e)
+                msg = await bot.send_message(
+                    message.chat.id,
+                    home_text,
+                    reply_markup=home_client_kb(),
+                )
+        else:
+            msg = await bot.send_message(
+                message.chat.id,
+                home_text,
+                reply_markup=home_client_kb(),
+            )
         await save_client_home_message_id(master_client.master_id, master_client.client_id, msg.message_id)
     else:
         await show_home(bot, client, master, master_client, message.chat.id)

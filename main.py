@@ -48,11 +48,15 @@ async def run_api_server():
     from src.api.app import app as fastapi_app
     from src.api.routers.orders import set_master_bot as orders_set_bot
     from src.api.routers.requests import set_master_bot as requests_set_bot
+    from src.api.routers.master.requests import set_master_bot as master_requests_set_bot
+    from src.api.routers.master.settings import set_master_bot as master_settings_set_bot
 
     # Create bot instance for order request notifications
     bot = Bot(token=MASTER_BOT_TOKEN)
     orders_set_bot(bot)
     requests_set_bot(bot)
+    master_requests_set_bot(bot)
+    master_settings_set_bot(bot)
 
     # Pass client_bot into app.state for broadcast notifications
     client_bot = Bot(token=CLIENT_BOT_TOKEN)

@@ -69,16 +69,32 @@ def render_bonus_message(
     bonus_amount: int,
     balance: int = 0,
     currency: str = "₽",
+    welcome_bonus: Optional[int] = None,
+    birthday_bonus: Optional[int] = None,
 ) -> str:
     """Render bonus message with variable substitution."""
     text = template if template else default
-    return text.format(
-        имя=client_name,
-        мастер=master_name,
-        бонус=bonus_amount,
-        баланс=balance,
-        валюта=currency,
-    )
+    inv_bonus = bonus_amount if welcome_bonus is None else welcome_bonus
+    bd_bonus = bonus_amount if birthday_bonus is None else birthday_bonus
+
+    replacements = {
+        "{имя}": str(client_name),
+        "{мастер}": str(master_name),
+        "{бонус}": str(bonus_amount),
+        "{баланс}": str(balance),
+        "{валюта}": str(currency),
+        "{name}": str(client_name),
+        "{master}": str(master_name),
+        "{bonus}": str(bonus_amount),
+        "{balance}": str(balance),
+        "{currency}": str(currency),
+        "{inv_bonus}": str(inv_bonus),
+        "{bd_bonus}": str(bd_bonus),
+    }
+
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+    return text
 
 
 # Часовые пояса для выбора

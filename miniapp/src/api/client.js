@@ -142,6 +142,15 @@ export const getMasterBonusSettings = () =>
   api.get('/api/master/bonus-settings').then(r => r.data);
 export const updateMasterBonusSettings = (data) =>
   api.put('/api/master/bonus-settings', data).then(r => r.data);
+export const uploadMasterBonusPhoto = (bonusType, file) => {
+  const fd = new FormData();
+  fd.append('photo', file, file.name || 'image.jpg');
+  return api.post(`/api/master/bonus-settings/${bonusType}/photo`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+};
+export const deleteMasterBonusPhoto = (bonusType) =>
+  api.delete(`/api/master/bonus-settings/${bonusType}/photo`).then(r => r.data);
 
 // V2 — Services (full CRUD — backward compat: getMasterServices still works)
 export const getMasterServicesAll = () =>

@@ -2,6 +2,7 @@
 
 import asyncio
 import io
+from pathlib import Path
 import qrcode
 
 from aiogram import Bot, Router, F
@@ -669,6 +670,8 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
         bonus_amount=amount,
         balance=balance,
         currency=get_currency_symbol(master.currency),
+        welcome_bonus=master.bonus_welcome,
+        birthday_bonus=master.bonus_birthday,
     )
 
     back_kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -677,7 +680,18 @@ async def cb_bonus_message_preview(callback: CallbackQuery, bot: Bot) -> None:
 
     try:
         if photo_id:
-            await bot.send_photo(callback.from_user.id, photo_id, caption=text, reply_markup=back_kb)
+            if photo_id.startswith("local:"):
+                path = Path(photo_id[len("local:"):]).resolve()
+                if not path.exists() or not path.is_file():
+                    raise FileNotFoundError(f"Bonus image not found: {path}")
+                await bot.send_photo(
+                    callback.from_user.id,
+                    BufferedInputFile(path.read_bytes(), filename=path.name or "bonus.jpg"),
+                    caption=text,
+                    reply_markup=back_kb,
+                )
+            else:
+                await bot.send_photo(callback.from_user.id, photo_id, caption=text, reply_markup=back_kb)
         else:
             await bot.send_message(callback.from_user.id, text, reply_markup=back_kb)
     except Exception as e:

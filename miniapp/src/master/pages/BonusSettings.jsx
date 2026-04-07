@@ -101,7 +101,35 @@ function NumRow({ label, value, hint, unit, onChange, disabled }) {
   );
 }
 
-export default function BonusSettings() {
+function LinkRow({ label, hint, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%',
+        padding: '12px 16px',
+        background: 'var(--tg-section-bg)',
+        border: 'none',
+        borderBottom: '1px solid var(--tg-secondary-bg)',
+        color: 'var(--tg-text)',
+        textAlign: 'left',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+      }}
+    >
+      <span>
+        <span style={{ display: 'block', fontSize: 15 }}>{label}</span>
+        {hint && <span style={{ display: 'block', fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>{hint}</span>}
+      </span>
+      <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
+    </button>
+  );
+}
+
+export default function BonusSettings({ onNavigate }) {
   const [localSettings, setLocalSettings] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const qc = useQueryClient();
@@ -140,6 +168,8 @@ export default function BonusSettings() {
   }
 
   const disabled = !localSettings.bonus_enabled;
+  const hasWelcomeTemplate = Boolean((localSettings.welcome_message || '').trim() || localSettings.welcome_photo_url);
+  const hasBirthdayTemplate = Boolean((localSettings.birthday_message || '').trim() || localSettings.birthday_photo_url);
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -212,6 +242,28 @@ export default function BonusSettings() {
           hint={localSettings.bonus_birthday > 0 ? `Клиент получит ${localSettings.bonus_birthday} ₽ в день рождения` : '0 = выключено'}
           onChange={(v) => update('bonus_birthday', v)}
           disabled={disabled}
+        />
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
+          Сообщения
+        </div>
+        <LinkRow
+          label="Настроить приветствие"
+          hint={hasWelcomeTemplate ? 'Кастомизировано' : 'Используется стандартный текст'}
+          onClick={() => {
+            haptic();
+            if (onNavigate) onNavigate('bonus_message', { kind: 'welcome' });
+          }}
+        />
+        <LinkRow
+          label="Настроить поздравление"
+          hint={hasBirthdayTemplate ? 'Кастомизировано' : 'Используется стандартный текст'}
+          onClick={() => {
+            haptic();
+            if (onNavigate) onNavigate('bonus_message', { kind: 'birthday' });
+          }}
         />
       </div>
     </div>

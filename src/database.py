@@ -1611,6 +1611,7 @@ async def get_clients_with_birthday_today() -> list[dict]:
                 m.tg_id as master_tg_id,
                 m.name as master_name,
                 m.bonus_birthday,
+                m.bonus_welcome,
                 m.timezone,
                 m.currency,
                 m.birthday_message,

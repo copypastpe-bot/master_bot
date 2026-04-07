@@ -2,11 +2,12 @@
 
 import logging
 from datetime import datetime
+from pathlib import Path
 import pytz
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import Bot
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, BufferedInputFile
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 from src.database import (
@@ -45,6 +46,21 @@ def write_master_kb(master_tg_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📞 Написать мастеру", url=f"tg://user?id={master_tg_id}")]
     ])
+
+
+async def _send_photo_by_ref(bot: Bot, chat_id: int, photo_ref: str, caption: str) -> None:
+    """Send photo by file_id/url or local media reference."""
+    if photo_ref.startswith("local:"):
+        path = Path(photo_ref[len("local:"):]).resolve()
+        if not path.exists() or not path.is_file():
+            raise FileNotFoundError(f"Bonus image not found: {path}")
+        await bot.send_photo(
+            chat_id=chat_id,
+            photo=BufferedInputFile(path.read_bytes(), filename=path.name or "bonus.jpg"),
+            caption=caption,
+        )
+        return
+    await bot.send_photo(chat_id=chat_id, photo=photo_ref, caption=caption)
 
 
 async def send_reminders_24h(client_bot: Bot) -> None:
@@ -196,16 +212,29 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
                     bonus_amount=bonus_amount,
                     balance=new_balance,
                     currency=currency,
+                    welcome_bonus=client.get("bonus_welcome"),
+                    birthday_bonus=bonus_amount,
                 )
 
                 # Send with photo if set
                 birthday_photo_id = client.get("birthday_photo_id")
                 if birthday_photo_id:
-                    await client_bot.send_photo(
-                        chat_id=client["client_tg_id"],
-                        photo=birthday_photo_id,
-                        caption=text
-                    )
+                    try:
+                        await _send_photo_by_ref(
+                            bot=client_bot,
+                            chat_id=client["client_tg_id"],
+                            photo_ref=birthday_photo_id,
+                            caption=text,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to send birthday image for client %s, fallback to text: %s",
+                            client["client_id"], e,
+                        )
+                        await client_bot.send_message(
+                            chat_id=client["client_tg_id"],
+                            text=text,
+                        )
                 else:
                     await client_bot.send_message(
                         chat_id=client["client_tg_id"],

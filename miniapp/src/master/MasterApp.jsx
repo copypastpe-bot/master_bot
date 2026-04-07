@@ -12,6 +12,7 @@ import ClientsList from './pages/ClientsList';
 import ClientCard from './pages/ClientCard';
 import Profile from './pages/Profile';
 import BonusSettings from './pages/BonusSettings';
+import BonusMessageEditor from './pages/BonusMessageEditor';
 import Services from './pages/Services';
 import PromosList from './pages/PromosList';
 import PromoCreate from './pages/PromoCreate';
@@ -31,6 +32,7 @@ const SCREEN_TITLES = {
   client: 'Клиент',
   profile: 'Профиль',
   bonus: 'Бонусная программа',
+  bonus_message: 'Сообщение',
   services: 'Услуги',
   promos: 'Акции',
   promo_new: 'Новая акция',
@@ -166,7 +168,17 @@ export default function MasterApp() {
       return (
         <div>
           <PageHeader title="Бонусная программа" onBack={handleBack} />
-          <BonusSettings />
+          <BonusSettings onNavigate={(t, p) => push(t, p)} />
+        </div>
+      );
+    }
+
+    if (type === 'bonus_message') {
+      const title = current.kind === 'birthday' ? 'Поздравление с ДР' : 'Приветствие';
+      return (
+        <div>
+          <PageHeader title={title} onBack={handleBack} />
+          <BonusMessageEditor kind={current.kind || 'welcome'} />
         </div>
       );
     }

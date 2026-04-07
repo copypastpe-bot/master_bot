@@ -1,14 +1,17 @@
 """Master settings endpoints — profile, timezone, currency, bonus settings, services."""
 
 import logging
+import secrets
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
-from src.config import CLIENT_BOT_USERNAME
+from src.config import CLIENT_BOT_USERNAME, MASTER_BOT_TOKEN
 from src.database import (
+    get_master_by_id,
     get_services,
     get_archived_services,
     get_service_by_id,
@@ -17,13 +20,18 @@ from src.database import (
     archive_service,
     restore_service,
     update_master,
-    update_master_bonus_setting,
 )
 from src.models import Master
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["master-settings"])
+_master_bot = None
+
+
+def set_master_bot(bot) -> None:
+    global _master_bot
+    _master_bot = bot
 
 ALLOWED_TIMEZONES = {
     "Europe/Moscow", "Europe/Kaliningrad", "Asia/Yekaterinburg",
@@ -33,6 +41,56 @@ ALLOWED_TIMEZONES = {
 }
 
 ALLOWED_CURRENCIES = {"RUB", "UAH", "BYN", "KZT", "USD", "EUR", "TRY", "GEL", "UZS"}
+
+BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
+MAX_BONUS_MEDIA_BYTES = 10 * 1024 * 1024
+BONUS_TYPES = {"welcome", "birthday"}
+
+
+def _bonus_photo_field(bonus_type: str) -> str:
+    if bonus_type == "welcome":
+        return "welcome_photo_id"
+    if bonus_type == "birthday":
+        return "birthday_photo_id"
+    raise HTTPException(status_code=400, detail="bonus_type must be one of: welcome, birthday")
+
+
+async def _media_url_from_ref(media_ref: Optional[str], request: Request) -> Optional[str]:
+    if not media_ref:
+        return None
+    if media_ref.startswith("local:"):
+        raw_path = media_ref[len("local:"):]
+        path = Path(raw_path).resolve()
+        try:
+            path.relative_to(BONUS_MEDIA_DIR.resolve())
+        except Exception:
+            return None
+        return f"/bonus-media/{path.name}"
+    if media_ref.startswith("http://") or media_ref.startswith("https://"):
+        return media_ref
+    if _master_bot:
+        try:
+            file_info = await _master_bot.get_file(media_ref)
+            return f"https://api.telegram.org/file/bot{MASTER_BOT_TOKEN}/{file_info.file_path}"
+        except Exception:
+            return None
+    return None
+
+
+def _cleanup_local_media(media_ref: Optional[str]) -> None:
+    if not media_ref or not media_ref.startswith("local:"):
+        return
+    raw_path = media_ref[len("local:"):]
+    path = Path(raw_path).resolve()
+    try:
+        path.relative_to(BONUS_MEDIA_DIR.resolve())
+    except Exception:
+        return
+    if path.exists() and path.is_file():
+        try:
+            path.unlink()
+        except Exception:
+            logger.warning("Failed to remove stale bonus media: %s", path)
 
 
 # =============================================================================
@@ -141,8 +199,11 @@ async def get_master_invite(
 
 @router.get("/master/bonus-settings")
 async def get_bonus_settings(
+    request: Request,
     master: Master = Depends(get_current_master),
 ):
+    welcome_photo_url = await _media_url_from_ref(master.welcome_photo_id, request)
+    birthday_photo_url = await _media_url_from_ref(master.birthday_photo_id, request)
     return {
         "bonus_enabled": master.bonus_enabled,
         "bonus_rate": master.bonus_rate,
@@ -151,6 +212,8 @@ async def get_bonus_settings(
         "bonus_welcome": master.bonus_welcome,
         "welcome_message": master.welcome_message,
         "birthday_message": master.birthday_message,
+        "welcome_photo_url": welcome_photo_url,
+        "birthday_photo_url": birthday_photo_url,
     }
 
 
@@ -160,6 +223,8 @@ class BonusSettingsBody(BaseModel):
     bonus_max_spend: Optional[float] = None
     bonus_birthday: Optional[int] = None
     bonus_welcome: Optional[int] = None
+    welcome_message: Optional[str] = None
+    birthday_message: Optional[str] = None
 
     @field_validator("bonus_rate")
     @classmethod
@@ -188,9 +253,78 @@ async def update_bonus_settings(
     body: BonusSettingsBody,
     master: Master = Depends(get_current_master),
 ):
-    kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
+    kwargs = body.model_dump(exclude_unset=True)
+    if "welcome_message" in kwargs and kwargs["welcome_message"] is not None:
+        stripped = kwargs["welcome_message"].strip()
+        kwargs["welcome_message"] = stripped or None
+    if "birthday_message" in kwargs and kwargs["birthday_message"] is not None:
+        stripped = kwargs["birthday_message"].strip()
+        kwargs["birthday_message"] = stripped or None
     if kwargs:
         await update_master(master.id, **kwargs)
+    return {"ok": True}
+
+
+@router.post("/master/bonus-settings/{bonus_type}/photo")
+async def upload_bonus_photo(
+    bonus_type: str,
+    request: Request,
+    photo: UploadFile = File(...),
+    master: Master = Depends(get_current_master),
+):
+    """Upload greeting/birthday image from miniapp."""
+    if bonus_type not in BONUS_TYPES:
+        raise HTTPException(status_code=400, detail="bonus_type must be one of: welcome, birthday")
+
+    content_type = (photo.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=415, detail="Only image files are supported")
+
+    media_bytes = await photo.read()
+    if not media_bytes:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(media_bytes) > MAX_BONUS_MEDIA_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds 10 MB limit")
+
+    ext = ".jpg"
+    if content_type == "image/png":
+        ext = ".png"
+    elif content_type == "image/webp":
+        ext = ".webp"
+    elif content_type == "image/gif":
+        ext = ".gif"
+
+    BONUS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"m{master.id}_{bonus_type}_{secrets.token_hex(12)}{ext}"
+    file_path = (BONUS_MEDIA_DIR / filename).resolve()
+    file_path.write_bytes(media_bytes)
+
+    current_master = await get_master_by_id(master.id)
+    field = _bonus_photo_field(bonus_type)
+    old_ref = getattr(current_master, field) if current_master else None
+    new_ref = f"local:{file_path}"
+
+    await update_master(master.id, **{field: new_ref})
+    _cleanup_local_media(old_ref)
+
+    return {"ok": True, "photo_url": await _media_url_from_ref(new_ref, request)}
+
+
+@router.delete("/master/bonus-settings/{bonus_type}/photo")
+async def delete_bonus_photo(
+    bonus_type: str,
+    master: Master = Depends(get_current_master),
+):
+    """Delete greeting/birthday image reference."""
+    if bonus_type not in BONUS_TYPES:
+        raise HTTPException(status_code=400, detail="bonus_type must be one of: welcome, birthday")
+
+    current_master = await get_master_by_id(master.id)
+    field = _bonus_photo_field(bonus_type)
+    old_ref = getattr(current_master, field) if current_master else None
+
+    await update_master(master.id, **{field: None})
+    _cleanup_local_media(old_ref)
     return {"ok": True}
 
 
