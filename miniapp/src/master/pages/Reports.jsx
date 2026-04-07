@@ -241,21 +241,19 @@ function PeriodTabs({ active, onSwitch, customLabel }) {
       marginBottom: 20,
     }}>
       <div style={{
-      display: 'flex',
-      gap: 6,
-      overflowX: 'auto',
-      WebkitOverflowScrolling: 'touch',
-      scrollbarWidth: 'none',
-    }}>
+        display: 'grid',
+        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+        gap: 6,
+      }}>
       {PERIODS.map(({ key, label }) => {
         const isActive = active === key;
-        const displayLabel = key === 'custom' && customLabel ? customLabel : label;
         return (
           <button
             key={key}
             onClick={() => onSwitch(key)}
             style={{
-              flexShrink: 0,
+              width: '100%',
+              minWidth: 0,
               padding: '8px 14px',
               borderRadius: 20,
               border: isActive ? 'none' : '1px solid transparent',
@@ -265,13 +263,30 @@ function PeriodTabs({ active, onSwitch, customLabel }) {
               color: isActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
               cursor: 'pointer',
               transition: 'background 0.15s, color 0.15s',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
             }}
           >
-            {displayLabel}
+            {label}
           </button>
         );
       })}
       </div>
+      {active === 'custom' && customLabel && (
+        <div
+          style={{
+            marginTop: 8,
+            padding: '0 8px 2px',
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--tg-hint)',
+            textAlign: 'center',
+          }}
+        >
+          {customLabel}
+        </div>
+      )}
     </div>
   );
 }
