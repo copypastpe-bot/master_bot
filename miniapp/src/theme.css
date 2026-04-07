@@ -562,7 +562,14 @@ body.typeui-enterprise-body .requests-card {
 }
 
 body.typeui-enterprise-body .requests-card.is-closed {
-  opacity: 0.66;
+  background: var(--tg-secondary-bg);
+  box-shadow: none;
+}
+
+body.typeui-enterprise-body .requests-card.is-closed .requests-card-client,
+body.typeui-enterprise-body .requests-card.is-closed .requests-card-type,
+body.typeui-enterprise-body .requests-card.is-closed .requests-card-message {
+  color: var(--tg-hint);
 }
 
 body.typeui-enterprise-body .requests-card-head {

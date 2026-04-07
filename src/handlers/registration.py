@@ -1,17 +1,30 @@
 """Registration handlers for master onboarding."""
 
 from aiogram import Bot, Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 from src.config import CLIENT_BOT_USERNAME
 from src.database import create_master, get_master_by_tg_id
-from src.keyboards import skip_kb, timezone_kb, home_reply_kb
+from src.keyboards import skip_kb, timezone_kb
 from src.states import MasterRegistration
 from src.utils import generate_invite_token, get_timezone_display
 from src.handlers.common import show_home
 
 router = Router(name="registration")
+
+
+async def remove_reply_keyboard(bot: Bot, chat_id: int) -> None:
+    """Silently remove old reply keyboard if it was set previously."""
+    try:
+        msg = await bot.send_message(chat_id, "\u2060", reply_markup=ReplyKeyboardRemove())
+        try:
+            await bot.delete_message(chat_id, msg.message_id)
+        except TelegramBadRequest:
+            pass
+    except TelegramBadRequest:
+        pass
 
 
 # =============================================================================
@@ -179,8 +192,7 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     if edit:
         await message.edit_text(success_text)
     else:
-        await message.answer(success_text)
+        await message.answer(success_text, reply_markup=ReplyKeyboardRemove())
 
-    # Send reply keyboard
-    await bot.send_message(message.chat.id, "🏠", reply_markup=home_reply_kb())
+    await remove_reply_keyboard(bot, message.chat.id)
     await show_home(bot, master, message.chat.id)

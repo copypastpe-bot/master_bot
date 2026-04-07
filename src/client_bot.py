@@ -21,7 +21,7 @@ from src.keyboards import (
     home_client_kb, client_bonuses_kb, client_bot_history_kb,
     client_promos_kb, client_master_info_kb, client_notifications_kb,
     client_settings_kb, client_notifications_back_kb,
-    skip_kb, share_contact_kb, stub_kb, home_reply_kb,
+    skip_kb, share_contact_kb, stub_kb,
     order_request_services_kb, order_request_comment_kb, order_request_confirm_kb,
     question_cancel_kb, media_cancel_kb, media_comment_kb, client_home_kb,
     client_reschedule_calendar_kb, client_reschedule_hour_kb,
@@ -258,6 +258,18 @@ class HomeButtonMiddleware(BaseMiddleware):
         return await handler(event, data)
 
 
+async def remove_reply_keyboard(bot: Bot, chat_id: int) -> None:
+    """Silently remove old reply keyboard if it was set previously."""
+    try:
+        msg = await bot.send_message(chat_id, "\u2060", reply_markup=ReplyKeyboardRemove())
+        try:
+            await bot.delete_message(chat_id, msg.message_id)
+        except TelegramBadRequest:
+            pass
+    except TelegramBadRequest:
+        pass
+
+
 # =============================================================================
 # Start and Home Commands
 # =============================================================================
@@ -348,7 +360,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
             "👋 Добро пожаловать!\n\n"
             "Для регистрации нужна ссылка от вашего мастера.\n"
             "Попросите мастера отправить вам персональную ссылку.",
-            reply_markup=home_reply_kb()
+            reply_markup=ReplyKeyboardRemove()
         )
         return
 
@@ -361,7 +373,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         await bot.send_message(
             message.chat.id,
             "👋 Для начала работы нужна ссылка от мастера.",
-            reply_markup=home_reply_kb()
+            reply_markup=ReplyKeyboardRemove()
         )
 
 
@@ -649,13 +661,13 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     _active_masters[tg_id] = master_id
     await state.clear()
 
-    # "Регистрация завершена!" — with reply keyboard, no separate house message
+    # "Регистрация завершена!" — remove old reply keyboard (use inline UI only)
     success_text = "✅ Регистрация завершена!"
     if edit:
         await message.edit_text(success_text)
-        await message.answer("🏠", reply_markup=home_reply_kb())
+        await remove_reply_keyboard(bot, message.chat.id)
     else:
-        await message.answer(success_text, reply_markup=home_reply_kb())
+        await message.answer(success_text, reply_markup=ReplyKeyboardRemove())
 
     # Build welcome home text (shown until user navigates back)
     home_text = None
@@ -1223,6 +1235,7 @@ async def cb_order_confirm(callback: CallbackQuery, state: FSMContext) -> None:
     master_blocked = False
     if master_bot:
         try:
+            await remove_reply_keyboard(master_bot, master.tg_id)
             sent = await master_bot.send_message(
                 master.tg_id, notify_text,
                 reply_markup=request_notify_kb(request_id, tg_id)
@@ -1328,6 +1341,7 @@ async def fsm_question_text(message: Message, state: FSMContext) -> None:
     master_blocked = False
     if master_bot:
         try:
+            await remove_reply_keyboard(master_bot, master.tg_id)
             sent = await master_bot.send_message(
                 master.tg_id, notify_text, parse_mode="Markdown",
                 reply_markup=request_notify_kb(request_id, tg_id)
@@ -1539,6 +1553,7 @@ async def send_media_to_master(callback: CallbackQuery, state: FSMContext) -> No
     master_blocked = False
     if master_bot:
         try:
+            await remove_reply_keyboard(master_bot, master.tg_id)
             # Download file from client_bot and re-upload to master_bot
             file_info = await callback.bot.get_file(file_id)
             file_url = f"https://api.telegram.org/file/bot{CLIENT_BOT_TOKEN}/{file_info.file_path}"
@@ -1637,6 +1652,7 @@ async def send_media_to_master_from_message(message: Message, state: FSMContext)
     master_blocked = False
     if master_bot:
         try:
+            await remove_reply_keyboard(master_bot, master.tg_id)
             # Download file from client_bot and re-upload to master_bot
             file_info = await message.bot.get_file(file_id)
             file_url = f"https://api.telegram.org/file/bot{CLIENT_BOT_TOKEN}/{file_info.file_path}"
