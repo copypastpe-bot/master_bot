@@ -272,6 +272,7 @@ function CustomPeriodSheet({ onApply, onClose }) {
 
   const inputStyle = {
     width: '100%',
+    minWidth: 0,
     boxSizing: 'border-box',
     border: '1px solid var(--tg-secondary-bg)',
     borderRadius: 8,
@@ -296,8 +297,15 @@ function CustomPeriodSheet({ onApply, onClose }) {
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 16 }}>
           Произвольный период
         </div>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-          <div style={{ flex: 1 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(148px, 1fr))',
+            gap: 12,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Начало</div>
             <input
               type="date"
@@ -307,7 +315,7 @@ function CustomPeriodSheet({ onApply, onClose }) {
               style={inputStyle}
             />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Конец</div>
             <input
               type="date"
