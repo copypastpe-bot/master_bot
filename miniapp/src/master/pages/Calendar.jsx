@@ -4,8 +4,6 @@ import { getMasterOrders, getMasterOrderDates } from '../../api/client';
 import MonthCalendar from '../components/MonthCalendar';
 import DaySchedule from '../components/DaySchedule';
 
-const WebApp = window.Telegram?.WebApp;
-
 function toYMD(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -81,21 +79,31 @@ export default function Calendar({ onNavigate }) {
   }, [onNavigate, selectedDate]);
 
   return (
-    <div style={{ paddingBottom: 80, minHeight: '100vh', background: 'var(--tg-bg)' }}>
+    <div style={{ paddingBottom: 88, minHeight: '100vh', background: 'var(--tg-bg)' }}>
 
       {/* Sticky month calendar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50 }}>
-        <MonthCalendar
-          selectedDate={selectedDate}
-          onSelectDate={handleSelectDate}
-          viewYear={viewYear}
-          viewMonth={viewMonth}
-          onPrevMonth={handlePrevMonth}
-          onNextMonth={handleNextMonth}
-          onGoToToday={handleGoToToday}
-          activeDates={activeDates}
-          todayStr={todayStr}
-        />
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '8px 12px 6px', background: 'var(--tg-bg)' }}>
+        <div
+          style={{
+            background: 'var(--tg-surface)',
+            border: '1px solid var(--tg-enterprise-border)',
+            borderRadius: 16,
+            boxShadow: 'var(--tg-enterprise-shadow)',
+            overflow: 'hidden',
+          }}
+        >
+          <MonthCalendar
+            selectedDate={selectedDate}
+            onSelectDate={handleSelectDate}
+            viewYear={viewYear}
+            viewMonth={viewMonth}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onGoToToday={handleGoToToday}
+            activeDates={activeDates}
+            todayStr={todayStr}
+          />
+        </div>
       </div>
 
       {/* Orders for selected day */}
@@ -106,39 +114,6 @@ export default function Calendar({ onNavigate }) {
         onOrderClick={handleOrderClick}
         onCreateOrder={handleCreateOrder}
       />
-
-      {/* FAB "+" */}
-      <button
-        onClick={() => {
-          if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
-            WebApp.HapticFeedback.impactOccurred('light');
-          }
-          onNavigate('create_order', { date: selectedDate });
-        }}
-        style={{
-          position: 'fixed',
-          bottom: 'calc(68px + env(safe-area-inset-bottom))',
-          right: 20,
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'var(--tg-button)',
-          color: 'var(--tg-button-text)',
-          border: 'none',
-          fontSize: 26,
-          fontWeight: 300,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-          zIndex: 90,
-          lineHeight: 1,
-        }}
-        aria-label="Создать заказ"
-      >
-        +
-      </button>
     </div>
   );
 }
