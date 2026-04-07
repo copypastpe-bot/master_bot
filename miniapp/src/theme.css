@@ -259,6 +259,247 @@ body.typeui-enterprise-body *:focus-visible {
   outline-offset: 2px;
 }
 
+body.typeui-enterprise-body .master-onboarding {
+  min-height: 100dvh;
+  padding: 26px 14px 34px;
+  display: flex;
+  justify-content: center;
+}
+
+body.typeui-enterprise-body .master-onboarding-shell {
+  width: min(460px, 100%);
+}
+
+body.typeui-enterprise-body .onb-progress {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+body.typeui-enterprise-body .onb-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(96, 115, 143, 0.3);
+  transition: transform 180ms ease, background-color 180ms ease;
+}
+
+body.typeui-enterprise-body .onb-dot.is-active {
+  background: var(--tg-accent);
+  transform: scale(1.12);
+}
+
+body.typeui-enterprise-body .onb-card {
+  border-radius: 20px;
+  border: 1px solid var(--tg-enterprise-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), #ffffff);
+  box-shadow: var(--tg-enterprise-shadow);
+  padding: 20px 18px 18px;
+}
+
+body.typeui-enterprise-body .onb-title {
+  color: var(--tg-text);
+  font-size: 27px;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+body.typeui-enterprise-body .onb-subtitle {
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 22px;
+}
+
+body.typeui-enterprise-body .onb-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: var(--tg-accent);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 2px 0;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+body.typeui-enterprise-body .onb-field-group {
+  margin-bottom: 14px;
+}
+
+body.typeui-enterprise-body .onb-field-flex {
+  flex: 1;
+  min-width: 0;
+}
+
+body.typeui-enterprise-body .onb-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--tg-hint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body.typeui-enterprise-body .onb-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid var(--tg-enterprise-border);
+  background: #f9fbff;
+  color: var(--tg-text);
+  font-size: 16px;
+  line-height: 1.2;
+  padding: 12px 13px;
+  outline: none;
+}
+
+body.typeui-enterprise-body .onb-input::placeholder {
+  color: #8a9bb4;
+}
+
+body.typeui-enterprise-body .onb-input:focus {
+  border-color: rgba(31, 93, 207, 0.55);
+  background: #fff;
+}
+
+body.typeui-enterprise-body .onb-picker-wrap {
+  position: relative;
+}
+
+body.typeui-enterprise-body .onb-picker-display {
+  padding-right: 40px;
+}
+
+body.typeui-enterprise-body .onb-native-picker {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+body.typeui-enterprise-body .onb-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+body.typeui-enterprise-body .onb-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+body.typeui-enterprise-body .onb-chip {
+  border-radius: 999px;
+  border: 1.5px solid var(--tg-enterprise-border);
+  background: #f6f8fe;
+  color: #213552;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+body.typeui-enterprise-body .onb-chip.is-selected {
+  border-color: var(--tg-accent);
+  background: var(--tg-accent);
+  color: #fff;
+}
+
+body.typeui-enterprise-body .onb-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+body.typeui-enterprise-body .onb-btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 14px;
+  margin-top: 2px;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
+}
+
+body.typeui-enterprise-body .onb-btn-primary:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+body.typeui-enterprise-body .onb-btn-primary:not(:disabled):active {
+  transform: scale(0.99);
+}
+
+body.typeui-enterprise-body .onb-btn-secondary {
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid var(--tg-enterprise-border);
+  background: transparent;
+  color: var(--tg-hint);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 14px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+body.typeui-enterprise-body .onb-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+body.typeui-enterprise-body .onb-error {
+  color: var(--tg-destructive);
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+body.typeui-enterprise-body .onb-card-final {
+  text-align: center;
+}
+
+body.typeui-enterprise-body .onb-success-icon {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  margin: 2px auto 14px;
+  border: 1px solid rgba(31, 93, 207, 0.2);
+  background: rgba(31, 93, 207, 0.08);
+  color: var(--tg-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  animation: onb-pop-in 320ms ease-out;
+}
+
+body.typeui-enterprise-body .onb-final-title {
+  color: var(--tg-text);
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+body.typeui-enterprise-body .onb-final-subtitle {
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 20px;
+}
+
 @keyframes skeleton-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -278,8 +519,23 @@ body.typeui-enterprise-body *:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   body.typeui-enterprise-body .master-shell,
   body.typeui-enterprise-body .master-nav-button,
-  body.typeui-enterprise-body .enterprise-cell.is-interactive {
+  body.typeui-enterprise-body .enterprise-cell.is-interactive,
+  body.typeui-enterprise-body .onb-dot,
+  body.typeui-enterprise-body .onb-btn-primary,
+  body.typeui-enterprise-body .onb-chip,
+  body.typeui-enterprise-body .onb-success-icon {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@keyframes onb-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }

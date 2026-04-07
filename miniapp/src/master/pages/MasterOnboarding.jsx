@@ -1,45 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { registerMaster, createMasterClient, createMasterOrder, updateMasterProfile } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
-// ─── Styles ────────────────────────────────────────────────────────────────
-
-const S = {
-  wrap: { padding: '32px 20px', maxWidth: 420, margin: '0 auto' },
-  dots: { display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 36 },
-  dot: (active) => ({
-    width: 8, height: 8, borderRadius: '50%',
-    background: active ? 'var(--tg-button)' : 'var(--tg-hint)',
-    opacity: active ? 1 : 0.35,
-    transition: 'all 0.2s',
-  }),
-  h1: { fontSize: 26, fontWeight: 700, color: 'var(--tg-text)', marginBottom: 6 },
-  sub: { fontSize: 14, color: 'var(--tg-hint)', marginBottom: 28 },
-  label: { fontSize: 13, color: 'var(--tg-hint)', display: 'block', marginBottom: 6 },
-  input: {
-    width: '100%', padding: '12px 14px', borderRadius: 12,
-    border: '1.5px solid var(--tg-hint)', background: 'var(--tg-bg)',
-    color: 'var(--tg-text)', fontSize: 16, outline: 'none', boxSizing: 'border-box',
-  },
-  btnPrimary: (disabled) => ({
-    width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-    background: 'var(--tg-button)', color: 'var(--tg-button-text)',
-    fontSize: 16, fontWeight: 600, cursor: disabled ? 'default' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-  }),
-  btnSecondary: {
-    width: '100%', padding: '12px', borderRadius: 12,
-    border: '1.5px solid var(--tg-hint)', background: 'transparent',
-    color: 'var(--tg-hint)', fontSize: 15, cursor: 'pointer', marginTop: 10,
-  },
-  backBtn: {
-    background: 'none', border: 'none', color: 'var(--tg-button)',
-    fontSize: 15, cursor: 'pointer', padding: 0, marginBottom: 20,
-    display: 'flex', alignItems: 'center', gap: 4,
-  },
-  error: { color: '#e53935', fontSize: 13, marginBottom: 12 },
+const iconProps = {
+  width: 16,
+  height: 16,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 2,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': 'true',
 };
+
+const ChevronLeftIcon = () => (
+  <svg {...iconProps}>
+    <path d="m15 18-6-6 6-6" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg {...iconProps} width={34} height={34}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8.8 12 2.4 2.4 4.8-4.8" />
+  </svg>
+);
 
 // ─── Niches ─────────────────────────────────────────────────────────────────
 
@@ -71,15 +58,15 @@ function formatDateDisplay(iso) {
 
 function DatePickerField({ label, value, onChange }) {
   return (
-    <div style={{ flex: 1 }}>
-      {label && <label style={S.label}>{label}</label>}
-      <div style={{ position: 'relative' }}>
-        <div style={S.input}>{formatDateDisplay(value)}</div>
+    <div className="onb-field-group onb-field-flex">
+      {label && <label className="onb-label">{label}</label>}
+      <div className="onb-picker-wrap">
+        <div className="onb-input onb-picker-display">{formatDateDisplay(value)}</div>
         <input
           type="date"
           value={value}
           onChange={onChange}
-          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+          className="onb-native-picker"
         />
       </div>
     </div>
@@ -88,15 +75,15 @@ function DatePickerField({ label, value, onChange }) {
 
 function TimePickerField({ label, value, onChange }) {
   return (
-    <div style={{ flex: 1 }}>
-      {label && <label style={S.label}>{label}</label>}
-      <div style={{ position: 'relative' }}>
-        <div style={S.input}>{value || '00:00'}</div>
+    <div className="onb-field-group onb-field-flex">
+      {label && <label className="onb-label">{label}</label>}
+      <div className="onb-picker-wrap">
+        <div className="onb-input onb-picker-display">{value || '00:00'}</div>
         <input
           type="time"
           value={value}
           onChange={onChange}
-          style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+          className="onb-native-picker"
         />
       </div>
     </div>
@@ -134,8 +121,12 @@ export default function MasterOnboarding({ onRegistered }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ── Cleanup on unmount
-  useEffect(() => () => {}, []);
+  useEffect(() => {
+    document.body.classList.add('typeui-enterprise-body');
+    return () => {
+      document.body.classList.remove('typeui-enterprise-body');
+    };
+  }, []);
 
   // ── Toggle niche selection (max 3)
   const toggleNiche = (niche) => {
@@ -214,28 +205,35 @@ export default function MasterOnboarding({ onRegistered }) {
     WebApp.MainButton.show();
     WebApp.MainButton.onClick(handleStart);
     return () => { WebApp.MainButton.offClick(handleStart); WebApp.MainButton.hide(); };
-  }, [step]);
+  }, [step, onRegistered]);
 
   const step2Ready = selectedNiches.length > 0 &&
     (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
   const step3Ready = clientName.trim() && clientPhone.trim() && clientDate && clientTime;
+  const progressStep = step === 4 ? 3 : step;
 
   return (
-    <div style={S.wrap}>
-      {/* Progress dots — 3 visible steps */}
-      <div style={S.dots}>
-        {[1, 2, 3].map((n) => <div key={n} style={S.dot(step === n || (step === 4 && n === 3))} />)}
+    <div className="master-onboarding">
+      <div className="master-onboarding-shell">
+      <div className="onb-progress" aria-hidden="true">
+        {[1, 2, 3].map((n) => (
+          <div
+            key={n}
+            className={`onb-dot${progressStep >= n ? ' is-active' : ''}`}
+          />
+        ))}
       </div>
 
       {/* ── Step 1: Name ─────────────────────────────── */}
       {step === 1 && (
-        <>
-          <div style={S.h1}>Как тебя зовут?</div>
-          <div style={S.sub}>Будем обращаться по имени</div>
-          <div style={{ marginBottom: 24 }}>
-            <label style={S.label}>Имя</label>
+        <section className="onb-card">
+          <h1 className="onb-title">Как тебя зовут?</h1>
+          <p className="onb-subtitle">Будем обращаться по имени</p>
+
+          <div className="onb-field-group">
+            <label className="onb-label">Имя</label>
             <input
-              style={S.input}
+              className="onb-input"
               placeholder="Например: Анна"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -243,55 +241,49 @@ export default function MasterOnboarding({ onRegistered }) {
             />
           </div>
           <button
-            style={S.btnPrimary(!name.trim())}
+            className="onb-btn-primary"
             disabled={!name.trim()}
+            type="button"
             onClick={() => setStep(2)}
           >
             Продолжить
           </button>
-        </>
+        </section>
       )}
 
       {/* ── Step 2: Niche ─────────────────────────────── */}
       {step === 2 && (
-        <>
-          <button style={S.backBtn} onClick={() => { setError(''); setStep(1); }}>
-            ← Назад
+        <section className="onb-card">
+          <button className="onb-back-btn" type="button" onClick={() => { setError(''); setStep(1); }}>
+            <ChevronLeftIcon />
+            <span>Назад</span>
           </button>
-          <div style={S.h1}>Чем занимаешься?</div>
-          <div style={S.sub}>Выбери до 3 направлений</div>
+          <h1 className="onb-title">Чем занимаешься?</h1>
+          <p className="onb-subtitle">Выбери до 3 направлений</p>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+          <div className="onb-chip-grid">
             {NICHES.map((niche) => {
               const isSelected = selectedNiches.includes(niche);
               const isDisabled = loading || (!isSelected && selectedNiches.length >= 3);
               return (
                 <button
                   key={niche}
+                  type="button"
                   disabled={isDisabled}
                   onClick={() => toggleNiche(niche)}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: 20,
-                    border: `1.5px solid ${isSelected ? 'var(--tg-button)' : 'var(--tg-hint)'}`,
-                    background: isSelected ? 'var(--tg-button)' : 'transparent',
-                    color: isSelected ? 'var(--tg-button-text)' : 'var(--tg-text)',
-                    fontSize: 14,
-                    cursor: isDisabled ? 'default' : 'pointer',
-                    transition: 'all 0.15s',
-                    opacity: isDisabled && !isSelected ? 0.4 : 1,
-                  }}
+                  className={`onb-chip${isSelected ? ' is-selected' : ''}`}
                 >
                   {niche}
                 </button>
               );
-            })}
+          })}
           </div>
 
           {selectedNiches.includes('Другое') && (
-            <div style={{ marginBottom: 16 }}>
+            <div className="onb-field-group">
+              <label className="onb-label">Своя ниша</label>
               <input
-                style={S.input}
+                className="onb-input"
                 placeholder="Напишите вашу нишу"
                 value={customNiche}
                 onChange={(e) => setCustomNiche(e.target.value)}
@@ -300,38 +292,40 @@ export default function MasterOnboarding({ onRegistered }) {
             </div>
           )}
 
-          {error && <div style={S.error}>{error}</div>}
+          {error && <div className="onb-error">{error}</div>}
 
           <button
-            style={S.btnPrimary(!step2Ready || loading)}
+            className="onb-btn-primary"
             disabled={!step2Ready || loading}
+            type="button"
             onClick={doRegister}
           >
             {loading ? 'Сохраняем...' : 'Продолжить'}
           </button>
-        </>
+        </section>
       )}
 
       {/* ── Step 3: First Client ───────────────────────── */}
       {step === 3 && (
-        <>
-          <button style={S.backBtn} onClick={() => { setError(''); setStep(2); }}>
-            ← Назад
+        <section className="onb-card">
+          <button className="onb-back-btn" type="button" onClick={() => { setError(''); setStep(2); }}>
+            <ChevronLeftIcon />
+            <span>Назад</span>
           </button>
-          <div style={S.h1}>Добавим первого клиента?</div>
-          <div style={S.sub}>Создай свою первую запись сейчас или позже</div>
+          <h1 className="onb-title">Добавим первого клиента?</h1>
+          <p className="onb-subtitle">Создай свою первую запись сейчас или позже</p>
 
           {[
             { label: 'Имя клиента', type: 'text', value: clientName, set: setClientName, placeholder: 'Например: Мария' },
             { label: 'Телефон', type: 'tel', value: clientPhone, set: setClientPhone, placeholder: '+7 999 123 45 67' },
           ].map(({ label, type, value, set, placeholder }) => (
-            <div key={label} style={{ marginBottom: 14 }}>
-              <label style={S.label}>{label}</label>
-              <input style={S.input} type={type} placeholder={placeholder} value={value} onChange={(e) => set(e.target.value)} />
+            <div key={label} className="onb-field-group">
+              <label className="onb-label">{label}</label>
+              <input className="onb-input" type={type} placeholder={placeholder} value={value} onChange={(e) => set(e.target.value)} />
             </div>
           ))}
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <div className="onb-row">
             <DatePickerField
               label="Дата записи"
               value={clientDate}
@@ -344,50 +338,45 @@ export default function MasterOnboarding({ onRegistered }) {
             />
           </div>
 
-          {error && <div style={S.error}>{error}</div>}
+          {error && <div className="onb-error">{error}</div>}
 
           <button
-            style={S.btnPrimary(!step3Ready || loading)}
+            className="onb-btn-primary"
             disabled={!step3Ready || loading}
+            type="button"
             onClick={handleAddClient}
           >
             {loading ? 'Сохраняем...' : 'Добавить и продолжить'}
           </button>
-          <button style={S.btnSecondary} disabled={loading} onClick={handleSkipClient}>
+          <button className="onb-btn-secondary" disabled={loading} type="button" onClick={handleSkipClient}>
             Пропустить
           </button>
-        </>
+        </section>
       )}
 
       {/* ── Step 4: Final ─────────────────────────────── */}
       {step === 4 && (
-        <>
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: 64, animation: 'popIn 0.4s cubic-bezier(0.175,0.885,0.32,1.275)' }}>✅</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--tg-text)', marginTop: 16 }}>
+        <section className="onb-card onb-card-final">
+          <div className="onb-success-icon">
+            <CheckIcon />
+          </div>
+          <div className="onb-final-title">
               Всё готово, {name}!
-            </div>
-            <div style={{ fontSize: 14, color: 'var(--tg-hint)', marginTop: 8 }}>
-              {clientAdded
-                ? 'Остались вопросы? Пиши нам @pastushenko12'
-                : 'Добавь первого клиента — это займёт 30 секунд'}
-            </div>
+          </div>
+          <div className="onb-final-subtitle">
+            {clientAdded
+              ? 'Остались вопросы? Пиши нам @pastushenko12'
+              : 'Добавь первого клиента — это займёт 30 секунд'}
           </div>
 
           {!WebApp?.MainButton && (
-            <button style={S.btnPrimary(false)} onClick={onRegistered}>
+            <button className="onb-btn-primary" type="button" onClick={onRegistered}>
               Начать работу
             </button>
           )}
-        </>
+        </section>
       )}
-
-      <style>{`
-        @keyframes popIn {
-          0% { transform: scale(0); opacity: 0; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
+      </div>
     </div>
   );
 }
