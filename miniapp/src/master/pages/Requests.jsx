@@ -12,7 +12,7 @@ function haptic() {
 
 const REQUEST_TYPES = {
   order_request: { emoji: '🛎', title: 'Заявка на заказ' },
-  question:      { emoji: '❓', title: 'Вопрос' },
+  question:      { emoji: '', title: 'Вопрос от клиента' },
   media:         { emoji: '📸', title: 'Медиафайл' },
 };
 
@@ -378,7 +378,7 @@ function RequestCard({ req, onClose, onNavigate }) {
       {/* Header row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)' }}>
-          {typeInfo.emoji} {typeInfo.title}
+          {typeInfo.emoji ? `${typeInfo.emoji} ` : ''}{typeInfo.title}
         </span>
         <span style={{ fontSize: 12, color: 'var(--tg-hint)', flexShrink: 0, marginLeft: 8 }}>
           {formatDate(req.created_at)}
@@ -469,8 +469,20 @@ export default function Requests({ onNavigate, onBadgeChange }) {
     onSuccess: (_, requestId) => {
       queryClient.setQueryData(['master-requests', filter], (old) => {
         if (!old) return old;
-        const newUnread = Math.max(0, (old.unread_count ?? 0) - 1);
+        const target = old.requests.find(r => r.id === requestId);
+        const wasNew = target ? target.status !== 'closed' : false;
+        const newUnread = Math.max(0, (old.unread_count ?? 0) - (wasNew ? 1 : 0));
         if (onBadgeChange) onBadgeChange(newUnread);
+
+        if (filter === 'new') {
+          return {
+            ...old,
+            unread_count: newUnread,
+            total: Math.max(0, (old.total ?? old.requests.length) - 1),
+            requests: old.requests.filter(r => r.id !== requestId),
+          };
+        }
+
         return {
           ...old,
           unread_count: newUnread,
@@ -479,6 +491,7 @@ export default function Requests({ onNavigate, onBadgeChange }) {
           ),
         };
       });
+      queryClient.invalidateQueries({ queryKey: ['master-requests'] });
     },
   });
 

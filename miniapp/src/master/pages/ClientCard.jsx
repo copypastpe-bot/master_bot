@@ -21,14 +21,18 @@ function hapticNotify(type = 'success') {
   }
 }
 
-function normalizePhoneForTel(phone) {
-  if (!phone) return '';
-  return String(phone).replace(/[^\d+]/g, '');
-}
-
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
 
 function StatBadge({ label, value }) {
   return (
@@ -311,22 +315,10 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Номер скопирован');
-      }
-      hapticNotify('success');
+      showSuccess('Номер скопирован');
     } catch {
       hapticNotify('error');
     }
-  };
-
-  const handleCallPhone = () => {
-    if (!client.phone) return;
-    haptic();
-    const tel = normalizePhoneForTel(client.phone);
-    if (!tel) return;
-    // In Telegram WebView this can be blocked on some clients, so keep copy action nearby.
-    window.location.href = `tel:${tel}`;
   };
 
   return (
@@ -388,12 +380,18 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
               </div>
               {client.phone && (
                 <div style={{ marginTop: 6 }}>
-                  <div style={{ fontSize: 15, color: 'var(--tg-accent)' }}>
-                    {client.phone}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                    <button onClick={handleCallPhone} style={btnSmallAction}>Позвонить</button>
-                    <button onClick={handleCopyPhone} style={btnSmallAction}>Копировать</button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ fontSize: 15, color: 'var(--tg-accent)' }}>
+                      {client.phone}
+                    </div>
+                    <button
+                      onClick={handleCopyPhone}
+                      style={btnIcon}
+                      aria-label="Скопировать номер"
+                      title="Скопировать номер"
+                    >
+                      <CopyIcon />
+                    </button>
                   </div>
                 </div>
               )}
@@ -691,12 +689,16 @@ const btnSecondary = {
   cursor: 'pointer',
 };
 
-const btnSmallAction = {
-  padding: '6px 10px',
+const btnIcon = {
+  width: 28,
+  height: 28,
   borderRadius: 8,
   border: '1px solid var(--tg-secondary-bg)',
   background: 'var(--tg-secondary-bg)',
   color: 'var(--tg-text)',
-  fontSize: 12,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
   cursor: 'pointer',
 };
