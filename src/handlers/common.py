@@ -2,8 +2,17 @@
 
 from aiogram import Bot, Router
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
+from aiogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    WebAppInfo,
+    FSInputFile,
+    ReplyKeyboardRemove,
+    CallbackQuery,
+)
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 from src.database import get_master_by_tg_id
 from src.config import MINIAPP_URL
@@ -157,8 +166,6 @@ MONTHS_RU_NOM = [
 
 # Stub functions kept for backward-compat with other handlers until they are migrated.
 # These will be removed when all dependent handlers are updated.
-from aiogram.types import CallbackQuery
-from aiogram.exceptions import TelegramBadRequest
 
 
 async def build_home_text(master) -> str:
@@ -179,6 +186,19 @@ async def edit_home_message(callback: CallbackQuery, text: str, keyboard) -> Non
         pass
 
 
+async def clear_reply_keyboard(bot: Bot, chat_id: int) -> None:
+    """Clear stale reply keyboard left from old bot versions."""
+    try:
+        msg = await bot.send_message(chat_id, "\u2060", reply_markup=ReplyKeyboardRemove())
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=msg.message_id)
+        except TelegramBadRequest:
+            pass
+    except Exception:
+        # Keyboard cleanup is best-effort; don't break /start flow.
+        pass
+
+
 # =============================================================================
 # Start and Home Commands
 # =============================================================================
@@ -190,6 +210,7 @@ BANNER_PATH = "assets/welcome_banner.png"
 async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     """Handle /start — show banner with Mini App button."""
     await state.clear()
+    await clear_reply_keyboard(bot, message.chat.id)
 
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)
@@ -225,6 +246,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
 async def cmd_home(message: Message, state: FSMContext, bot: Bot) -> None:
     """Handle /home — same as /start."""
     await state.clear()
+    await clear_reply_keyboard(bot, message.chat.id)
 
     tg_id = message.from_user.id
     master = await get_master_by_tg_id(tg_id)

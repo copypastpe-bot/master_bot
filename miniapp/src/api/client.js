@@ -136,6 +136,12 @@ export const updateMasterCurrency = (currency) =>
   api.put('/api/master/currency', { currency }).then(r => r.data);
 export const getMasterInvite = () =>
   api.get('/api/master/invite').then(r => r.data);
+export const getMasterGoogleCalendar = () =>
+  api.get('/api/master/google-calendar').then(r => r.data);
+export const getMasterGoogleCalendarConnectUrl = () =>
+  api.post('/api/master/google-calendar/connect').then(r => r.data);
+export const disconnectMasterGoogleCalendar = () =>
+  api.post('/api/master/google-calendar/disconnect').then(r => r.data);
 
 // V2 — Bonus settings
 export const getMasterBonusSettings = () =>

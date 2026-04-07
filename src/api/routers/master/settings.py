@@ -10,6 +10,7 @@ from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
 from src.config import CLIENT_BOT_USERNAME, MASTER_BOT_TOKEN
+from src import google_calendar
 from src.database import (
     get_master_by_id,
     get_services,
@@ -125,6 +126,40 @@ async def update_master_profile(
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
     if kwargs:
         await update_master(master.id, **kwargs)
+    return {"ok": True}
+
+
+# =============================================================================
+# Google Calendar (Mini App)
+# =============================================================================
+
+@router.get("/master/google-calendar")
+async def get_master_google_calendar(
+    master: Master = Depends(get_current_master),
+):
+    """Get Google Calendar connection status for current master."""
+    email = await google_calendar.get_calendar_account(master.id)
+    return {
+        "connected": bool(email),
+        "email": email,
+    }
+
+
+@router.post("/master/google-calendar/connect")
+async def get_master_google_calendar_connect_url(
+    master: Master = Depends(get_current_master),
+):
+    """Generate fresh OAuth URL for Google Calendar connection."""
+    url = await google_calendar.get_oauth_url(master.id)
+    return {"url": url}
+
+
+@router.post("/master/google-calendar/disconnect")
+async def disconnect_master_google_calendar(
+    master: Master = Depends(get_current_master),
+):
+    """Disconnect Google Calendar for current master."""
+    await google_calendar.disconnect_calendar(master.id)
     return {"ok": True}
 
 

@@ -1,5 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import { getMasterMe, getMasterInvite } from '../../api/client';
+import { useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  getMasterMe,
+  getMasterInvite,
+  getMasterGoogleCalendar,
+  getMasterGoogleCalendarConnectUrl,
+  disconnectMasterGoogleCalendar,
+} from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -82,6 +89,15 @@ const MessageIcon = () => (
   </svg>
 );
 
+const CalendarIcon = () => (
+  <svg {...iconProps}>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4" />
+    <path d="M8 2v4" />
+    <path d="M3 10h18" />
+  </svg>
+);
+
 const ChevronIcon = () => (
   <svg {...iconProps} width={14} height={14}>
     <path d="m9 18 6-6-6-6" />
@@ -128,6 +144,8 @@ function Cell({ icon, label, value, onClick }) {
 }
 
 export default function More({ onNavigate }) {
+  const qc = useQueryClient();
+
   const { data: master } = useQuery({
     queryKey: ['master-me'],
     queryFn: getMasterMe,
@@ -139,6 +157,52 @@ export default function More({ onNavigate }) {
     queryFn: getMasterInvite,
     staleTime: 5 * 60_000,
   });
+
+  const { data: gcData, isLoading: gcLoading } = useQuery({
+    queryKey: ['master-google-calendar'],
+    queryFn: getMasterGoogleCalendar,
+    staleTime: 15_000,
+  });
+
+  const connectGcMutation = useMutation({
+    mutationFn: getMasterGoogleCalendarConnectUrl,
+    onSuccess: (data) => {
+      const url = data?.url;
+      if (!url) {
+        if (typeof WebApp?.showAlert === 'function') {
+          WebApp.showAlert('Не удалось создать ссылку подключения');
+        }
+        return;
+      }
+      if (typeof WebApp?.openLink === 'function') {
+        WebApp.openLink(url);
+      } else if (typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    },
+  });
+
+  const disconnectGcMutation = useMutation({
+    mutationFn: disconnectMasterGoogleCalendar,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-google-calendar'] });
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert('Google Calendar отключён');
+      }
+    },
+  });
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        qc.invalidateQueries({ queryKey: ['master-google-calendar'] });
+        qc.invalidateQueries({ queryKey: ['master-me'] });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [qc]);
 
   const handleCopyInvite = () => {
     const link = inviteData?.invite_link;
@@ -158,6 +222,44 @@ export default function More({ onNavigate }) {
       WebApp.openTelegramLink('https://t.me/crmfit_support');
     }
   };
+
+  const handleGoogleCalendar = () => {
+    const isConnected = Boolean(gcData?.connected);
+
+    if (!isConnected) {
+      connectGcMutation.mutate();
+      return;
+    }
+
+    if (typeof WebApp?.showPopup === 'function') {
+      WebApp.showPopup(
+        {
+          title: 'Отключить Google Calendar?',
+          message: 'Новые заказы перестанут автоматически добавляться в календарь.',
+          buttons: [
+            { id: 'disconnect', type: 'destructive', text: 'Отключить' },
+            { type: 'cancel' },
+          ],
+        },
+        (buttonId) => {
+          if (buttonId === 'disconnect') {
+            disconnectGcMutation.mutate();
+          }
+        }
+      );
+      return;
+    }
+
+    if (typeof window !== 'undefined' && window.confirm('Отключить Google Calendar?')) {
+      disconnectGcMutation.mutate();
+    }
+  };
+
+  const gcValue = gcLoading
+    ? '...'
+    : gcData?.connected
+      ? (gcData?.email || 'Подключён')
+      : 'Не подключён';
 
   return (
     <div className="enterprise-more-page">
@@ -183,6 +285,12 @@ export default function More({ onNavigate }) {
         <Cell icon={<UserIcon />} label="Профиль мастера" onClick={() => onNavigate('profile')} />
         <Cell icon={<GiftIcon />} label="Бонусная программа" onClick={() => onNavigate('bonus')} />
         <Cell icon={<ToolIcon />} label="Справочник услуг" onClick={() => onNavigate('services')} />
+        <Cell
+          icon={<CalendarIcon />}
+          label="Google Calendar"
+          value={gcValue}
+          onClick={handleGoogleCalendar}
+        />
       </div>
 
       <SectionTitle>Поддержка</SectionTitle>
