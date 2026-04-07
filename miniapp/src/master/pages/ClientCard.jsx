@@ -21,6 +21,11 @@ function hapticNotify(type = 'success') {
   }
 }
 
+function normalizePhoneForTel(phone) {
+  if (!phone) return '';
+  return String(phone).replace(/[^\d+]/g, '');
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -292,6 +297,38 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
     noteMutation.mutate(noteValue);
   };
 
+  const handleCopyPhone = async () => {
+    if (!client.phone) return;
+    haptic();
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(client.phone);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = client.phone;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert('Номер скопирован');
+      }
+      hapticNotify('success');
+    } catch {
+      hapticNotify('error');
+    }
+  };
+
+  const handleCallPhone = () => {
+    if (!client.phone) return;
+    haptic();
+    const tel = normalizePhoneForTel(client.phone);
+    if (!tel) return;
+    // In Telegram WebView this can be blocked on some clients, so keep copy action nearby.
+    window.location.href = `tel:${tel}`;
+  };
+
   return (
     <div style={{ paddingBottom: 80 }}>
       {/* Success toast */}
@@ -350,13 +387,15 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
                 {client.name || '—'}
               </div>
               {client.phone && (
-                <a
-                  href={`tel:${client.phone}`}
-                  style={{ fontSize: 15, color: 'var(--tg-accent)', textDecoration: 'none', marginTop: 4, display: 'block' }}
-                  onClick={() => haptic()}
-                >
-                  {client.phone}
-                </a>
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 15, color: 'var(--tg-accent)' }}>
+                    {client.phone}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <button onClick={handleCallPhone} style={btnSmallAction}>Позвонить</button>
+                    <button onClick={handleCopyPhone} style={btnSmallAction}>Копировать</button>
+                  </div>
+                </div>
               )}
               {client.birthday && (
                 <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>
@@ -649,5 +688,15 @@ const btnSecondary = {
   background: 'none',
   color: 'var(--tg-text)',
   fontSize: 14,
+  cursor: 'pointer',
+};
+
+const btnSmallAction = {
+  padding: '6px 10px',
+  borderRadius: 8,
+  border: '1px solid var(--tg-secondary-bg)',
+  background: 'var(--tg-secondary-bg)',
+  color: 'var(--tg-text)',
+  fontSize: 12,
   cursor: 'pointer',
 };

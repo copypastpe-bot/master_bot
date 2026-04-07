@@ -349,9 +349,11 @@ function RequestCard({ req, onClose, onNavigate }) {
     }
   };
 
-  const phoneHref = req.client_phone
-    ? `tel:${String(req.client_phone).replace(/[^\d+]/g, '')}`
-    : null;
+  const handleOpenClient = () => {
+    haptic();
+    if (!req.client_id) return;
+    onNavigate('client', { id: req.client_id });
+  };
 
   const handleCreateOrder = () => {
     haptic();
@@ -387,14 +389,10 @@ function RequestCard({ req, onClose, onNavigate }) {
       <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 2 }}>
         {req.client_name}
       </div>
-      {req.client_phone && phoneHref && (
-        <a
-          href={phoneHref}
-          onClick={() => haptic()}
-          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, cursor: 'pointer', display: 'block', textDecoration: 'none' }}
-        >
+      {req.client_phone && (
+        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
           📞 {req.client_phone}
-        </a>
+        </div>
       )}
       {req.service_name && (
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
@@ -436,10 +434,13 @@ function RequestCard({ req, onClose, onNavigate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
         <div style={{ display: 'flex', gap: 8 }}>
           <ActionBtn onClick={handleContact} accent>💬 Написать</ActionBtn>
-          {req.type === 'order_request' && !isClosed && (
-            <ActionBtn onClick={handleCreateOrder}>📋 Создать заказ</ActionBtn>
+          {req.client_id && (
+            <ActionBtn onClick={handleOpenClient}>👤 Клиент</ActionBtn>
           )}
         </div>
+        {req.type === 'order_request' && !isClosed && (
+          <ActionBtn onClick={handleCreateOrder}>📋 Создать заказ</ActionBtn>
+        )}
         {!isClosed && (
           <ActionBtn onClick={() => { haptic(); onClose(req.id); }}>
             ✅ Закрыть заявку
