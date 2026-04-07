@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMasterRequests, closeMasterRequest } from '../../api/client';
+import { getMasterRequests, closeMasterRequest, getMasterRequestMediaUrl } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -95,7 +95,37 @@ function ActionBtn({ children, onClick, accent, small }) {
   );
 }
 
+function MediaPreview({ reqId, mediaType }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['request-media', reqId],
+    queryFn: () => getMasterRequestMediaUrl(reqId),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+
+  if (isLoading) return (
+    <div style={{ height: 120, background: 'var(--tg-secondary-bg)', borderRadius: 8, marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ color: 'var(--tg-hint)', fontSize: 13 }}>Загрузка...</span>
+    </div>
+  );
+  if (!data?.url) return null;
+
+  if (mediaType === 'photo') {
+    return (
+      <a href={data.url} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8 }}>
+        <img src={data.url} alt="фото" style={{ width: '100%', borderRadius: 8, maxHeight: 200, objectFit: 'cover' }} />
+      </a>
+    );
+  }
+  return (
+    <a href={data.url} target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 8, padding: '10px 12px', background: 'var(--tg-secondary-bg)', borderRadius: 8, color: 'var(--tg-accent)', fontSize: 13, textDecoration: 'none' }}>
+      🎥 Скачать видео
+    </a>
+  );
+}
+
 function RequestCard({ req, onClose, onNavigate }) {
+  const [showMedia, setShowMedia] = useState(false);
   const isClosed = req.status === 'closed';
   const typeInfo = REQUEST_TYPES[req.type] || { emoji: '📩', title: 'Заявка' };
 
@@ -104,6 +134,14 @@ function RequestCard({ req, onClose, onNavigate }) {
     if (req.client_tg_id) {
       window.open(`tg://user?id=${req.client_tg_id}`);
     }
+  };
+
+  const handlePhone = () => {
+    haptic();
+    if (typeof WebApp?.openLink === 'function') {
+      try { WebApp.openLink(`tel:${req.client_phone}`); return; } catch {}
+    }
+    window.location.href = `tel:${req.client_phone}`;
   };
 
   const handleCreateOrder = () => {
@@ -141,13 +179,12 @@ function RequestCard({ req, onClose, onNavigate }) {
         {req.client_name}
       </div>
       {req.client_phone && (
-        <a
-          href={`tel:${req.client_phone}`}
-          onClick={() => haptic()}
-          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, display: 'block', textDecoration: 'none' }}
+        <div
+          onClick={handlePhone}
+          style={{ fontSize: 13, color: 'var(--tg-accent)', marginBottom: 4, cursor: 'pointer' }}
         >
           📞 {req.client_phone}
-        </a>
+        </div>
       )}
       {req.service_name && (
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>
@@ -174,8 +211,14 @@ function RequestCard({ req, onClose, onNavigate }) {
         </div>
       )}
       {req.file_id && (
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>
-          {req.media_type === 'photo' ? '🖼 Фото' : '🎥 Видео'} · отправлено в бот
+        <div>
+          <div
+            onClick={() => { haptic(); setShowMedia(v => !v); }}
+            style={{ fontSize: 13, color: 'var(--tg-accent)', marginTop: 4, cursor: 'pointer' }}
+          >
+            {req.media_type === 'photo' ? '🖼 Фото' : '🎥 Видео'} {showMedia ? '▲' : '▼'}
+          </div>
+          {showMedia && <MediaPreview reqId={req.id} mediaType={req.media_type} />}
         </div>
       )}
 

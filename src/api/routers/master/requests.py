@@ -17,6 +17,13 @@ from src.models import Master
 
 router = APIRouter(tags=["master"])
 
+_master_bot = None
+
+
+def set_master_bot(bot) -> None:
+    global _master_bot
+    _master_bot = bot
+
 
 def _normalize_status_filter(status: Optional[str]) -> Optional[str]:
     """Normalize optional status query value."""
@@ -86,6 +93,27 @@ async def close_request(
     if not closed:
         raise HTTPException(status_code=404, detail="Not found")
     return {"ok": True}
+
+
+@router.get("/master/requests/{request_id}/media-url")
+async def get_request_media_url(
+    request_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Return Telegram file URL for a request's attached media."""
+    req = await get_inbound_request_by_id(request_id, master.id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Not found")
+    file_id = req.get("file_id")
+    if not file_id or not _master_bot:
+        raise HTTPException(status_code=404, detail="No media")
+    try:
+        file_info = await _master_bot.get_file(file_id)
+        from src.config import MASTER_BOT_TOKEN
+        url = f"https://api.telegram.org/file/bot{MASTER_BOT_TOKEN}/{file_info.file_path}"
+        return {"url": url}
+    except Exception:
+        raise HTTPException(status_code=404, detail="Media unavailable")
 
 
 @router.put("/master/requests/read-all")
