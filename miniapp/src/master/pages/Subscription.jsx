@@ -10,9 +10,9 @@ import { Skeleton } from '../../components/Skeleton';
 const WebApp = window.Telegram?.WebApp;
 
 const PLANS = [
-  { payload: 'plan_month', stars: 500, days: 30, label: '1 месяц' },
-  { payload: 'plan_quarter', stars: 1300, days: 90, label: '3 месяца', popular: true, discount: 'Выгода 13%' },
-  { payload: 'plan_year', stars: 4500, days: 365, label: '1 год', discount: 'Выгода 25%' },
+  { payload: 'plan_month', stars: 200, days: 30, label: '1 месяц' },
+  { payload: 'plan_quarter', stars: 500, days: 90, label: '3 месяца', popular: true, discount: 'Выгода 17%' },
+  { payload: 'plan_year', stars: 1700, days: 365, label: '1 год', discount: 'Выгода 29%' },
 ];
 
 function haptic() {
