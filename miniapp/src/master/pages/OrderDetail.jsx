@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterOrder,
@@ -6,7 +6,6 @@ import {
   moveMasterOrder,
   cancelMasterOrder,
 } from '../../api/client';
-import { useBackButton } from '../hooks/useBackButton';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -366,9 +365,6 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
   const [sheet, setSheet] = useState(null); // 'complete' | 'move' | null
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [actionError, setActionError] = useState('');
-
-  const stableOnBack = useCallback(() => onBack(), [onBack]);
-  useBackButton(stableOnBack);
 
   const { data: order, isLoading, error } = useQuery({
     queryKey: ['master-order', orderId],
