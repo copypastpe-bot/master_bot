@@ -19,6 +19,7 @@ import PromoCreate from './pages/PromoCreate';
 import PromoCard from './pages/PromoCard';
 import Reports from './pages/Reports';
 import Requests from './pages/Requests';
+import Subscription from './pages/Subscription';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -38,6 +39,7 @@ const SCREEN_TITLES = {
   promo_new: 'Новая акция',
   promo: 'Акция',
   reports: 'Аналитика',
+  subscription: 'Подписка',
 };
 
 export default function MasterApp() {
@@ -257,6 +259,15 @@ export default function MasterApp() {
       return (
         <div className="master-shell">
           <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />
+        </div>
+      );
+    }
+
+    if (type === 'subscription') {
+      return (
+        <div className="master-shell">
+          <PageHeader title="Подписка" onBack={handleBack} />
+          <Subscription />
         </div>
       );
     }

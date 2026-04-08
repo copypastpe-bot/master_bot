@@ -1,7 +1,7 @@
 """FastAPI dependencies for Mini App API."""
 
 from typing import Optional, Tuple
-from fastapi import Header, HTTPException, Query
+from fastapi import Header, HTTPException, Query, Request
 
 from src.database import (
     get_client_by_tg_id,
@@ -11,10 +11,61 @@ from src.database import (
     get_masters,
     get_master_client,
     get_all_client_masters_by_tg_id,
+    activate_trial,
+    get_subscription_brief,
 )
 from src.api.auth import validate_init_data, extract_tg_id
 from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, APP_ENV
 from src.models import Client, Master, MasterClient
+
+
+class SubscriptionRequiredError(Exception):
+    """Raised when request requires active subscription."""
+
+    def __init__(self, payload: dict):
+        super().__init__("subscription_required")
+        self.payload = payload
+
+
+def _is_blocked_write_without_subscription(request: Request) -> bool:
+    """Return True for endpoints that should be blocked when subscription expired."""
+    method = request.method.upper()
+    path = request.url.path
+
+    if method == "POST" and path == "/api/master/orders":
+        return True
+    if method == "POST" and path == "/api/master/clients":
+        return True
+    if method in {"POST", "PUT", "PATCH", "DELETE"} and path.startswith("/api/master/broadcast/"):
+        return True
+    if method == "POST" and path == "/api/master/promos":
+        return True
+    if method in {"PUT", "PATCH", "DELETE"} and path.startswith("/api/master/promos/"):
+        return True
+    return False
+
+
+async def _guard_master_subscription(master: Master, request: Request) -> None:
+    """Auto-activate trial and guard selected write endpoints when expired."""
+    if not request.url.path.startswith("/api/master/"):
+        return
+
+    if master.subscription_until is None and not master.trial_used:
+        await activate_trial(master.id)
+
+    status = await get_subscription_brief(master.id)
+    if status["is_active"]:
+        return
+
+    if not _is_blocked_write_without_subscription(request):
+        return
+
+    subscription_until = status["subscription_until"]
+    raise SubscriptionRequiredError({
+        "error": "subscription_required",
+        "subscription_until": subscription_until.isoformat() if subscription_until else None,
+        "days_left": status["days_left"],
+    })
 
 
 async def _get_dev_client() -> Tuple[Client, Master, MasterClient]:
@@ -103,6 +154,7 @@ async def get_current_client(
 
 
 async def get_current_master(
+    request: Request,
     x_init_data: Optional[str] = Header(None, alias="X-Init-Data")
 ) -> Master:
     """
@@ -118,7 +170,9 @@ async def get_current_master(
         masters = await get_masters()
         if not masters:
             raise HTTPException(status_code=404, detail="No masters in DB for dev mode")
-        return masters[0]
+        master = masters[0]
+        await _guard_master_subscription(master, request)
+        return master
 
     validated = validate_init_data(x_init_data, MASTER_BOT_TOKEN)
     if not validated:
@@ -132,4 +186,5 @@ async def get_current_master(
     if not master:
         raise HTTPException(status_code=403, detail="Not a master")
 
+    await _guard_master_subscription(master, request)
     return master

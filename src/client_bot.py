@@ -2220,7 +2220,7 @@ async def main() -> None:
 
     # Setup scheduler
     from src.scheduler import setup_scheduler, start_scheduler
-    setup_scheduler(bot)
+    setup_scheduler(bot, master_bot=master_bot)
     start_scheduler()
     logger.info("Scheduler started")
 

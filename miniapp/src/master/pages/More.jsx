@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  getMasterMe,
   getMasterInvite,
+  getMasterSubscription,
   getMasterGoogleCalendar,
   getMasterGoogleCalendarConnectUrl,
   disconnectMasterGoogleCalendar,
+  trackMasterReferralLinkCopied,
 } from '../../api/client';
+import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -112,7 +114,7 @@ function SectionTitle({ children }) {
   );
 }
 
-function Cell({ icon, label, value, onClick }) {
+function Cell({ icon, label, value, onClick, hideChevron = false }) {
   const className = `enterprise-cell${onClick ? ' is-interactive' : ''}`;
   const content = (
     <>
@@ -121,7 +123,7 @@ function Cell({ icon, label, value, onClick }) {
       )}
       <span className="enterprise-cell-label">{label}</span>
       {value && <span className="enterprise-cell-value">{value}</span>}
-      {onClick && <span className="enterprise-cell-chevron"><ChevronIcon /></span>}
+      {onClick && !hideChevron && <span className="enterprise-cell-chevron"><ChevronIcon /></span>}
     </>
   );
 
@@ -145,12 +147,7 @@ function Cell({ icon, label, value, onClick }) {
 
 export default function More({ onNavigate }) {
   const qc = useQueryClient();
-
-  const { data: master } = useQuery({
-    queryKey: ['master-me'],
-    queryFn: getMasterMe,
-    staleTime: 60_000,
-  });
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const { data: inviteData, isLoading: inviteLoading } = useQuery({
     queryKey: ['master-invite'],
@@ -162,6 +159,11 @@ export default function More({ onNavigate }) {
     queryKey: ['master-google-calendar'],
     queryFn: getMasterGoogleCalendar,
     staleTime: 15_000,
+  });
+  const { data: subscription } = useQuery({
+    queryKey: ['master-subscription'],
+    queryFn: getMasterSubscription,
+    staleTime: 20_000,
   });
 
   const connectGcMutation = useMutation({
@@ -260,9 +262,66 @@ export default function More({ onNavigate }) {
     : gcData?.connected
       ? (gcData?.email || 'Подключён')
       : 'Не подключён';
+  const isSubscriptionActive = subscription?.is_active ?? true;
+  const subscriptionUntil = subscription?.subscription_until;
+  const subscriptionDays = subscription?.days_left ?? 0;
+
+  const handleOpenSubscription = () => {
+    haptic();
+    onNavigate('subscription');
+  };
+
+  const handleLockedTap = () => {
+    setPaywallOpen(true);
+  };
+
+  const handlePaywallPay = () => {
+    setPaywallOpen(false);
+    onNavigate('subscription');
+  };
+
+  const handlePaywallInvite = async () => {
+    const link = subscription?.referral_link;
+    if (!link) {
+      setPaywallOpen(false);
+      onNavigate('subscription');
+      return;
+    }
+    try {
+      if (typeof navigator?.clipboard?.writeText === 'function') {
+        await navigator.clipboard.writeText(link);
+      }
+    } catch (_) {
+      // non-critical
+    }
+    trackMasterReferralLinkCopied('more-paywall').catch(() => {});
+    if (typeof WebApp?.showAlert === 'function') {
+      WebApp.showAlert('Ссылка скопирована');
+    }
+    setPaywallOpen(false);
+  };
 
   return (
     <div className="enterprise-more-page">
+      <button
+        onClick={handleOpenSubscription}
+        className="enterprise-subscription-card"
+      >
+        <div>
+          <div className="enterprise-subscription-card-title">
+            Подписка
+          </div>
+          <div className={`enterprise-subscription-card-subtitle${isSubscriptionActive ? '' : ' is-expired'}`}>
+            {isSubscriptionActive
+              ? `до ${subscriptionUntil ? new Date(subscriptionUntil).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '—'} · осталось ${subscriptionDays} дн`
+              : 'Подписка истекла'}
+          </div>
+        </div>
+        <span className={`enterprise-subscription-card-star${isSubscriptionActive ? '' : ' is-expired'}`}>
+          ★
+        </span>
+      </button>
+
       <SectionTitle>Клиенты</SectionTitle>
       <div className="enterprise-cell-group">
         <Cell icon={<UsersIcon />} label="Список клиентов" onClick={() => onNavigate('clients')} />
@@ -276,8 +335,20 @@ export default function More({ onNavigate }) {
 
       <SectionTitle>Маркетинг</SectionTitle>
       <div className="enterprise-cell-group">
-        <Cell icon={<SendIcon />} label="Рассылки" onClick={() => onNavigate('broadcast')} />
-        <Cell icon={<MegaphoneIcon />} label="Акции" onClick={() => onNavigate('promos')} />
+        <Cell
+          icon={<SendIcon />}
+          label="Рассылки"
+          value={isSubscriptionActive ? undefined : '🔒'}
+          hideChevron={!isSubscriptionActive}
+          onClick={isSubscriptionActive ? () => onNavigate('broadcast') : handleLockedTap}
+        />
+        <Cell
+          icon={<MegaphoneIcon />}
+          label="Акции"
+          value={isSubscriptionActive ? undefined : '🔒'}
+          hideChevron={!isSubscriptionActive}
+          onClick={isSubscriptionActive ? () => onNavigate('promos') : handleLockedTap}
+        />
       </div>
 
       <SectionTitle>Настройки</SectionTitle>
@@ -303,6 +374,13 @@ export default function More({ onNavigate }) {
         <Cell label="Версия" value="2.0.0" />
         <Cell label="crmfit.ru" />
       </div>
+
+      <SubscriptionPaywallSheet
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onPay={handlePaywallPay}
+        onInvite={handlePaywallInvite}
+      />
     </div>
   );
 }

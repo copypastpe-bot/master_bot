@@ -73,10 +73,22 @@ function RoleSkeleton() {
   );
 }
 
+function extractReferralCode(startParamRaw) {
+  const startParam = (startParamRaw || '').trim();
+  if (!startParam) return null;
+
+  if (startParam.startsWith('ref_')) return startParam.slice(4).toUpperCase();
+  if (startParam.startsWith('referral_')) return startParam.slice(9).toUpperCase();
+  if (startParam.startsWith('REF_')) return startParam.toUpperCase();
+
+  return null;
+}
+
 export default function App() {
   const [role, setRole] = useState(null); // null = loading
   const [masters, setMasters] = useState(null); // null = not yet loaded
   const [activeMasterId, setActiveMasterIdState] = useState(null);
+  const referralCode = extractReferralCode(WebApp?.initDataUnsafe?.start_param);
 
   useEffect(() => {
     getAuthRole()
@@ -168,5 +180,5 @@ export default function App() {
     );
   }
 
-  return <MasterOnboarding onRegistered={() => setRole('master')} />;
+  return <MasterOnboarding referralCode={referralCode} onRegistered={() => setRole('master')} />;
 }

@@ -174,6 +174,48 @@ body.typeui-enterprise-body .enterprise-more-page {
   padding-bottom: 96px;
 }
 
+body.typeui-enterprise-body .enterprise-subscription-card {
+  width: calc(100% - 24px);
+  margin: 14px 12px 0;
+  border: 1px solid #9ec3f2;
+  background: #e9f1ff;
+  border-radius: 16px;
+  padding: 14px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+body.typeui-enterprise-body .enterprise-subscription-card-title {
+  color: #2b65b9;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+body.typeui-enterprise-body .enterprise-subscription-card-subtitle {
+  color: #2f74d2;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+body.typeui-enterprise-body .enterprise-subscription-card-subtitle.is-expired {
+  color: #bf4c4c;
+}
+
+body.typeui-enterprise-body .enterprise-subscription-card-star {
+  color: #2f74d2;
+  font-size: 30px;
+  line-height: 1;
+}
+
+body.typeui-enterprise-body .enterprise-subscription-card-star.is-expired {
+  color: #555555;
+}
+
 body.typeui-enterprise-body .enterprise-section-title {
   padding: 22px 16px 8px;
   color: var(--tg-hint);

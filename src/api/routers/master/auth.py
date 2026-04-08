@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from src.api.auth import validate_init_data, extract_tg_id
 from src.config import MASTER_BOT_TOKEN, MASTER_BOT_USERNAME
-from src.database import get_master_by_tg_id, create_master
+from src.database import get_master_by_tg_id, create_master, activate_referral, get_subscription_status
 from src.utils import generate_invite_token
 
 router = APIRouter(tags=["master-auth"])
@@ -17,6 +17,7 @@ class RegisterMasterRequest(BaseModel):
     sphere: Optional[str] = None
     contacts: Optional[str] = None
     work_hours: Optional[str] = None
+    referral_code: Optional[str] = None
 
 
 @router.post("/master/register")
@@ -56,6 +57,8 @@ async def register_master(
         contacts=body.contacts or None,
         work_hours=body.work_hours or None,
     )
+    await activate_referral(master.id, body.referral_code)
+    subscription = await get_subscription_status(master.id)
 
     invite_link = f"https://t.me/{MASTER_BOT_USERNAME}?start={invite_token}"
 
@@ -64,5 +67,6 @@ async def register_master(
         "name": master.name,
         "invite_token": invite_token,
         "invite_link": invite_link,
+        "referral_code": subscription["referral_code"],
         "role": "master",
     }

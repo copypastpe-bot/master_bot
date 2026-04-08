@@ -2,6 +2,8 @@
 
 import calendar
 import logging
+import random
+import string
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Optional
@@ -10,7 +12,13 @@ import aiosqlite
 from dateutil.relativedelta import relativedelta
 
 from src.models import Master, Client, MasterClient, Service, Order, BonusLog, Campaign
-from src.config import DATABASE_URL
+from src.config import (
+    DATABASE_URL,
+    SUBSCRIPTION_PLANS,
+    TRIAL_DAYS,
+    REFERRAL_BONUS_DAYS,
+    REFERRAL_EXTRA_DAYS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +37,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "bonus_welcome", "timezone", "welcome_message", "welcome_photo_id",
     "birthday_message", "birthday_photo_id", "home_message_id", "currency",
     "onboarding_skipped_first_client", "onboarding_banner_shown",
+    "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -61,6 +70,32 @@ def _validate_fields(fields: set, allowed: frozenset, table: str) -> None:
     invalid = fields - allowed
     if invalid:
         raise ValueError(f"Invalid fields for {table}: {invalid}")
+
+
+def _utcnow() -> datetime:
+    """Return naive UTC datetime for consistent DB timestamps."""
+    return datetime.utcnow().replace(microsecond=0)
+
+
+def _parse_db_datetime(value: Optional[str | datetime]) -> Optional[datetime]:
+    """Parse DB timestamp value into datetime."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    text = str(value).strip()
+    if not text:
+        return None
+    # SQLite CURRENT_TIMESTAMP uses "YYYY-MM-DD HH:MM:SS"
+    try:
+        return datetime.fromisoformat(text.replace(" ", "T"))
+    except ValueError:
+        return None
+
+
+def _to_db_datetime(value: datetime) -> str:
+    """Format datetime for SQLite text timestamp column."""
+    return value.strftime("%Y-%m-%d %H:%M:%S")
 
 
 async def get_connection() -> aiosqlite.Connection:
@@ -115,7 +150,12 @@ def _parse_master_row(row) -> Master:
         home_message_id=row["home_message_id"] if "home_message_id" in row.keys() else None,
         onboarding_skipped_first_client=bool(row["onboarding_skipped_first_client"]) if "onboarding_skipped_first_client" in row.keys() else False,
         onboarding_banner_shown=bool(row["onboarding_banner_shown"]) if "onboarding_banner_shown" in row.keys() else False,
-        created_at=row["created_at"],
+        subscription_until=_parse_db_datetime(row["subscription_until"]) if "subscription_until" in row.keys() else None,
+        trial_used=bool(row["trial_used"]) if "trial_used" in row.keys() else False,
+        referral_code=row["referral_code"] if "referral_code" in row.keys() else None,
+        referred_by=row["referred_by"] if "referred_by" in row.keys() else None,
+        reminder_sent_at=_parse_db_datetime(row["reminder_sent_at"]) if "reminder_sent_at" in row.keys() else None,
+        created_at=_parse_db_datetime(row["created_at"]),
     )
 
 
@@ -191,6 +231,22 @@ async def get_master_by_invite_token(invite_token: str) -> Optional[Master]:
         await conn.close()
 
 
+async def get_master_by_referral_code(referral_code: str) -> Optional[Master]:
+    """Get master by referral code."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM masters WHERE referral_code = ?",
+            (referral_code,)
+        )
+        row = await cursor.fetchone()
+        if row:
+            return _parse_master_row(row)
+        return None
+    finally:
+        await conn.close()
+
+
 async def get_masters() -> list[Master]:
     """Get all masters (used for dev bypass)."""
     conn = await get_connection()
@@ -205,6 +261,50 @@ async def get_masters() -> list[Master]:
         await conn.close()
 
 
+def generate_referral_code() -> str:
+    """Generate referral code like REF_A1B2C."""
+    chars = string.ascii_uppercase + string.digits
+    return "REF_" + "".join(random.choices(chars, k=5))
+
+
+async def _generate_unique_referral_code(conn: aiosqlite.Connection) -> str:
+    """Generate unique referral code inside open DB connection."""
+    while True:
+        code = generate_referral_code()
+        cursor = await conn.execute(
+            "SELECT 1 FROM masters WHERE referral_code = ? LIMIT 1",
+            (code,),
+        )
+        exists = await cursor.fetchone()
+        if not exists:
+            return code
+
+
+async def ensure_master_referral_code(master_id: int) -> str:
+    """Ensure master has referral_code; generate if missing."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT referral_code FROM masters WHERE id = ?",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError(f"Master {master_id} not found")
+        existing = row["referral_code"]
+        if existing:
+            return existing
+        code = await _generate_unique_referral_code(conn)
+        await conn.execute(
+            "UPDATE masters SET referral_code = ? WHERE id = ?",
+            (code, master_id),
+        )
+        await conn.commit()
+        return code
+    finally:
+        await conn.close()
+
+
 async def create_master(
     tg_id: int,
     name: str,
@@ -215,16 +315,19 @@ async def create_master(
     work_hours: Optional[str] = None,
     timezone: str = "Europe/Moscow",
     currency: str = "RUB",
+    referral_code: Optional[str] = None,
+    referred_by: Optional[int] = None,
 ) -> Master:
     """Create a new master."""
     conn = await get_connection()
     try:
+        code = referral_code or await _generate_unique_referral_code(conn)
         cursor = await conn.execute(
             """
-            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency, referral_code, referred_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency)
+            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency, code, referred_by)
         )
         await conn.commit()
         master_id = cursor.lastrowid
@@ -240,6 +343,8 @@ async def create_master(
             work_hours=work_hours,
             timezone=timezone,
             currency=currency,
+            referral_code=code,
+            referred_by=referred_by,
         )
     finally:
         await conn.close()
@@ -270,6 +375,468 @@ async def update_master(master_id: int, **kwargs) -> None:
 async def save_master_home_message_id(master_id: int, message_id: int) -> None:
     """Save master's home message ID."""
     await update_master(master_id, home_message_id=message_id)
+
+
+# =============================================================================
+# Subscriptions & Referrals
+# =============================================================================
+
+def _days_left(now: datetime, subscription_until: Optional[datetime]) -> int:
+    """Return number of days left (ceil), or 0 if inactive."""
+    if subscription_until is None or subscription_until <= now:
+        return 0
+    delta = subscription_until - now
+    return max(1, int((delta.total_seconds() + 86399) // 86400))
+
+
+def _extend_subscription(current_until: Optional[datetime], days: int, now: Optional[datetime] = None) -> datetime:
+    """Add days to active subscription or start from now if expired/empty."""
+    now_dt = now or _utcnow()
+    base = current_until if (current_until is not None and current_until > now_dt) else now_dt
+    return base + timedelta(days=days)
+
+
+async def activate_trial(master_id: int) -> Optional[datetime]:
+    """Activate trial once for master. Returns resulting subscription_until."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT trial_used, subscription_until FROM masters WHERE id = ?",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+
+        if bool(row["trial_used"]):
+            return _parse_db_datetime(row["subscription_until"])
+
+        now = _utcnow()
+        subscription_until = now + timedelta(days=TRIAL_DAYS)
+        await conn.execute(
+            """
+            UPDATE masters
+            SET subscription_until = ?, trial_used = 1
+            WHERE id = ?
+            """,
+            (_to_db_datetime(subscription_until), master_id),
+        )
+        await conn.commit()
+        return subscription_until
+    finally:
+        await conn.close()
+
+
+async def activate_referral(new_master_id: int, referral_code: Optional[str]) -> Optional[datetime]:
+    """Apply referral signup bonus or fallback to trial."""
+    code = (referral_code or "").strip().upper()
+    if not code:
+        return await activate_trial(new_master_id)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, subscription_until, trial_used
+            FROM masters
+            WHERE id = ?
+            """,
+            (new_master_id,),
+        )
+        new_master_row = await cursor.fetchone()
+        if not new_master_row:
+            return None
+
+        if bool(new_master_row["trial_used"]):
+            return _parse_db_datetime(new_master_row["subscription_until"])
+
+        ref_cur = await conn.execute(
+            """
+            SELECT id, subscription_until
+            FROM masters
+            WHERE referral_code = ?
+            LIMIT 1
+            """,
+            (code,),
+        )
+        referrer_row = await ref_cur.fetchone()
+        if not referrer_row or referrer_row["id"] == new_master_id:
+            # Invalid code or self-referral -> standard trial
+            now = _utcnow()
+            trial_until = now + timedelta(days=TRIAL_DAYS)
+            await conn.execute(
+                """
+                UPDATE masters
+                SET subscription_until = ?, trial_used = 1
+                WHERE id = ?
+                """,
+                (_to_db_datetime(trial_until), new_master_id),
+            )
+            await conn.commit()
+            return trial_until
+
+        now = _utcnow()
+        referee_until = now + timedelta(days=REFERRAL_BONUS_DAYS)
+        referrer_current = _parse_db_datetime(referrer_row["subscription_until"])
+        referrer_until = _extend_subscription(referrer_current, REFERRAL_BONUS_DAYS, now=now)
+
+        # Idempotency: unique(referrer_id, referee_id) protects double insert.
+        await conn.execute(
+            """
+            INSERT OR IGNORE INTO referral_bonuses (referrer_id, referee_id, bonus_on_signup, bonus_on_payment)
+            VALUES (?, ?, 1, 0)
+            """,
+            (referrer_row["id"], new_master_id),
+        )
+        await conn.execute(
+            """
+            UPDATE masters
+            SET subscription_until = ?, trial_used = 1, referred_by = ?
+            WHERE id = ?
+            """,
+            (_to_db_datetime(referee_until), referrer_row["id"], new_master_id),
+        )
+        await conn.execute(
+            """
+            UPDATE masters
+            SET subscription_until = ?
+            WHERE id = ?
+            """,
+            (_to_db_datetime(referrer_until), referrer_row["id"]),
+        )
+        await conn.commit()
+        return referee_until
+    finally:
+        await conn.close()
+
+
+async def apply_payment(
+    master_id: int,
+    telegram_charge_id: str,
+    payload: str,
+    stars_amount: int,
+) -> dict:
+    """
+    Apply Stars payment idempotently.
+    Returns dict with subscription_until and days_added.
+    """
+    if payload not in SUBSCRIPTION_PLANS:
+        raise ValueError("Unknown subscription plan")
+    charge_id = (telegram_charge_id or "").strip()
+    if not charge_id:
+        raise ValueError("telegram_charge_id is required")
+
+    plan = SUBSCRIPTION_PLANS[payload]
+    days_added = int(plan["days"])
+    conn = await get_connection()
+    try:
+        duplicate_cur = await conn.execute(
+            """
+            SELECT id, subscription_until
+            FROM star_payments
+            WHERE telegram_charge_id = ?
+            LIMIT 1
+            """,
+            (charge_id,),
+        )
+        duplicate = await duplicate_cur.fetchone()
+        if duplicate:
+            status = await get_subscription_status(master_id)
+            return {
+                "subscription_until": status["subscription_until"],
+                "days_added": 0,
+                "duplicate": True,
+            }
+
+        master_cur = await conn.execute(
+            "SELECT subscription_until FROM masters WHERE id = ?",
+            (master_id,),
+        )
+        master_row = await master_cur.fetchone()
+        if not master_row:
+            raise ValueError("Master not found")
+
+        now = _utcnow()
+        current_until = _parse_db_datetime(master_row["subscription_until"])
+        new_until = _extend_subscription(current_until, days_added, now=now)
+
+        await conn.execute(
+            """
+            INSERT INTO star_payments (master_id, telegram_charge_id, payload, stars_amount, days_added, subscription_until)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (master_id, charge_id, payload, stars_amount, days_added, _to_db_datetime(new_until)),
+        )
+        await conn.execute(
+            "UPDATE masters SET subscription_until = ? WHERE id = ?",
+            (_to_db_datetime(new_until), master_id),
+        )
+
+        # Referral payment bonus for referrer: only once per referee.
+        bonus_cur = await conn.execute(
+            """
+            SELECT id, referrer_id
+            FROM referral_bonuses
+            WHERE referee_id = ? AND bonus_on_payment = 0
+            LIMIT 1
+            """,
+            (master_id,),
+        )
+        pending_bonus = await bonus_cur.fetchone()
+        if pending_bonus:
+            ref_master_cur = await conn.execute(
+                "SELECT subscription_until FROM masters WHERE id = ?",
+                (pending_bonus["referrer_id"],),
+            )
+            ref_master_row = await ref_master_cur.fetchone()
+            ref_current_until = _parse_db_datetime(ref_master_row["subscription_until"]) if ref_master_row else None
+            ref_new_until = _extend_subscription(ref_current_until, REFERRAL_EXTRA_DAYS, now=now)
+            await conn.execute(
+                "UPDATE masters SET subscription_until = ? WHERE id = ?",
+                (_to_db_datetime(ref_new_until), pending_bonus["referrer_id"]),
+            )
+            await conn.execute(
+                "UPDATE referral_bonuses SET bonus_on_payment = 1 WHERE id = ?",
+                (pending_bonus["id"],),
+            )
+
+        await conn.commit()
+        return {
+            "subscription_until": new_until,
+            "days_added": days_added,
+            "duplicate": False,
+        }
+    finally:
+        await conn.close()
+
+
+async def get_payment_history(master_id: int, limit: int = 10) -> list[dict]:
+    """Unified payment history: Stars payments + referral bonuses."""
+    conn = await get_connection()
+    try:
+        items: list[dict] = []
+
+        pay_cur = await conn.execute(
+            """
+            SELECT payload, stars_amount, days_added, subscription_until, created_at
+            FROM star_payments
+            WHERE master_id = ?
+            ORDER BY created_at DESC
+            LIMIT 100
+            """,
+            (master_id,),
+        )
+        pay_rows = await pay_cur.fetchall()
+        for row in pay_rows:
+            payload = row["payload"]
+            plan = SUBSCRIPTION_PLANS.get(payload, {})
+            items.append({
+                "type": "payment",
+                "payload": payload,
+                "plan_label": plan.get("label") or payload,
+                "stars_amount": row["stars_amount"] or 0,
+                "days_added": row["days_added"] or 0,
+                "subscription_until": _parse_db_datetime(row["subscription_until"]),
+                "created_at": _parse_db_datetime(row["created_at"]),
+            })
+
+        # Signup bonus for referrer.
+        signup_ref_cur = await conn.execute(
+            """
+            SELECT rb.created_at, m.name AS counterpart_name
+            FROM referral_bonuses rb
+            JOIN masters m ON m.id = rb.referee_id
+            WHERE rb.referrer_id = ? AND rb.bonus_on_signup = 1
+            ORDER BY rb.created_at DESC
+            LIMIT 100
+            """,
+            (master_id,),
+        )
+        signup_ref_rows = await signup_ref_cur.fetchall()
+        for row in signup_ref_rows:
+            items.append({
+                "type": "referral_signup",
+                "payload": None,
+                "plan_label": "Реферал: регистрация друга",
+                "stars_amount": None,
+                "days_added": REFERRAL_BONUS_DAYS,
+                "counterpart_name": row["counterpart_name"],
+                "created_at": _parse_db_datetime(row["created_at"]),
+            })
+
+        # Signup bonus for referee (the current master was invited).
+        signup_referee_cur = await conn.execute(
+            """
+            SELECT rb.created_at, m.name AS counterpart_name
+            FROM referral_bonuses rb
+            JOIN masters m ON m.id = rb.referrer_id
+            WHERE rb.referee_id = ? AND rb.bonus_on_signup = 1
+            ORDER BY rb.created_at DESC
+            LIMIT 100
+            """,
+            (master_id,),
+        )
+        signup_referee_rows = await signup_referee_cur.fetchall()
+        for row in signup_referee_rows:
+            items.append({
+                "type": "referral_signup",
+                "payload": None,
+                "plan_label": "Реферал: бонус за приглашение",
+                "stars_amount": None,
+                "days_added": REFERRAL_BONUS_DAYS,
+                "counterpart_name": row["counterpart_name"],
+                "created_at": _parse_db_datetime(row["created_at"]),
+            })
+
+        # Extra payment bonus for referrer.
+        pay_bonus_cur = await conn.execute(
+            """
+            SELECT rb.created_at, m.name AS counterpart_name
+            FROM referral_bonuses rb
+            JOIN masters m ON m.id = rb.referee_id
+            WHERE rb.referrer_id = ? AND rb.bonus_on_payment = 1
+            ORDER BY rb.created_at DESC
+            LIMIT 100
+            """,
+            (master_id,),
+        )
+        pay_bonus_rows = await pay_bonus_cur.fetchall()
+        for row in pay_bonus_rows:
+            items.append({
+                "type": "referral_payment",
+                "payload": None,
+                "plan_label": "Реферал: первая оплата друга",
+                "stars_amount": None,
+                "days_added": REFERRAL_EXTRA_DAYS,
+                "counterpart_name": row["counterpart_name"],
+                "created_at": _parse_db_datetime(row["created_at"]),
+            })
+
+        items.sort(key=lambda i: i.get("created_at") or datetime.min, reverse=True)
+        return items[:limit]
+    finally:
+        await conn.close()
+
+
+async def get_subscription_status(master_id: int) -> dict:
+    """Return subscription status summary for master."""
+    referral_code = await ensure_master_referral_code(master_id)
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT subscription_until
+            FROM masters
+            WHERE id = ?
+            """,
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError("Master not found")
+
+        now = _utcnow()
+        subscription_until = _parse_db_datetime(row["subscription_until"])
+        is_active = bool(subscription_until and subscription_until > now)
+        days_left = _days_left(now, subscription_until)
+
+        pay_count_cur = await conn.execute(
+            "SELECT COUNT(*) AS cnt FROM star_payments WHERE master_id = ?",
+            (master_id,),
+        )
+        pay_count_row = await pay_count_cur.fetchone()
+        payments_count = int(pay_count_row["cnt"]) if pay_count_row else 0
+        is_trial = bool(is_active and payments_count == 0)
+
+        ref_count_cur = await conn.execute(
+            """
+            SELECT COUNT(*) AS cnt
+            FROM referral_bonuses
+            WHERE referrer_id = ? AND bonus_on_signup = 1
+            """,
+            (master_id,),
+        )
+        ref_count_row = await ref_count_cur.fetchone()
+        referral_count = int(ref_count_row["cnt"]) if ref_count_row else 0
+    finally:
+        await conn.close()
+
+    history = await get_payment_history(master_id, limit=10)
+    return {
+        "is_active": is_active,
+        "subscription_until": subscription_until,
+        "days_left": days_left,
+        "is_trial": is_trial,
+        "referral_code": referral_code,
+        "referral_count": referral_count,
+        "payment_history": history,
+    }
+
+
+async def get_subscription_brief(master_id: int) -> dict:
+    """Lightweight subscription status (for request guard)."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT subscription_until FROM masters WHERE id = ?",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError("Master not found")
+
+        now = _utcnow()
+        subscription_until = _parse_db_datetime(row["subscription_until"])
+        return {
+            "is_active": bool(subscription_until and subscription_until > now),
+            "subscription_until": subscription_until,
+            "days_left": _days_left(now, subscription_until),
+        }
+    finally:
+        await conn.close()
+
+
+async def get_masters_expiring_soon(days: int) -> list[dict]:
+    """Get masters with subscription expiring within N days (anti-spam 20 days)."""
+    now = _utcnow()
+    horizon = now + timedelta(days=days)
+    anti_spam_border = now - timedelta(days=20)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, tg_id, name, subscription_until, reminder_sent_at
+            FROM masters
+            WHERE subscription_until IS NOT NULL
+            """
+        )
+        rows = await cursor.fetchall()
+        result: list[dict] = []
+        for row in rows:
+            subscription_until = _parse_db_datetime(row["subscription_until"])
+            reminder_sent_at = _parse_db_datetime(row["reminder_sent_at"])
+            if subscription_until is None:
+                continue
+            if not (now <= subscription_until <= horizon):
+                continue
+            if reminder_sent_at and reminder_sent_at > anti_spam_border:
+                continue
+            result.append({
+                "id": row["id"],
+                "tg_id": row["tg_id"],
+                "name": row["name"],
+                "subscription_until": subscription_until,
+                "days_left": _days_left(now, subscription_until),
+            })
+        return result
+    finally:
+        await conn.close()
+
+
+async def mark_subscription_reminder_sent(master_id: int) -> None:
+    """Save timestamp of last subscription reminder for anti-spam."""
+    await update_master(master_id, reminder_sent_at=_to_db_datetime(_utcnow()))
 
 
 # =============================================================================

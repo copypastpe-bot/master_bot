@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMasterDashboard, updateMasterProfile } from '../../api/client';
+import {
+  getMasterDashboard,
+  getMasterSubscription,
+  trackMasterReferralLinkCopied,
+  updateMasterProfile,
+} from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import StatCard from '../components/StatCard';
 import OrderCard from '../components/OrderCard';
+import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -112,6 +118,12 @@ export default function Dashboard({ onNavigate }) {
     retry: 1,
     staleTime: 30_000,
   });
+  const { data: subscription } = useQuery({
+    queryKey: ['master-subscription'],
+    queryFn: getMasterSubscription,
+    retry: 1,
+    staleTime: 20_000,
+  });
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -144,12 +156,13 @@ export default function Dashboard({ onNavigate }) {
     );
   }
 
-  return <DashboardContent data={data} onNavigate={onNavigate} />;
+  return <DashboardContent data={data} subscription={subscription} onNavigate={onNavigate} />;
 }
 
-function DashboardContent({ data, onNavigate }) {
+function DashboardContent({ data, subscription, onNavigate }) {
   const queryClient = useQueryClient();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const dismissBannerMutation = useMutation({
     mutationFn: () => updateMasterProfile({ onboarding_banner_shown: true }),
@@ -165,12 +178,43 @@ function DashboardContent({ data, onNavigate }) {
   const todayOrders = data?.today_orders || [];
   const tomorrowOrders = data?.tomorrow_orders || [];
   const showBanner = !bannerDismissed && (data?.onboarding_banner?.show === true);
+  const isSubscriptionActive = subscription?.is_active ?? true;
 
   const handleNewOrder = () => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
       WebApp.HapticFeedback.impactOccurred('light');
     }
+    if (!isSubscriptionActive) {
+      setPaywallOpen(true);
+      return;
+    }
     onNavigate('create_order');
+  };
+
+  const handlePaywallPay = () => {
+    setPaywallOpen(false);
+    onNavigate('subscription');
+  };
+
+  const handlePaywallInvite = async () => {
+    const link = subscription?.referral_link || queryClient.getQueryData(['master-subscription'])?.referral_link;
+    if (!link) {
+      setPaywallOpen(false);
+      onNavigate('subscription');
+      return;
+    }
+    try {
+      if (typeof navigator?.clipboard?.writeText === 'function') {
+        await navigator.clipboard.writeText(link);
+      }
+    } catch (_) {
+      // non-critical
+    }
+    trackMasterReferralLinkCopied('dashboard-paywall').catch(() => {});
+    if (typeof WebApp?.showAlert === 'function') {
+      WebApp.showAlert('Ссылка скопирована');
+    }
+    setPaywallOpen(false);
   };
 
   const handleRequests = () => {
@@ -268,15 +312,19 @@ function DashboardContent({ data, onNavigate }) {
 
       {/* Block 1: Greeting */}
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{
-          color: 'var(--tg-text)',
-          fontSize: 20,
-          fontWeight: 700,
-          margin: 0,
-          marginBottom: 4,
-        }}>
-          Привет, {data?.master_name || ''}!
-        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <h2 style={{
+            color: 'var(--tg-text)',
+            fontSize: 20,
+            fontWeight: 700,
+            margin: 0,
+          }}>
+            Привет, {data?.master_name || ''}!
+          </h2>
+          <span style={{ color: isSubscriptionActive ? '#2f74d2' : '#888888', fontSize: 24, lineHeight: 1 }}>
+            ★
+          </span>
+        </div>
         <p style={{
           color: 'var(--tg-hint)',
           fontSize: 13,
@@ -356,9 +404,9 @@ function DashboardContent({ data, onNavigate }) {
                 <button
                   onClick={handleNewOrder}
                   style={{
-                    background: 'var(--tg-button)',
-                    color: 'var(--tg-button-text)',
-                    border: 'none',
+                    background: isSubscriptionActive ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+                    color: isSubscriptionActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
+                    border: isSubscriptionActive ? 'none' : '1px solid var(--tg-enterprise-border)',
                     borderRadius: 8,
                     padding: '8px 16px',
                     fontSize: 14,
@@ -389,9 +437,9 @@ function DashboardContent({ data, onNavigate }) {
         <button
           onClick={handleNewOrder}
           style={{
-            background: 'var(--tg-button)',
-            color: 'var(--tg-button-text)',
-            border: 'none',
+            background: isSubscriptionActive ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+            color: isSubscriptionActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
+            border: isSubscriptionActive ? 'none' : '1px solid var(--tg-enterprise-border)',
             borderRadius: 12,
             padding: '14px',
             fontSize: 15,
@@ -422,6 +470,13 @@ function DashboardContent({ data, onNavigate }) {
           </button>
         )}
       </div>
+
+      <SubscriptionPaywallSheet
+        open={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onPay={handlePaywallPay}
+        onInvite={handlePaywallInvite}
+      />
     </div>
   );
 }

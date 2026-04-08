@@ -16,8 +16,11 @@ from src.database import (
     get_clients_with_birthday_today,
     mark_reminder_sent,
     accrue_birthday_bonus,
+    get_masters_expiring_soon,
+    mark_subscription_reminder_sent,
 )
 from src.utils import render_bonus_message, DEFAULT_BIRTHDAY_MESSAGE, get_currency_symbol
+from src.config import REMINDER_DAYS_BEFORE
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +257,35 @@ async def send_birthday_bonuses(client_bot: Bot) -> None:
         logger.error(f"Error in send_birthday_bonuses: {e}")
 
 
-def setup_scheduler(client_bot: Bot) -> None:
+async def send_subscription_expiry_reminders(master_bot: Bot) -> None:
+    """Send subscription expiry reminders to masters."""
+    logger.info("Running subscription expiry reminder task")
+    try:
+        expiring = await get_masters_expiring_soon(days=REMINDER_DAYS_BEFORE)
+        logger.info("Found %s masters with expiring subscriptions", len(expiring))
+
+        for master in expiring:
+            try:
+                subscription_until = master["subscription_until"]
+                expiry_str = subscription_until.strftime("%d.%m.%Y")
+                days_left = master.get("days_left", 0)
+                text = (
+                    f"Ваша подписка истекает через {days_left} дней — {expiry_str}.\n"
+                    f"Продлите в приложении."
+                )
+                await master_bot.send_message(chat_id=master["tg_id"], text=text)
+                await mark_subscription_reminder_sent(master["id"])
+            except TelegramForbiddenError:
+                logger.warning("Master %s blocked bot for reminders", master.get("tg_id"))
+            except TelegramBadRequest as e:
+                logger.error("Failed to send subscription reminder to %s: %s", master.get("tg_id"), e)
+            except Exception as e:
+                logger.error("Unexpected reminder error for master %s: %s", master.get("id"), e)
+    except Exception as e:
+        logger.error("Error in send_subscription_expiry_reminders: %s", e)
+
+
+def setup_scheduler(client_bot: Bot, master_bot: Bot | None = None) -> None:
     """Setup and start the scheduler with all tasks."""
     # 24h reminder - every 60 minutes
     scheduler.add_job(
@@ -285,6 +316,16 @@ def setup_scheduler(client_bot: Bot) -> None:
         id="birthday_bonus",
         replace_existing=True
     )
+
+    if master_bot is not None:
+        scheduler.add_job(
+            send_subscription_expiry_reminders,
+            "interval",
+            hours=24,
+            args=[master_bot],
+            id="subscription_expiry_reminder",
+            replace_existing=True,
+        )
 
     logger.info("Scheduler jobs configured")
 

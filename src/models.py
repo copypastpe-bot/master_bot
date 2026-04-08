@@ -32,6 +32,11 @@ class Master:
     home_message_id: Optional[int] = None
     onboarding_skipped_first_client: bool = False
     onboarding_banner_shown: bool = False
+    subscription_until: Optional[datetime] = None
+    trial_used: bool = False
+    referral_code: Optional[str] = None
+    referred_by: Optional[int] = None
+    reminder_sent_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
 

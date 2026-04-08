@@ -100,7 +100,7 @@ function tomorrowDate() {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function MasterOnboarding({ onRegistered }) {
+export default function MasterOnboarding({ onRegistered, referralCode = null }) {
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -149,7 +149,7 @@ export default function MasterOnboarding({ onRegistered }) {
     const sphereParts = selectedNiches.map(n => n === 'Другое' ? customNiche.trim() : n);
     const sphere = sphereParts.join(', ');
     try {
-      await registerMaster({ name: name.trim(), sphere });
+      await registerMaster({ name: name.trim(), sphere, referral_code: referralCode || undefined });
       setStep(3);
     } catch (err) {
       if (err?.response?.status === 409) {

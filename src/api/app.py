@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import client, orders, bonuses, promos, services
@@ -20,7 +21,9 @@ from src.api.routers.master import broadcast as master_broadcast
 from src.api.routers.master import reports as master_reports
 from src.api.routers.master import auth as master_auth
 from src.api.routers.master import requests as master_requests
+from src.api.routers.master import subscription as master_subscription
 from src.config import MINIAPP_URL
+from src.api.dependencies import SubscriptionRequiredError
 from urllib.parse import urlparse
 
 app = FastAPI(
@@ -65,6 +68,7 @@ app.include_router(master_broadcast.router, prefix="/api")
 app.include_router(master_reports.router, prefix="/api")
 app.include_router(master_auth.router, prefix="/api")
 app.include_router(master_requests.router, prefix="/api")
+app.include_router(master_subscription.router, prefix="/api")
 
 
 @app.get("/health")
@@ -72,3 +76,8 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "ok"}
 
+
+@app.exception_handler(SubscriptionRequiredError)
+async def handle_subscription_required(_request, exc: SubscriptionRequiredError):
+    """Return compact subscription-required payload without FastAPI detail wrapper."""
+    return JSONResponse(status_code=403, content=exc.payload)

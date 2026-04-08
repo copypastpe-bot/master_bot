@@ -16,10 +16,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error?.response?.status;
+    const payload = error?.response?.data;
+    const isSubscriptionRequired =
+      payload?.error === 'subscription_required' ||
+      payload?.detail?.error === 'subscription_required';
     if (status === 401 || status === 403) {
-      const WebApp = window.Telegram?.WebApp;
-      if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Сессия истекла, перезапустите приложение');
+      if (!isSubscriptionRequired) {
+        const WebApp = window.Telegram?.WebApp;
+        if (typeof WebApp?.showAlert === 'function') {
+          WebApp.showAlert('Сессия истекла, перезапустите приложение');
+        }
       }
     }
     return Promise.reject(error);
@@ -114,6 +120,12 @@ export const getBroadcastCanSend = () =>
 
 export const getMasterInviteLink = () =>
   api.get('/api/master/invite-link').then(r => r.data);
+export const getMasterSubscription = () =>
+  api.get('/api/master/subscription').then(r => r.data);
+export const applyMasterSubscriptionPayment = (data) =>
+  api.post('/api/master/subscription/payment', data).then(r => r.data);
+export const trackMasterReferralLinkCopied = (source = 'unknown') =>
+  api.post('/api/master/subscription/referral-link-copied', { source }).then(r => r.data);
 
 // V2 — Clients (extended)
 export const getMasterClients = (search = '', page = 1) =>
