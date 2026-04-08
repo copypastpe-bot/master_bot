@@ -16,6 +16,7 @@ from src.database import (
     create_order,
     create_order_items,
     get_services,
+    save_client_address,
 )
 from src.models import Master
 from src.services.orders import (
@@ -139,15 +140,40 @@ async def create_master_order(
 
     amount_total = sum(item["price"] for item in order_items)
 
+    work_mode = (master.work_mode or "travel").strip().lower()
+    incoming_address = (body.address or "").strip()
+    if work_mode == "home":
+        final_address = (master.work_address_default or incoming_address).strip()
+        if not final_address:
+            raise HTTPException(
+                status_code=400,
+                detail="Укажите адрес по умолчанию в профиле",
+            )
+    else:
+        if not incoming_address:
+            raise HTTPException(status_code=400, detail="Адрес обязателен для выездной работы")
+        final_address = incoming_address
+
     # Create order
     order_id = await create_order(
         master_id=master.id,
         client_id=body.client_id,
-        address=body.address,
+        address=final_address,
         scheduled_at=scheduled_at,
         amount_total=amount_total,
         status="new",
     )
+
+    if work_mode == "travel":
+        try:
+            await save_client_address(
+                master_id=master.id,
+                client_id=body.client_id,
+                address=final_address,
+                make_default=False,
+            )
+        except Exception as e:
+            logger.warning("Failed to save client address for order %s: %s", order_id, e)
 
     # Create order items
     await create_order_items(order_id, order_items)
@@ -164,7 +190,7 @@ async def create_master_order(
                 client_name=client.name or "",
                 client_phone=client.phone or "",
                 services=services_text,
-                address=body.address,
+                address=final_address,
                 amount=amount_total,
                 scheduled_at=scheduled_at,
             )
@@ -182,7 +208,7 @@ async def create_master_order(
                 order={
                     "id": order_id,
                     "scheduled_at": scheduled_at,
-                    "address": body.address,
+                    "address": final_address,
                     "amount_total": amount_total,
                 },
                 master=master,
@@ -202,6 +228,7 @@ class CompleteOrderBody(BaseModel):
     amount: int
     payment_type: str
     bonus_spent: int = 0
+    comment: Optional[str] = None
 
 
 @router.put("/master/orders/{order_id}/complete")
@@ -234,6 +261,7 @@ async def complete_master_order(
             amount=body.amount,
             payment_type=body.payment_type,
             bonus_spent=body.bonus_spent,
+            comment=body.comment,
             bot=client_bot,
         )
     except ValueError as e:

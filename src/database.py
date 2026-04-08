@@ -32,6 +32,7 @@ MIGRATIONS_DIR = Path(__file__).parent.parent / "migrations"
 
 ALLOWED_MASTER_FIELDS = frozenset({
     "name", "sphere", "socials", "contacts", "work_hours", "invite_token",
+    "work_mode", "work_address_default",
     "bonus_enabled", "bonus_rate", "bonus_max_spend", "bonus_birthday",
     "gc_connected", "gc_credentials",
     "bonus_welcome", "timezone", "welcome_message", "welcome_photo_id",
@@ -56,7 +57,7 @@ ALLOWED_SERVICE_FIELDS = frozenset({
 
 ALLOWED_ORDER_FIELDS = frozenset({
     "address", "scheduled_at", "status", "payment_type", "amount_total",
-    "bonus_accrued", "bonus_spent", "cancel_reason", "gc_event_id", "done_at",
+    "bonus_accrued", "bonus_spent", "cancel_reason", "gc_event_id", "done_at", "note",
     "reminder_24h_sent", "reminder_1h_sent", "client_confirmed",
 })
 
@@ -133,6 +134,8 @@ def _parse_master_row(row) -> Master:
         socials=row["socials"],
         contacts=row["contacts"],
         work_hours=row["work_hours"],
+        work_mode=row["work_mode"] if "work_mode" in row.keys() and row["work_mode"] else "travel",
+        work_address_default=row["work_address_default"] if "work_address_default" in row.keys() else None,
         invite_token=row["invite_token"],
         bonus_enabled=bool(row["bonus_enabled"]),
         bonus_rate=row["bonus_rate"],
@@ -313,6 +316,8 @@ async def create_master(
     contacts: Optional[str] = None,
     socials: Optional[str] = None,
     work_hours: Optional[str] = None,
+    work_mode: str = "travel",
+    work_address_default: Optional[str] = None,
     timezone: str = "Europe/Moscow",
     currency: str = "RUB",
     referral_code: Optional[str] = None,
@@ -324,10 +329,16 @@ async def create_master(
         code = referral_code or await _generate_unique_referral_code(conn)
         cursor = await conn.execute(
             """
-            INSERT INTO masters (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency, referral_code, referred_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO masters (
+                tg_id, name, invite_token, sphere, contacts, socials, work_hours,
+                work_mode, work_address_default, timezone, currency, referral_code, referred_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (tg_id, name, invite_token, sphere, contacts, socials, work_hours, timezone, currency, code, referred_by)
+            (
+                tg_id, name, invite_token, sphere, contacts, socials, work_hours,
+                work_mode, work_address_default, timezone, currency, code, referred_by,
+            )
         )
         await conn.commit()
         master_id = cursor.lastrowid
@@ -341,6 +352,8 @@ async def create_master(
             contacts=contacts,
             socials=socials,
             work_hours=work_hours,
+            work_mode=work_mode,
+            work_address_default=work_address_default,
             timezone=timezone,
             currency=currency,
             referral_code=code,
@@ -1624,6 +1637,111 @@ async def get_last_client_address(master_id: int, client_id: int) -> Optional[st
         )
         row = await cursor.fetchone()
         return row["address"] if row else None
+    finally:
+        await conn.close()
+
+
+async def get_client_addresses(master_id: int, client_id: int) -> list[dict]:
+    """Get saved addresses for a master's client."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, label, address, is_default, created_at
+            FROM client_addresses
+            WHERE master_id = ? AND client_id = ?
+            ORDER BY is_default DESC, created_at DESC, id DESC
+            """,
+            (master_id, client_id),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "id": row["id"],
+                "label": row["label"],
+                "address": row["address"],
+                "is_default": bool(row["is_default"]),
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
+    finally:
+        await conn.close()
+
+
+async def save_client_address(
+    master_id: int,
+    client_id: int,
+    address: str,
+    label: Optional[str] = None,
+    make_default: bool = False,
+) -> dict:
+    """Save or update client address. Returns stored row."""
+    normalized_address = (address or "").strip()
+    if not normalized_address:
+        raise ValueError("address is required")
+    normalized_label = (label or "").strip() or None
+
+    conn = await get_connection()
+    try:
+        existing_cur = await conn.execute(
+            """
+            SELECT id, is_default
+            FROM client_addresses
+            WHERE master_id = ? AND client_id = ? AND address = ?
+            LIMIT 1
+            """,
+            (master_id, client_id, normalized_address),
+        )
+        existing = await existing_cur.fetchone()
+
+        if existing:
+            address_id = existing["id"]
+            if normalized_label is not None:
+                await conn.execute(
+                    "UPDATE client_addresses SET label = ? WHERE id = ?",
+                    (normalized_label, address_id),
+                )
+        else:
+            cursor = await conn.execute(
+                """
+                INSERT INTO client_addresses (master_id, client_id, label, address, is_default)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (master_id, client_id, normalized_label, normalized_address, 1 if make_default else 0),
+            )
+            address_id = cursor.lastrowid
+
+        if make_default:
+            await conn.execute(
+                "UPDATE client_addresses SET is_default = 0 WHERE master_id = ? AND client_id = ?",
+                (master_id, client_id),
+            )
+            await conn.execute(
+                "UPDATE client_addresses SET is_default = 1 WHERE id = ?",
+                (address_id,),
+            )
+
+        row_cur = await conn.execute(
+            """
+            SELECT id, label, address, is_default, created_at
+            FROM client_addresses
+            WHERE id = ?
+            LIMIT 1
+            """,
+            (address_id,),
+        )
+        row = await row_cur.fetchone()
+        await conn.commit()
+        if not row:
+            raise ValueError("Failed to save client address")
+        return {
+            "id": row["id"],
+            "label": row["label"],
+            "address": row["address"],
+            "is_default": bool(row["is_default"]),
+            "created_at": row["created_at"],
+        }
     finally:
         await conn.close()
 

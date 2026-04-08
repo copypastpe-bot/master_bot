@@ -105,6 +105,10 @@ export const getMasterServices = () => api.get('/api/master/services').then(r =>
 export const createMasterOrder = (data) => api.post('/api/master/orders', data).then(r => r.data);
 export const getLastClientAddress = (clientId) =>
   api.get(`/api/master/clients/${clientId}/last-address`).then(r => r.data);
+export const getMasterClientAddresses = (clientId) =>
+  api.get(`/api/master/clients/${clientId}/addresses`).then(r => r.data);
+export const createMasterClientAddress = (clientId, data) =>
+  api.post(`/api/master/clients/${clientId}/addresses`, data).then(r => r.data);
 
 export const getBroadcastSegments = () =>
   api.get('/api/master/broadcast/segments').then(r => r.data);

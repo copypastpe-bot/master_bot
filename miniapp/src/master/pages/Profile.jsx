@@ -48,6 +48,11 @@ const CURRENCIES = [
   { value: 'UZS', label: 'Сум' },
 ];
 
+const WORK_MODES = [
+  { value: 'home', label: 'Дома' },
+  { value: 'travel', label: 'На выезде' },
+];
+
 // Inline-editable field
 function EditableField({ label, value, onSave, loading }) {
   const [editing, setEditing] = useState(false);
@@ -177,7 +182,7 @@ function PickerSheet({ title, options, value, onChange, onClose }) {
 }
 
 export default function Profile() {
-  const [picker, setPicker] = useState(null); // 'timezone' | 'currency'
+  const [picker, setPicker] = useState(null); // 'work_mode' | 'timezone' | 'currency'
   const [successMsg, setSuccessMsg] = useState('');
 
   const qc = useQueryClient();
@@ -235,6 +240,7 @@ export default function Profile() {
 
   const tzLabel = TIMEZONES.find(t => t.value === master?.timezone)?.label || master?.timezone || '—';
   const curLabel = CURRENCIES.find(c => c.value === master?.currency)?.label || master?.currency || '—';
+  const workModeLabel = WORK_MODES.find(m => m.value === master?.work_mode)?.label || 'На выезде';
 
   return (
     <div style={{ paddingBottom: 80 }}>
@@ -293,15 +299,34 @@ export default function Profile() {
           loading={profileMutation.isPending}
         />
         <EditableField
-          label="Режим работы"
+          label="График работы"
           value={master?.work_hours}
           onSave={(v) => profileMutation.mutate({ work_hours: v })}
           loading={profileMutation.isPending}
         />
+        <EditableField
+          label="Мой адрес по умолчанию"
+          value={master?.work_address_default}
+          onSave={(v) => profileMutation.mutate({ work_address_default: v })}
+          loading={profileMutation.isPending}
+        />
       </div>
 
-      {/* Timezone / Currency */}
+      {/* Work mode / Timezone / Currency */}
       <div style={{ marginTop: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
+          Настройки заказов
+        </div>
+        <div
+          onClick={() => { haptic(); setPicker('work_mode'); }}
+          style={{ padding: '12px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <div>
+            <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Я работаю</div>
+            <div style={{ fontSize: 15, color: 'var(--tg-text)', marginTop: 2 }}>{workModeLabel}</div>
+          </div>
+          <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
+        </div>
         <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
           Региональные настройки
         </div>
@@ -351,6 +376,15 @@ export default function Profile() {
       </div>
 
       {/* Pickers */}
+      {picker === 'work_mode' && (
+        <PickerSheet
+          title="Я работаю"
+          options={WORK_MODES}
+          value={master?.work_mode || 'travel'}
+          onChange={(mode) => profileMutation.mutate({ work_mode: mode })}
+          onClose={() => setPicker(null)}
+        />
+      )}
       {picker === 'timezone' && (
         <PickerSheet
           title="Часовой пояс"

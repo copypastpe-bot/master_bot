@@ -107,6 +107,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
   const [paymentType, setPaymentType] = useState('cash');
   const [useBonus, setUseBonus] = useState(false);
   const [bonusSpent, setBonusSpent] = useState('0');
+  const [comment, setComment] = useState(order.note || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -135,6 +136,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
         amount: amountNum,
         payment_type: paymentType,
         bonus_spent: bonusSpentNum,
+        comment: comment.trim() || null,
       });
       onSuccess(result);
     } catch (e) {
@@ -238,6 +240,17 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
             <span style={{ color: '#27ae60' }}>+ {bonusAccrued}</span>
           </div>
         )}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <label style={styles.label}>Комментарий к заказу</label>
+        <textarea
+          value={comment}
+          onChange={e => setComment(e.target.value)}
+          rows={3}
+          placeholder="Например: особенности услуги, пожелания, что сделали"
+          style={{ ...styles.input, resize: 'vertical', minHeight: 82 }}
+        />
       </div>
 
       {error && <p style={{ color: '#e74c3c', fontSize: 13, marginBottom: 8 }}>{error}</p>}
@@ -360,7 +373,7 @@ function MoveSheet({ order, onClose, onSuccess }) {
 // ============================================================
 // Main OrderDetail component
 // ============================================================
-export default function OrderDetail({ orderId, onBack, onUpdated }) {
+export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) {
   const queryClient = useQueryClient();
   const [sheet, setSheet] = useState(null); // 'complete' | 'move' | null
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -501,6 +514,24 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
             </span>
           </div>
         )}
+        {client.id && typeof onNavigate === 'function' && (
+          <button
+            onClick={() => { haptic(); onNavigate('client', { id: client.id }); }}
+            style={{
+              marginTop: 10,
+              border: 'none',
+              background: 'var(--tg-secondary-bg)',
+              color: 'var(--tg-button)',
+              borderRadius: 9,
+              padding: '8px 12px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Открыть карточку клиента
+          </button>
+        )}
       </div>
 
       {/* Block 3: Services + Amount */}
@@ -534,7 +565,18 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
         </div>
 
         {order.address && (
-          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--tg-hint)' }}>
+          <div
+            style={{
+              marginTop: 12,
+              fontSize: 16,
+              color: 'var(--tg-text)',
+              fontWeight: 650,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: 'var(--tg-secondary-bg)',
+              lineHeight: 1.35,
+            }}
+          >
             📍 {order.address}
           </div>
         )}
@@ -558,6 +600,14 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
             <div style={styles.row}>
               <span style={styles.rowLabel}>Начислено бонусов</span>
               <span style={{ ...styles.rowValue, color: '#27ae60' }}>+ {order.bonus_accrued}</span>
+            </div>
+          )}
+          {order.note && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ ...styles.rowLabel, marginBottom: 4 }}>Комментарий</div>
+              <div style={{ color: 'var(--tg-text)', fontSize: 14, whiteSpace: 'pre-wrap' }}>
+                {order.note}
+              </div>
             </div>
           )}
         </div>

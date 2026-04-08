@@ -16,6 +16,8 @@ class Master:
     socials: Optional[str] = None
     contacts: Optional[str] = None
     work_hours: Optional[str] = None
+    work_mode: str = "travel"  # home | travel
+    work_address_default: Optional[str] = None
     bonus_enabled: bool = True
     bonus_rate: float = 5.0
     bonus_max_spend: float = 50.0

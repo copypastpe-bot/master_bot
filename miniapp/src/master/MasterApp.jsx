@@ -133,7 +133,12 @@ export default function MasterApp() {
     if (type === 'order') {
       return (
         <div className="master-shell">
-          <OrderDetail orderId={id} onBack={handleBack} onUpdated={handleOrderUpdated} />
+          <OrderDetail
+            orderId={id}
+            onBack={handleBack}
+            onUpdated={handleOrderUpdated}
+            onNavigate={(t, p) => push(t, p)}
+          />
         </div>
       );
     }

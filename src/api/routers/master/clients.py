@@ -11,6 +11,8 @@ from src.api.dependencies import get_current_master
 from src.database import (
     get_connection,
     get_last_client_address,
+    get_client_addresses,
+    save_client_address,
     get_client_with_stats,
     get_client_orders,
     get_client_bonus_log,
@@ -393,6 +395,52 @@ async def create_master_client_endpoint(
         "bonus_balance": 0,
         "is_new": is_new,
     }
+
+
+# ---------------------------------------------------------------------------
+# Client addresses
+# ---------------------------------------------------------------------------
+
+class ClientAddressBody(BaseModel):
+    address: str
+    label: Optional[str] = None
+    make_default: bool = False
+
+
+@router.get("/master/clients/{client_id}/addresses")
+async def get_master_client_addresses(
+    client_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Saved addresses for this client in current master's workspace."""
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    items = await get_client_addresses(master.id, client_id)
+    return {"addresses": items}
+
+
+@router.post("/master/clients/{client_id}/addresses")
+async def create_master_client_address(
+    client_id: int,
+    body: ClientAddressBody,
+    master: Master = Depends(get_current_master),
+):
+    """Create or update saved client address."""
+    client = await get_client_with_stats(master.id, client_id)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+    try:
+        item = await save_client_address(
+            master_id=master.id,
+            client_id=client_id,
+            address=body.address,
+            label=body.label,
+            make_default=body.make_default,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return item
 
 
 # ---------------------------------------------------------------------------

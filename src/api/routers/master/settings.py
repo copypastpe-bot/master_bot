@@ -104,6 +104,8 @@ class ProfileUpdateBody(BaseModel):
     contacts: Optional[str] = None
     socials: Optional[str] = None
     work_hours: Optional[str] = None
+    work_mode: Optional[str] = None
+    work_address_default: Optional[str] = None
     onboarding_banner_shown: Optional[bool] = None
     onboarding_skipped_first_client: Optional[bool] = None
 
@@ -116,6 +118,15 @@ class ProfileUpdateBody(BaseModel):
             raise ValueError("name max 100 chars")
         return v
 
+    @field_validator("work_mode")
+    @classmethod
+    def work_mode_allowed(cls, v):
+        if v is None:
+            return v
+        if v not in {"home", "travel"}:
+            raise ValueError("work_mode must be one of: home, travel")
+        return v
+
 
 @router.put("/master/profile")
 async def update_master_profile(
@@ -124,6 +135,8 @@ async def update_master_profile(
 ):
     """Update master profile fields."""
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "work_address_default" in kwargs:
+        kwargs["work_address_default"] = kwargs["work_address_default"].strip() or None
     if kwargs:
         await update_master(master.id, **kwargs)
     return {"ok": True}

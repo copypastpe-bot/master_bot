@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchMasterClients,
   getMasterServices,
   createMasterOrder,
   getLastClientAddress,
+  getMasterMe,
+  getMasterClientAddresses,
+  createMasterClientAddress,
+  updateMasterProfile,
 } from '../../api/client';
 import { useBackButton } from '../hooks/useBackButton';
 import ClientAddSheet from '../components/ClientAddSheet';
@@ -134,6 +138,26 @@ function StepClient({ selected, onSelect, onNext }) {
         }}
       />
 
+      {!selected && (
+        <button
+          onClick={() => { haptic(); setShowAddSheet(true); }}
+          style={{
+            marginTop: 8,
+            width: '100%',
+            padding: '11px 16px',
+            background: 'none',
+            border: '1.5px solid var(--tg-button)',
+            borderRadius: 10,
+            color: 'var(--tg-button)',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          + Новый клиент
+        </button>
+      )}
+
       {selected && (
         <div style={{
           marginTop: 12,
@@ -178,22 +202,6 @@ function StepClient({ selected, onSelect, onNext }) {
               <div style={{ color: 'var(--tg-hint)', fontSize: 13, padding: '12px 0 8px' }}>
                 Клиенты не найдены
               </div>
-              <button
-                onClick={() => { haptic(); setShowAddSheet(true); }}
-                style={{
-                  width: '100%',
-                  padding: '11px 16px',
-                  background: 'none',
-                  border: '1.5px solid var(--tg-button)',
-                  borderRadius: 10,
-                  color: 'var(--tg-button)',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                + Добавить нового клиента
-              </button>
             </div>
           )}
           {clients.map((c) => (
@@ -546,24 +554,128 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
 
 // ─── Step 3: Date / time / address ──────────────────────────────────────────
 
-function StepDateTime({ clientId, date, setDate, time, setTime, address, setAddress, onNext, onBack }) {
+function StepDateTime({
+  clientId,
+  date,
+  setDate,
+  time,
+  setTime,
+  address,
+  setAddress,
+  onNext,
+  onBack,
+  workMode,
+  masterDefaultAddress,
+}) {
+  const queryClient = useQueryClient();
   const days14 = get14Days();
+  const isHomeMode = workMode === 'home';
+  const [addressLabel, setAddressLabel] = useState('');
+  const [addressError, setAddressError] = useState('');
+  const normalizedAddress = (address || '').trim();
 
-  // Prefill last address
+  // Prefill last address in travel mode.
   const { data: lastAddr } = useQuery({
     queryKey: ['last-address', clientId],
     queryFn: () => getLastClientAddress(clientId),
-    enabled: !!clientId,
+    enabled: !!clientId && !isHomeMode,
     staleTime: 60 * 1000,
   });
 
+  const { data: addressesData } = useQuery({
+    queryKey: ['client-addresses', clientId],
+    queryFn: () => getMasterClientAddresses(clientId),
+    enabled: !!clientId && !isHomeMode,
+    staleTime: 60 * 1000,
+  });
+  const savedAddresses = addressesData?.addresses || [];
+
+  const saveClientAddressMutation = useMutation({
+    mutationFn: (payload) => createMasterClientAddress(clientId, payload),
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: ['client-addresses', clientId] });
+      if (saved?.address) {
+        setAddress(saved.address);
+      }
+      setAddressLabel('');
+      setAddressError('');
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert('Адрес клиента сохранён');
+      }
+    },
+    onError: (error) => {
+      const msg = error?.response?.data?.detail || 'Не удалось сохранить адрес';
+      setAddressError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    },
+  });
+
+  const saveMasterDefaultAddressMutation = useMutation({
+    mutationFn: (value) => updateMasterProfile({ work_address_default: value }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['master-me'] });
+    },
+  });
+
   useEffect(() => {
+    if (isHomeMode) {
+      if (!address && masterDefaultAddress) {
+        setAddress(masterDefaultAddress);
+      }
+      return;
+    }
+
+    if (savedAddresses.length > 0 && !address) {
+      const preferred = savedAddresses.find((item) => item.is_default) || savedAddresses[0];
+      if (preferred?.address) {
+        setAddress(preferred.address);
+        return;
+      }
+    }
     if (lastAddr?.address && !address) {
       setAddress(lastAddr.address);
     }
-  }, [lastAddr, address, setAddress]);
+  }, [isHomeMode, masterDefaultAddress, savedAddresses, lastAddr, address, setAddress]);
 
-  const canNext = !!date && !!time;
+  const canNext = !!date && !!time && !!normalizedAddress;
+
+  const handleSaveClientAddress = async () => {
+    haptic('medium');
+    setAddressError('');
+    if (!normalizedAddress) {
+      setAddressError('Введите адрес для сохранения');
+      return;
+    }
+    try {
+      await saveClientAddressMutation.mutateAsync({
+        address: normalizedAddress,
+        label: addressLabel || undefined,
+        make_default: false,
+      });
+    } catch (_) {
+      // Error is handled in mutation onError.
+    }
+  };
+
+  const handleNext = async () => {
+    haptic();
+    setAddressError('');
+    if (!canNext) {
+      return;
+    }
+    if (isHomeMode) {
+      const baseline = (masterDefaultAddress || '').trim();
+      if (normalizedAddress !== baseline) {
+        try {
+          await saveMasterDefaultAddressMutation.mutateAsync(normalizedAddress);
+        } catch (error) {
+          const msg = error?.response?.data?.detail || 'Не удалось сохранить ваш адрес';
+          setAddressError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+          return;
+        }
+      }
+    }
+    onNext();
+  };
 
   return (
     <div style={{ padding: '0 16px 16px' }}>
@@ -652,12 +764,39 @@ function StepDateTime({ clientId, date, setDate, time, setTime, address, setAddr
       </div>
 
       {/* Address */}
-      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '16px 0 6px' }}>Адрес</p>
+      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '16px 0 6px' }}>
+        {isHomeMode ? 'Ваш адрес' : 'Адрес клиента'}
+      </p>
+      {!isHomeMode && savedAddresses.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+          {savedAddresses.map((item) => {
+            const active = item.address === address;
+            const label = item.label ? `${item.label}: ${item.address}` : item.address;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { haptic(); setAddress(item.address); }}
+                style={{
+                  padding: '6px 10px',
+                  background: active ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+                  color: active ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                {item.is_default ? '✓ ' : ''}{label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <input
         type="text"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
-        placeholder="Адрес (необязательно)"
+        placeholder={isHomeMode ? 'Ваш адрес по умолчанию' : 'Адрес клиента'}
         style={{
           width: '100%',
           padding: '10px 12px',
@@ -671,6 +810,54 @@ function StepDateTime({ clientId, date, setDate, time, setTime, address, setAddr
           boxSizing: 'border-box',
         }}
       />
+      {!isHomeMode && (
+        <div style={{ display: 'flex', gap: 8, margin: '0 0 20px' }}>
+          <input
+            type="text"
+            value={addressLabel}
+            onChange={(e) => setAddressLabel(e.target.value)}
+            placeholder="Метка (дом, работа...)"
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              fontSize: 13,
+              background: 'var(--tg-secondary-bg)',
+              color: 'var(--tg-text)',
+              border: '1px solid var(--tg-hint)',
+              borderRadius: 10,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            onClick={handleSaveClientAddress}
+            disabled={!normalizedAddress || saveClientAddressMutation.isPending}
+            style={{
+              padding: '10px 12px',
+              border: 'none',
+              borderRadius: 10,
+              background: normalizedAddress ? 'var(--tg-button)' : 'var(--tg-hint)',
+              color: 'var(--tg-button-text)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: normalizedAddress ? 'pointer' : 'not-allowed',
+              opacity: saveClientAddressMutation.isPending ? 0.65 : 1,
+            }}
+          >
+            {saveClientAddressMutation.isPending ? 'Сохр...' : 'Сохранить'}
+          </button>
+        </div>
+      )}
+      {isHomeMode && (
+        <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '4px 0 20px' }}>
+          Этот адрес будет использоваться по умолчанию для заказов в режиме «дома».
+        </p>
+      )}
+      {!!addressError && (
+        <p style={{ color: 'var(--tg-destructive, #e53935)', fontSize: 13, margin: '0 0 12px' }}>
+          {addressError}
+        </p>
+      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button
@@ -689,7 +876,7 @@ function StepDateTime({ clientId, date, setDate, time, setTime, address, setAddr
           ← Назад
         </button>
         <button
-          onClick={() => { haptic(); onNext(); }}
+          onClick={handleNext}
           disabled={!canNext}
           style={{
             flex: 2,
@@ -801,7 +988,7 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         marginBottom: 12,
       }}>
         <SummaryRow label="Клиент" value={client.name} />
-        <SummaryRow label="Телефон" value={client.phone} />
+        <SummaryRow label="Телефон" value={client.phone || '—'} />
       </div>
 
       <div style={{
@@ -936,9 +1123,19 @@ function SuccessScreen({ order, onBack }) {
 
 export default function OrderCreate({ params, onBack, onCreated }) {
   const prefill = params?.prefill;
-  const prefillClient = prefill?.client_id
-    ? { id: prefill.client_id, name: prefill.client_name }
+  const prefillClientId = prefill?.client_id || params?.preselectedClientId || null;
+  const prefillClientName = prefill?.client_name || params?.preselectedClientName || '';
+  const prefillClient = prefillClientId
+    ? { id: prefillClientId, name: prefillClientName }
     : null;
+
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 60_000,
+  });
+  const workMode = masterData?.work_mode || 'travel';
+  const masterDefaultAddress = masterData?.work_address_default || '';
 
   const [step, setStep] = useState(prefillClient ? 2 : 1);
   const [client, setClient] = useState(prefillClient);
@@ -1022,6 +1219,8 @@ export default function OrderCreate({ params, onBack, onCreated }) {
           setAddress={setAddress}
           onNext={() => goToStep(4)}
           onBack={() => goToStep(2)}
+          workMode={workMode}
+          masterDefaultAddress={masterDefaultAddress}
         />
       )}
 

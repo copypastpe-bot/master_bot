@@ -24,6 +24,7 @@ async def complete_order_service(
     amount: int,
     payment_type: str,
     bonus_spent: int,
+    comment: Optional[str] = None,
     bot=None,  # aiogram Bot instance (optional, for notifications)
 ) -> dict:
     """
@@ -74,6 +75,7 @@ async def complete_order_service(
         bonus_spent=bonus_spent,
         bonus_accrued=bonus_accrued,
         payment_type=payment_type,
+        note=(comment.strip() if comment else None),
         done_at=datetime.now().isoformat(),
     )
     if not updated:
