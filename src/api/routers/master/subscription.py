@@ -1,19 +1,38 @@
 """Master subscription endpoints."""
 
 import logging
+from contextlib import suppress
 from typing import Optional
 
+from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
+from aiogram.types import LabeledPrice
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from src.api.dependencies import get_current_master
-from src.config import SUBSCRIPTION_PLANS, MASTER_BOT_USERNAME
-from src.database import apply_payment, get_subscription_status
+from src.config import SUBSCRIPTION_PLANS, MASTER_BOT_USERNAME, MASTER_BOT_TOKEN
+from src.database import get_subscription_status
 from src.models import Master
+from src.subscription_stars import build_invoice_payload
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["master-subscription"])
+_master_bot: Optional[Bot] = None
+
+
+def set_master_bot(bot: Bot) -> None:
+    """Inject shared master bot instance from server bootstrap."""
+    global _master_bot
+    _master_bot = bot
+
+
+async def _get_master_bot() -> tuple[Bot, bool]:
+    """Return bot instance and ownership flag for lifecycle management."""
+    if _master_bot is not None:
+        return _master_bot, False
+    return Bot(token=MASTER_BOT_TOKEN), True
 
 
 def _serialize_status(status: dict) -> dict:
@@ -53,41 +72,52 @@ async def get_master_subscription(
     return data
 
 
-class SubscriptionPaymentBody(BaseModel):
-    telegram_charge_id: str
+class SubscriptionInvoiceBody(BaseModel):
     payload: str
-    stars_amount: int
 
 
-@router.post("/master/subscription/payment")
-async def post_master_subscription_payment(
-    body: SubscriptionPaymentBody,
+@router.post("/master/subscription/invoice-link")
+async def post_master_subscription_invoice_link(
+    body: SubscriptionInvoiceBody,
     master: Master = Depends(get_current_master),
 ):
-    """Apply Stars payment and return updated subscription."""
+    """Create Telegram Stars invoice link for selected subscription plan."""
     if body.payload not in SUBSCRIPTION_PLANS:
         raise HTTPException(status_code=422, detail="Unknown plan payload")
 
-    try:
-        result = await apply_payment(
-            master_id=master.id,
-            telegram_charge_id=body.telegram_charge_id,
-            payload=body.payload,
-            stars_amount=body.stars_amount,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
     plan = SUBSCRIPTION_PLANS[body.payload]
-    subscription_until = result["subscription_until"]
-    if hasattr(subscription_until, "isoformat"):
-        subscription_until = subscription_until.isoformat()
+    stars_amount = int(plan["stars"])
+    plan_label = str(plan["label"])
+    invoice_payload = build_invoice_payload(master.id, body.payload)
+
+    bot, owns_bot = await _get_master_bot()
+    try:
+        invoice_link = await bot.create_invoice_link(
+            title=f"Подписка CRMfit · {plan_label}",
+            description=f"Продление подписки на {plan_label}",
+            payload=invoice_payload,
+            provider_token="",
+            currency="XTR",
+            prices=[LabeledPrice(label=plan_label, amount=stars_amount)],
+        )
+    except TelegramAPIError as e:
+        logger.exception(
+            "Failed to create Stars invoice link: master_id=%s payload=%s error=%s",
+            master.id,
+            body.payload,
+            e,
+        )
+        raise HTTPException(status_code=502, detail="Failed to create invoice link")
+    finally:
+        if owns_bot:
+            with suppress(Exception):
+                await bot.session.close()
 
     return {
-        "subscription_until": subscription_until,
-        "days_added": result["days_added"],
-        "plan_label": plan["label"],
-        "duplicate": result["duplicate"],
+        "invoice_link": invoice_link,
+        "payload": body.payload,
+        "stars_amount": stars_amount,
+        "plan_label": plan_label,
     }
 
 

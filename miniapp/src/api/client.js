@@ -122,8 +122,8 @@ export const getMasterInviteLink = () =>
   api.get('/api/master/invite-link').then(r => r.data);
 export const getMasterSubscription = () =>
   api.get('/api/master/subscription').then(r => r.data);
-export const applyMasterSubscriptionPayment = (data) =>
-  api.post('/api/master/subscription/payment', data).then(r => r.data);
+export const createMasterSubscriptionInvoiceLink = (data) =>
+  api.post('/api/master/subscription/invoice-link', data).then(r => r.data);
 export const trackMasterReferralLinkCopied = (source = 'unknown') =>
   api.post('/api/master/subscription/referral-link-copied', { source }).then(r => r.data);
 

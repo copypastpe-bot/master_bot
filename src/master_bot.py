@@ -8,7 +8,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from src.config import MASTER_BOT_TOKEN, LOG_LEVEL
 from src.database import init_db
-from src.handlers import common  # registration, orders, clients, marketing, reports, settings — disabled
+from src.handlers import common, payments  # registration, orders, clients, marketing, reports, settings — disabled
 
 # Configure logging
 logging.basicConfig(
@@ -26,6 +26,7 @@ def setup_dispatcher() -> Dispatcher:
     # dp.message.outer_middleware(common.HomeButtonMiddleware())
 
     dp.include_router(common.router)
+    dp.include_router(payments.router)
 
     # Navigation routers disabled — all functionality moved to Mini App
     # dp.include_router(registration.router)

@@ -23,6 +23,7 @@ async def run_api_server():
     from src.api.routers.requests import set_master_bot as requests_set_bot
     from src.api.routers.master.requests import set_master_bot as master_requests_set_bot
     from src.api.routers.master.settings import set_master_bot as master_settings_set_bot
+    from src.api.routers.master.subscription import set_master_bot as master_subscription_set_bot
 
     # Create bot instance for order request notifications (master_bot)
     bot = Bot(token=MASTER_BOT_TOKEN)
@@ -30,6 +31,7 @@ async def run_api_server():
     requests_set_bot(bot)
     master_requests_set_bot(bot)
     master_settings_set_bot(bot)
+    master_subscription_set_bot(bot)
 
     # Pass client_bot into app.state for order action notifications
     client_bot = Bot(token=CLIENT_BOT_TOKEN)

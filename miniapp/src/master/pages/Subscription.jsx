@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  applyMasterSubscriptionPayment,
+  createMasterSubscriptionInvoiceLink,
   getMasterSubscription,
   trackMasterReferralLinkCopied,
 } from '../../api/client';
@@ -19,6 +19,24 @@ function haptic() {
   if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
     WebApp.HapticFeedback.impactOccurred('light');
   }
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function openTelegramInvoice(invoiceLink) {
+  return new Promise((resolve, reject) => {
+    if (typeof WebApp?.openInvoice !== 'function') {
+      reject(new Error('openInvoice is unavailable'));
+      return;
+    }
+    try {
+      WebApp.openInvoice(invoiceLink, (status) => resolve(status || 'unknown'));
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 function formatDate(value) {
@@ -74,6 +92,7 @@ function HistoryRow({ item, isLast }) {
 export default function Subscription() {
   const qc = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState('plan_quarter');
+  const [isPaymentPolling, setIsPaymentPolling] = useState(false);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['master-subscription'],
@@ -81,15 +100,8 @@ export default function Subscription() {
     staleTime: 20_000,
   });
 
-  const payMutation = useMutation({
-    mutationFn: applyMasterSubscriptionPayment,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['master-subscription'] });
-      qc.invalidateQueries({ queryKey: ['master-dashboard'] });
-      if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Подписка обновлена');
-      }
-    },
+  const invoiceMutation = useMutation({
+    mutationFn: createMasterSubscriptionInvoiceLink,
   });
 
   const copyMutation = useMutation({
@@ -110,15 +122,81 @@ export default function Subscription() {
   }[statusKind];
 
   const selected = PLANS.find((p) => p.payload === selectedPlan) || PLANS[0];
+  const paymentPending = invoiceMutation.isPending || isPaymentPolling;
 
-  const handlePay = () => {
+  const pollSubscriptionAfterPaid = async (baseline) => {
+    const deadline = Date.now() + 30_000;
+    while (Date.now() < deadline) {
+      const { data: fresh } = await refetch();
+      if (fresh) {
+        const historyLength = (fresh.payment_history || []).length;
+        const becameActive = !baseline.is_active && fresh.is_active;
+        const changedUntil = fresh.subscription_until !== baseline.subscription_until;
+        const addedHistory = historyLength > baseline.history_length;
+        if (becameActive || changedUntil || addedHistory) {
+          return true;
+        }
+      }
+      await wait(2_500);
+    }
+    return false;
+  };
+
+  const handlePay = async () => {
     haptic();
-    const charge = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    payMutation.mutate({
-      telegram_charge_id: charge,
-      payload: selected.payload,
-      stars_amount: selected.stars,
-    });
+    const baseline = {
+      is_active: Boolean(data?.is_active),
+      subscription_until: data?.subscription_until || null,
+      history_length: (data?.payment_history || []).length,
+    };
+
+    try {
+      const invoice = await invoiceMutation.mutateAsync({ payload: selected.payload });
+      const status = await openTelegramInvoice(invoice.invoice_link);
+
+      if (status === 'paid') {
+        setIsPaymentPolling(true);
+        qc.invalidateQueries({ queryKey: ['master-subscription'] });
+        qc.invalidateQueries({ queryKey: ['master-dashboard'] });
+
+        const updated = await pollSubscriptionAfterPaid(baseline);
+        qc.invalidateQueries({ queryKey: ['master-subscription'] });
+        qc.invalidateQueries({ queryKey: ['master-dashboard'] });
+        setIsPaymentPolling(false);
+
+        if (typeof WebApp?.showAlert === 'function') {
+          WebApp.showAlert(
+            updated
+              ? 'Оплата прошла, подписка обновлена'
+              : 'Оплата прошла. Обновление подписки может занять несколько секунд.'
+          );
+        }
+        return;
+      }
+
+      if (status === 'cancelled') {
+        if (typeof WebApp?.showAlert === 'function') {
+          WebApp.showAlert('Оплата отменена');
+        }
+        return;
+      }
+
+      if (status === 'failed') {
+        if (typeof WebApp?.showAlert === 'function') {
+          WebApp.showAlert('Оплата не прошла');
+        }
+        return;
+      }
+
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert(`Статус оплаты: ${status}`);
+      }
+    } catch (_) {
+      setIsPaymentPolling(false);
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert('Не удалось запустить оплату');
+      }
+    }
   };
 
   const handleCopyReferral = async () => {
@@ -272,7 +350,7 @@ export default function Subscription() {
 
       <button
         onClick={handlePay}
-        disabled={payMutation.isPending}
+        disabled={paymentPending}
         style={{
           width: '100%',
           border: 'none',
@@ -282,12 +360,16 @@ export default function Subscription() {
           padding: '13px 14px',
           fontWeight: 700,
           fontSize: 16,
-          cursor: payMutation.isPending ? 'default' : 'pointer',
-          opacity: payMutation.isPending ? 0.7 : 1,
+          cursor: paymentPending ? 'default' : 'pointer',
+          opacity: paymentPending ? 0.7 : 1,
           marginBottom: 12,
         }}
       >
-        {payMutation.isPending ? 'Оплата...' : '★ Оплатить Stars'}
+        {invoiceMutation.isPending
+          ? 'Создаём счёт...'
+          : isPaymentPolling
+            ? 'Проверяем оплату...'
+            : '★ Оплатить Stars'}
       </button>
 
       <div
