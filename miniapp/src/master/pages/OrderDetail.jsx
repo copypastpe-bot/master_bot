@@ -17,11 +17,11 @@ function haptic(type = 'light') {
 }
 
 const STATUS_LABEL = {
-  new: '🆕 Новый',
-  confirmed: '📌 Подтверждён',
-  done: '✅ Выполнен',
-  cancelled: '❌ Отменён',
-  moved: '📅 Перенесён',
+  new: 'Новый',
+  confirmed: 'Подтверждён',
+  done: 'Выполнен',
+  cancelled: 'Отменён',
+  moved: 'Перенесён',
 };
 
 const STATUS_COLOR = {
@@ -30,6 +30,14 @@ const STATUS_COLOR = {
   done: '#27ae60',
   cancelled: '#e74c3c',
   moved: '#8e44ad',
+};
+
+const STATUS_TINT = {
+  new: 'rgba(51, 144, 236, 0.16)',
+  confirmed: 'rgba(245, 166, 35, 0.18)',
+  done: 'rgba(39, 174, 96, 0.18)',
+  cancelled: 'rgba(231, 76, 60, 0.16)',
+  moved: 'rgba(142, 68, 173, 0.16)',
 };
 
 const PAYMENT_LABELS = {
@@ -49,6 +57,10 @@ function formatDateTime(iso) {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return { date: `${day} ${month}`, time: `${hh}:${mm}` };
+}
+
+function formatAmount(value) {
+  return Number(value || 0).toLocaleString('ru-RU');
 }
 
 // ============================================================
@@ -424,7 +436,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
   const services = order.services || [];
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div style={{ paddingBottom: 96, maxWidth: 760, margin: '0 auto' }}>
       {/* Back — only shown when Telegram BackButton unavailable */}
       {!hasTgBack && (
         <div style={{ padding: '12px 16px 0' }}>
@@ -435,15 +447,15 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
       )}
 
       {/* Block 1: Status + DateTime */}
-      <div style={{ padding: '12px 16px 0' }}>
+      <div style={styles.heroCard}>
         <span style={{
           display: 'inline-block',
-          padding: '4px 10px',
+          padding: '5px 11px',
           borderRadius: 20,
           fontSize: 13,
-          fontWeight: 600,
-          background: STATUS_COLOR[order.status] + '22',
-          color: STATUS_COLOR[order.status],
+          fontWeight: 700,
+          background: STATUS_TINT[order.status] || 'rgba(127,127,127,0.16)',
+          color: STATUS_COLOR[order.status] || 'var(--tg-hint)',
           marginBottom: 8,
         }}>
           {STATUS_LABEL[order.status] || order.status}
@@ -451,10 +463,10 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
 
         {scheduled && (
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--tg-text)' }}>
+            <span style={{ fontSize: 38, fontWeight: 800, color: 'var(--tg-text)', lineHeight: 1.1 }}>
               {scheduled.time}
             </span>
-            <span style={{ fontSize: 18, color: 'var(--tg-hint)' }}>
+            <span style={{ fontSize: 18, color: 'var(--tg-hint)', fontWeight: 600 }}>
               {scheduled.date}
             </span>
           </div>
@@ -480,14 +492,14 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
           <a
             href={`tel:${client.phone}`}
             onClick={() => haptic()}
-            style={{ display: 'block', color: 'var(--tg-button)', fontSize: 15, marginTop: 4 }}
+            style={{ display: 'block', color: 'var(--tg-button)', fontSize: 16, marginTop: 6, fontWeight: 600 }}
           >
             {client.phone}
           </a>
         )}
 
         {client.bonus_balance !== undefined && (
-          <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tg-hint)' }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--tg-hint)' }}>
             Бонусный баланс: <span style={{ color: 'var(--tg-text)', fontWeight: 600 }}>
               {client.bonus_balance}
             </span>
@@ -507,7 +519,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
             }}>
               <span style={{ color: 'var(--tg-text)', fontSize: 15 }}>{s.name}</span>
               {s.price > 0 && (
-                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{s.price}</span>
+                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{formatAmount(s.price)} ₽</span>
               )}
             </div>
           ))
@@ -521,12 +533,12 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
         }}>
           <span style={{ fontWeight: 600, color: 'var(--tg-text)', fontSize: 16 }}>Итого</span>
           <span style={{ fontWeight: 700, color: 'var(--tg-text)', fontSize: 16 }}>
-            {order.amount_total || 0}
+            {formatAmount(order.amount_total)} ₽
           </span>
         </div>
 
         {order.address && (
-          <div style={{ marginTop: 8, fontSize: 13, color: 'var(--tg-hint)' }}>
+          <div style={{ marginTop: 10, fontSize: 13, color: 'var(--tg-hint)' }}>
             📍 {order.address}
           </div>
         )}
@@ -565,24 +577,24 @@ export default function OrderDetail({ orderId, onBack, onUpdated }) {
 
       {/* Block 4: Actions (only for active orders) */}
       {isActive && (
-        <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ ...styles.card, display: 'flex', flexDirection: 'column', gap: 10, padding: '12px' }}>
           <button
             onClick={() => { haptic(); setSheet('complete'); }}
             style={styles.actionBtn}
           >
-            ✅ Провести
+            Провести
           </button>
           <button
             onClick={() => { haptic(); setSheet('move'); }}
             style={{ ...styles.actionBtn, background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)' }}
           >
-            📅 Перенести
+            Перенести
           </button>
           <button
             onClick={() => { haptic(); setCancelConfirm(true); }}
             style={{ ...styles.actionBtn, background: '#e74c3c22', color: '#e74c3c' }}
           >
-            ❌ Отменить
+            Отменить
           </button>
         </div>
       )}
@@ -659,11 +671,21 @@ const styles = {
     padding: 0,
     marginBottom: 8,
   },
-  card: {
-    margin: '12px 16px 0',
+  heroCard: {
+    margin: '12px 12px 0',
     background: 'var(--tg-section-bg)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: '14px 16px',
+    border: '1px solid var(--tg-enterprise-border)',
+    boxShadow: 'var(--tg-enterprise-shadow)',
+  },
+  card: {
+    margin: '12px 12px 0',
+    background: 'var(--tg-section-bg)',
+    borderRadius: 16,
+    padding: '14px 16px',
+    border: '1px solid var(--tg-enterprise-border)',
+    boxShadow: 'var(--tg-enterprise-shadow)',
   },
   cardTitle: {
     margin: '0 0 10px',
@@ -674,10 +696,11 @@ const styles = {
     letterSpacing: '0.05em',
   },
   clientName: {
-    fontSize: 18,
-    fontWeight: 600,
+    fontSize: 30,
+    fontWeight: 800,
     color: 'var(--tg-text)',
     display: 'block',
+    lineHeight: 1.15,
   },
   row: {
     display: 'flex',
@@ -733,12 +756,12 @@ const styles = {
   actionBtn: {
     width: '100%',
     padding: '14px',
-    borderRadius: 12,
+    borderRadius: 11,
     border: 'none',
     background: 'var(--tg-button)',
     color: 'var(--tg-button-text)',
-    fontSize: 16,
-    fontWeight: 600,
+    fontSize: 15,
+    fontWeight: 700,
     cursor: 'pointer',
   },
   skeleton: {

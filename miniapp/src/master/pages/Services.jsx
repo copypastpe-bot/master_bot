@@ -127,7 +127,7 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading }) {
 
 export default function Services() {
   const [sheet, setSheet] = useState(null); // null | { service: obj | null }
-  const [archiveExpanded, setArchiveExpanded] = useState(false);
+  const [tab, setTab] = useState('active'); // active | archived
   const [successMsg, setSuccessMsg] = useState('');
 
   const qc = useQueryClient();
@@ -188,7 +188,7 @@ export default function Services() {
   const mutationLoading = createMutation.isPending || updateMutation.isPending || archiveMutation.isPending;
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div style={{ padding: '12px 12px 88px', maxWidth: 760, margin: '0 auto' }}>
       {successMsg && (
         <div style={{
           position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
@@ -200,8 +200,34 @@ export default function Services() {
         </div>
       )}
 
+      {/* Tabs */}
+      <div style={panelStyle}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+          <button
+            onClick={() => { haptic(); setTab('active'); }}
+            style={{
+              ...tabBtnStyle,
+              background: tab === 'active' ? 'var(--tg-button)' : 'transparent',
+              color: tab === 'active' ? 'var(--tg-button-text)' : 'var(--tg-hint)',
+            }}
+          >
+            Активные ({active.length})
+          </button>
+          <button
+            onClick={() => { haptic(); setTab('archived'); }}
+            style={{
+              ...tabBtnStyle,
+              background: tab === 'archived' ? 'var(--tg-button)' : 'transparent',
+              color: tab === 'archived' ? 'var(--tg-button-text)' : 'var(--tg-hint)',
+            }}
+          >
+            Архив ({archived.length})
+          </button>
+        </div>
+      </div>
+
       {/* Add button */}
-      <div style={{ padding: '16px' }}>
+      <div style={{ ...panelStyle, padding: 12, marginTop: 10 }}>
         <button
           onClick={() => { haptic(); setSheet({ service: null }); }}
           style={{
@@ -214,109 +240,95 @@ export default function Services() {
         </button>
       </div>
 
-      {/* Active services */}
-      {active.length === 0 ? (
-        <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-          Нет активных услуг
-        </div>
-      ) : (
-        <div style={{ background: 'var(--tg-section-bg)' }}>
-          <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-            Активные ({active.length})
+      {/* List */}
+      <div style={{ ...panelStyle, marginTop: 10, overflow: 'hidden', padding: 0 }}>
+        {tab === 'active' && active.length === 0 && (
+          <div style={{ padding: '26px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+            Нет активных услуг
           </div>
-          {active.map((s, idx) => (
-            <div
-              key={s.id}
-              onClick={() => { haptic(); setSheet({ service: s }); }}
-              style={{
-                display: 'flex', alignItems: 'center',
-                padding: '13px 16px',
-                borderBottom: idx < active.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
-                cursor: 'pointer', gap: 12,
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.name}
-                </div>
-                {s.description && (
-                  <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.description}
-                  </div>
-                )}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--tg-accent)', flexShrink: 0 }}>
-                {(s.price || 0).toLocaleString()} ₽
-              </div>
-              <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-            </div>
-          ))}
-        </div>
-      )}
+        )}
 
-      {/* Archived section */}
-      {archived.length > 0 && (
-        <div style={{ marginTop: 16 }}>
+        {tab === 'active' && active.map((s, idx) => (
           <div
-            onClick={() => { haptic(); setArchiveExpanded(e => !e); }}
+            key={s.id}
+            onClick={() => { haptic(); setSheet({ service: s }); }}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 16px',
-              background: 'var(--tg-section-bg)',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '14px 14px',
+              borderBottom: idx < active.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
               cursor: 'pointer',
-              borderBottom: '1px solid var(--tg-secondary-bg)',
+              gap: 12,
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-hint)' }}>
-              Архив ({archived.length})
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.description || 'Без описания'}
+              </div>
             </div>
-            <span style={{
-              color: 'var(--tg-hint)', fontSize: 16,
-              transform: archiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-              transition: 'transform 0.2s',
+            <div style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--tg-button)',
+              background: 'rgba(51,144,236,0.12)',
+              borderRadius: 999,
+              padding: '4px 10px',
+              flexShrink: 0,
             }}>
-              ▶
-            </span>
-          </div>
-          {archiveExpanded && (
-            <div style={{ background: 'var(--tg-section-bg)' }}>
-              {archived.map((s, idx) => (
-                <div
-                  key={s.id}
-                  style={{
-                    display: 'flex', alignItems: 'center',
-                    padding: '12px 16px',
-                    borderBottom: idx < archived.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
-                    opacity: 0.6,
-                    gap: 12,
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.name}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 2 }}>
-                      {(s.price || 0).toLocaleString()} ₽
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => { haptic(); restoreMutation.mutate(s.id); }}
-                    disabled={restoreMutation.isPending}
-                    style={{
-                      padding: '6px 12px', borderRadius: 8,
-                      border: '1px solid var(--tg-accent)',
-                      background: 'none', color: 'var(--tg-accent)',
-                      fontSize: 13, cursor: 'pointer',
-                    }}
-                  >
-                    Восстановить
-                  </button>
-                </div>
-              ))}
+              {(s.price || 0).toLocaleString()} ₽
             </div>
-          )}
-        </div>
-      )}
+            <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
+          </div>
+        ))}
+
+        {tab === 'archived' && archived.length === 0 && (
+          <div style={{ padding: '26px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+            Архив пуст
+          </div>
+        )}
+
+        {tab === 'archived' && archived.map((s, idx) => (
+          <div
+            key={s.id}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '14px 14px',
+              borderBottom: idx < archived.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
+              gap: 12,
+              opacity: 0.72,
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.name}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 3 }}>
+                {(s.price || 0).toLocaleString()} ₽
+              </div>
+            </div>
+            <button
+              onClick={() => { haptic(); restoreMutation.mutate(s.id); }}
+              disabled={restoreMutation.isPending}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 10,
+                border: '1px solid var(--tg-accent)',
+                background: 'none',
+                color: 'var(--tg-accent)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Восстановить
+            </button>
+          </div>
+        ))}
+      </div>
 
       {/* Sheet */}
       {sheet !== null && (
@@ -331,6 +343,28 @@ export default function Services() {
     </div>
   );
 }
+
+const panelStyle = {
+  background: 'var(--tg-section-bg)',
+  border: '1px solid var(--tg-enterprise-border)',
+  borderRadius: 16,
+  boxShadow: 'var(--tg-enterprise-shadow)',
+  padding: 6,
+};
+
+const tabBtnStyle = {
+  border: 'none',
+  borderRadius: 12,
+  padding: '10px 8px',
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: 'pointer',
+  transition: 'background 0.15s, color 0.15s',
+  minWidth: 0,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
 
 const inputStyle = {
   width: '100%', padding: '10px 12px', borderRadius: 10,
