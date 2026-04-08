@@ -51,28 +51,34 @@ function TabBar({ active, onChange }) {
   ];
   return (
     <div style={{
-      display: 'flex',
-      borderBottom: '1px solid var(--tg-secondary-bg)',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gap: 6,
+      padding: 6,
+      border: '1px solid var(--tg-enterprise-border)',
+      borderRadius: 14,
       background: 'var(--tg-section-bg)',
-      position: 'sticky',
-      top: 0,
-      zIndex: 5,
+      boxShadow: 'var(--tg-enterprise-shadow)',
     }}>
       {tabs.map(t => (
         <button
           key={t.id}
           onClick={() => { haptic(); onChange(t.id); }}
           style={{
-            flex: 1,
-            padding: '12px 0',
-            background: 'none',
+            width: '100%',
+            minWidth: 0,
+            padding: '10px 0',
+            background: active === t.id ? 'var(--tg-button)' : 'transparent',
             border: 'none',
+            borderRadius: 10,
             cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: active === t.id ? 600 : 400,
-            color: active === t.id ? 'var(--tg-accent)' : 'var(--tg-hint)',
-            borderBottom: active === t.id ? '2px solid var(--tg-accent)' : '2px solid transparent',
-            transition: 'color 0.15s',
+            fontSize: 13,
+            fontWeight: active === t.id ? 700 : 600,
+            color: active === t.id ? 'var(--tg-button-text)' : 'var(--tg-hint)',
+            transition: 'color 0.15s, background 0.15s',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}
         >
           {t.label}
@@ -322,7 +328,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
   };
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div style={{ padding: '12px 12px 96px', maxWidth: 760, margin: '0 auto' }}>
       {/* Success toast */}
       {successMsg && (
         <div style={{
@@ -337,9 +343,11 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 
       {/* Header */}
       <div style={{
-        padding: '20px 16px 16px',
+        padding: '16px 16px',
         background: 'var(--tg-section-bg)',
-        borderBottom: '1px solid var(--tg-secondary-bg)',
+        border: '1px solid var(--tg-enterprise-border)',
+        borderRadius: 16,
+        boxShadow: 'var(--tg-enterprise-shadow)',
       }}>
         {editMode ? (
           // Edit form
@@ -373,15 +381,15 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
           </div>
         ) : (
           // View mode
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--tg-text)' }}>
+              <div style={{ fontSize: 34, fontWeight: 800, color: 'var(--tg-text)', lineHeight: 1.1 }}>
                 {client.name || '—'}
               </div>
               {client.phone && (
-                <div style={{ marginTop: 6 }}>
+                <div style={{ marginTop: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ fontSize: 15, color: 'var(--tg-accent)' }}>
+                    <div style={{ fontSize: 20, color: 'var(--tg-accent)', fontWeight: 700 }}>
                       {client.phone}
                     </div>
                     <button
@@ -403,9 +411,9 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
             </div>
             <button
               onClick={handleEditStart}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--tg-hint)', padding: '4px 8px' }}
+              style={{ ...btnIcon, width: 34, height: 34, borderRadius: 10 }}
             >
-              ✏️
+              ✎
             </button>
           </div>
         )}
@@ -415,9 +423,12 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
       <div style={{
         display: 'flex',
         background: 'var(--tg-section-bg)',
-        borderBottom: '1px solid var(--tg-secondary-bg)',
+        border: '1px solid var(--tg-enterprise-border)',
+        borderRadius: 16,
+        boxShadow: 'var(--tg-enterprise-shadow)',
         padding: '14px 16px',
         gap: 8,
+        marginTop: 10,
       }}>
         <StatBadge label="Бонусы" value={`${client.bonus_balance || 0} ₽`} />
         <div style={{ width: 1, background: 'var(--tg-secondary-bg)' }} />
@@ -427,7 +438,14 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
       </div>
 
       {/* Note */}
-      <div style={{ background: 'var(--tg-section-bg)', padding: '14px 16px', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
+      <div style={{
+        background: 'var(--tg-section-bg)',
+        padding: '14px 16px',
+        border: '1px solid var(--tg-enterprise-border)',
+        borderRadius: 16,
+        boxShadow: 'var(--tg-enterprise-shadow)',
+        marginTop: 10,
+      }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
@@ -464,18 +482,20 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
             )}
           </div>
           {!editNote && (
-            <button onClick={handleNoteEdit} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--tg-hint)', fontSize: 15, padding: '0 0 0 8px' }}>
-              ✏️
+            <button onClick={handleNoteEdit} style={{ ...btnIcon, width: 30, height: 30, borderRadius: 9 }}>
+              ✎
             </button>
           )}
         </div>
       </div>
 
       {/* Tabs */}
-      <TabBar active={tab} onChange={setTab} />
+      <div style={{ marginTop: 10 }}>
+        <TabBar active={tab} onChange={setTab} />
+      </div>
 
       {/* Tab content */}
-      <div style={{ padding: '0 0 16px' }}>
+      <div style={{ padding: '10px 0 16px' }}>
         {tab === 'history' && (
           <HistoryTab orders={client.orders || []} onNavigate={onNavigate} />
         )}
@@ -515,8 +535,10 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 function HistoryTab({ orders, onNavigate }) {
   if (!orders.length) {
     return (
-      <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Нет заказов
+      <div style={contentCardStyle}>
+        <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+          Нет заказов
+        </div>
       </div>
     );
   }
@@ -529,7 +551,7 @@ function HistoryTab({ orders, onNavigate }) {
   };
 
   return (
-    <div style={{ background: 'var(--tg-section-bg)' }}>
+    <div style={{ ...contentCardStyle, padding: 0, overflow: 'hidden' }}>
       {orders.map((o, idx) => (
         <div
           key={o.id}
@@ -575,10 +597,9 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
   };
 
   return (
-    <div>
+    <div style={{ ...contentCardStyle, overflow: 'hidden', padding: 0 }}>
       {/* Balance */}
       <div style={{
-        background: 'var(--tg-section-bg)',
         padding: '20px 16px',
         textAlign: 'center',
         borderBottom: '1px solid var(--tg-secondary-bg)',
@@ -590,9 +611,9 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 10, padding: '14px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
+      <div style={{ display: 'flex', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
         <button onClick={onAccrue} style={{ ...btnPrimary, flex: 1 }}>+ Начислить</button>
-        <button onClick={onDeduct} style={{ ...btnSecondary, flex: 1 }}>− Списать</button>
+        <button onClick={onDeduct} style={{ ...btnSecondary, flex: 1 }}>Списать</button>
       </div>
 
       {/* Log */}
@@ -601,7 +622,7 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
           Нет операций
         </div>
       ) : (
-        <div style={{ background: 'var(--tg-section-bg)' }}>
+        <div>
           {log.map((entry, idx) => (
             <div
               key={idx}
@@ -641,12 +662,12 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
 
 function ActionsTab({ onCreateOrder, onEdit }) {
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ ...contentCardStyle, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <button onClick={onCreateOrder} style={{ ...btnPrimary, width: '100%', padding: '14px' }}>
         + Создать заказ
       </button>
       <button onClick={onEdit} style={{ ...btnSecondary, width: '100%', padding: '14px' }}>
-        ✏️ Редактировать
+        Редактировать
       </button>
     </div>
   );
@@ -701,4 +722,11 @@ const btnIcon = {
   justifyContent: 'center',
   padding: 0,
   cursor: 'pointer',
+};
+
+const contentCardStyle = {
+  background: 'var(--tg-section-bg)',
+  border: '1px solid var(--tg-enterprise-border)',
+  borderRadius: 16,
+  boxShadow: 'var(--tg-enterprise-shadow)',
 };

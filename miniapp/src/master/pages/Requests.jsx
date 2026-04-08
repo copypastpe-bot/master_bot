@@ -1,6 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMasterRequests, closeMasterRequest, getMasterRequestMedia } from '../../api/client';
+import {
+  getMasterRequests,
+  closeMasterRequest,
+  getMasterRequestMedia,
+  getMasterRequestMediaUrl,
+} from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -116,7 +121,7 @@ function ActionBtn({ children, onClick, accent, small }) {
   );
 }
 
-function MediaPreview({ reqId }) {
+function MediaPreview({ reqId, legacyFileId }) {
   const [viewerIndex, setViewerIndex] = useState(null);
   const [zoom, setZoom] = useState(1);
 
@@ -127,7 +132,20 @@ function MediaPreview({ reqId }) {
     retry: false,
   });
 
-  const media = data?.media || [];
+  const hasResolvedMedia = Array.isArray(data?.media) && data.media.length > 0;
+  const { data: legacyMediaData } = useQuery({
+    queryKey: ['request-media-legacy-url', reqId, legacyFileId],
+    queryFn: () => getMasterRequestMediaUrl(reqId),
+    enabled: !hasResolvedMedia && Boolean(legacyFileId),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+
+  const media = hasResolvedMedia
+    ? data.media
+    : (legacyMediaData?.url
+      ? [{ file_id: legacyFileId, media_type: 'photo', url: legacyMediaData.url }]
+      : []);
   const activeMedia = viewerIndex == null ? null : media[viewerIndex] || null;
 
   const openViewer = (index) => {
@@ -167,7 +185,7 @@ function MediaPreview({ reqId }) {
     <>
       <div className="requests-media-grid">
         {media.map((item, index) => {
-          const isPhoto = item.media_type === 'photo';
+          const isPhoto = item.media_type !== 'video';
           if (isPhoto) {
             return (
               <button
@@ -197,7 +215,7 @@ function MediaPreview({ reqId }) {
         })}
       </div>
 
-      {activeMedia && activeMedia.media_type === 'photo' && (
+      {activeMedia && activeMedia.media_type !== 'video' && (
         <div onClick={closeViewer} className="requests-viewer-overlay">
           <button
             type="button"
@@ -333,7 +351,7 @@ function RequestCard({ req, onClose, onNavigate }) {
           >
             Вложения{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
           </button>
-          {showMedia && <MediaPreview reqId={req.id} />}
+          {showMedia && <MediaPreview reqId={req.id} legacyFileId={req.file_id} />}
         </div>
       )}
 
