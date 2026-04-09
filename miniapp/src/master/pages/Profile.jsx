@@ -15,6 +15,7 @@ function haptic(type = 'light') {
     WebApp.HapticFeedback.impactOccurred(type);
   }
 }
+
 function hapticNotify(type = 'success') {
   if (typeof WebApp?.HapticFeedback?.notificationOccurred === 'function') {
     WebApp.HapticFeedback.notificationOccurred(type);
@@ -53,136 +54,176 @@ const WORK_MODES = [
   { value: 'travel', label: 'На выезде' },
 ];
 
-// Inline-editable field
-function EditableField({ label, value, onSave, loading }) {
-  const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value || '');
-  const [saved, setSaved] = useState(false);
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': 'true',
+};
 
-  const handleSave = async () => {
-    haptic('medium');
-    await onSave(val);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-    setEditing(false);
-  };
+const UserIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M5 21a7 7 0 0 1 14 0" />
+  </svg>
+);
 
-  const handleStart = () => {
-    haptic();
-    setVal(value || '');
-    setEditing(true);
-  };
+const BriefcaseIcon = () => (
+  <svg {...iconProps}>
+    <rect x="3" y="7" width="18" height="14" rx="2" />
+    <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <path d="M3 12h18" />
+  </svg>
+);
 
-  if (editing) {
-    return (
-      <div style={{ padding: '12px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          {label}
-        </div>
-        <input
-          value={val}
-          onChange={e => setVal(e.target.value)}
-          autoFocus
-          style={{
-            width: '100%',
-            padding: '8px 10px',
-            borderRadius: 8,
-            border: '1px solid var(--tg-accent)',
-            background: 'var(--tg-bg)',
-            color: 'var(--tg-text)',
-            fontSize: 15,
-            boxSizing: 'border-box',
-            marginBottom: 8,
-          }}
-        />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => { haptic(); setEditing(false); }}
-            style={{ padding: '6px 16px', borderRadius: 8, border: '1px solid var(--tg-secondary-bg)', background: 'none', color: 'var(--tg-text)', cursor: 'pointer', fontSize: 14 }}
-          >
-            ✕
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            style={{ padding: '6px 20px', borderRadius: 8, background: 'var(--tg-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
-          >
-            ✓
-          </button>
-        </div>
-      </div>
-    );
-  }
+const PhoneIcon = () => (
+  <svg {...iconProps}>
+    <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.9 19.9 0 0 1-8.7-3.1 19.4 19.4 0 0 1-6-6A19.9 19.9 0 0 1 2 4.1 2 2 0 0 1 4 1.9h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.4 2.1L8 9.6a16 16 0 0 0 6.4 6.4l1.3-1.2a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6A2 2 0 0 1 22 16.9Z" />
+  </svg>
+);
 
+const LinkIcon = () => (
+  <svg {...iconProps}>
+    <path d="M10 13a5 5 0 0 0 7.1 0l2.8-2.8a5 5 0 1 0-7.1-7.1L10 4" />
+    <path d="M14 11a5 5 0 0 0-7.1 0L4.1 13.8a5 5 0 1 0 7.1 7.1L14 20" />
+  </svg>
+);
+
+const ClockIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v6l4 2" />
+  </svg>
+);
+
+const HomeIcon = () => (
+  <svg {...iconProps}>
+    <path d="M3 10.5 12 3l9 7.5" />
+    <path d="M5 9.5V21h14V9.5" />
+  </svg>
+);
+
+const GlobeIcon = () => (
+  <svg {...iconProps}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3c2.8 2.5 4.5 5.7 4.5 9s-1.7 6.5-4.5 9c-2.8-2.5-4.5-5.7-4.5-9S9.2 5.5 12 3Z" />
+  </svg>
+);
+
+const DollarIcon = () => (
+  <svg {...iconProps}>
+    <path d="M12 2v20" />
+    <path d="M17 6.5c0-2-2.2-3.5-5-3.5S7 4.5 7 6.5 9.2 10 12 10s5 1.5 5 3.5-2.2 3.5-5 3.5-5-1.5-5-3.5" />
+  </svg>
+);
+
+const MapPinIcon = () => (
+  <svg {...iconProps}>
+    <path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12Z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg {...iconProps} width={14} height={14}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+function SectionTitle({ children }) {
+  return <div className="enterprise-section-title">{children}</div>;
+}
+
+function Cell({ icon, label, value, onClick }) {
   return (
-    <div
-      onClick={handleStart}
-      style={{
-        padding: '12px 16px',
-        background: 'var(--tg-section-bg)',
-        borderBottom: '1px solid var(--tg-secondary-bg)',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}
-    >
-      <div>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-        <div style={{ fontSize: 15, color: value ? 'var(--tg-text)' : 'var(--tg-hint)', marginTop: 2 }}>
-          {saved ? '✓ Сохранено' : (value || 'не указано')}
-        </div>
-      </div>
-      <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-    </div>
+    <button className="enterprise-cell is-interactive" onClick={() => { haptic(); onClick(); }}>
+      {icon && <span className="enterprise-cell-icon">{icon}</span>}
+      <span className="enterprise-cell-label">{label}</span>
+      <span className="enterprise-cell-value">{value || 'не указано'}</span>
+      <span className="enterprise-cell-chevron"><ChevronIcon /></span>
+    </button>
   );
 }
 
-// Bottom sheet selector
-function PickerSheet({ title, options, value, onChange, onClose }) {
+function PickerSheet({ title, options, value, onChange, onClose, loading }) {
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }} />
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'var(--tg-section-bg)',
-        borderRadius: '16px 16px 0 0',
-        maxHeight: '60vh',
-        overflow: 'auto',
-        zIndex: 201,
-        animation: 'slideUp 0.2s ease',
-      }}>
-        <div style={{ padding: '16px', fontSize: 16, fontWeight: 600, borderBottom: '1px solid var(--tg-secondary-bg)' }}>
-          {title}
-        </div>
-        {options.map(opt => (
-          <div
+      <div className="enterprise-sheet-backdrop" onClick={onClose} />
+      <div className="enterprise-sheet">
+        <div className="enterprise-sheet-handle" />
+        <div className="enterprise-sheet-title">{title}</div>
+        {options.map((opt) => (
+          <button
             key={opt.value}
-            onClick={() => { haptic(); onChange(opt.value); onClose(); }}
-            style={{
-              padding: '14px 16px',
-              borderBottom: '1px solid var(--tg-secondary-bg)',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              color: opt.value === value ? 'var(--tg-accent)' : 'var(--tg-text)',
-              fontWeight: opt.value === value ? 600 : 400,
+            className={`enterprise-sheet-option${opt.value === value ? ' is-active' : ''}`}
+            onClick={() => {
+              if (loading) return;
+              haptic();
+              onChange(opt.value);
+              onClose();
             }}
           >
-            {opt.label}
+            <span>{opt.label}</span>
             {opt.value === value && <span>✓</span>}
-          </div>
+          </button>
         ))}
-        <div style={{ height: 'env(safe-area-inset-bottom, 16px)' }} />
       </div>
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+    </>
+  );
+}
+
+function TextEditSheet({ title, value, placeholder, multiline, loading, onClose, onSave }) {
+  const [draft, setDraft] = useState(value || '');
+
+  const handleSave = async () => {
+    haptic('medium');
+    await onSave(draft);
+  };
+
+  return (
+    <>
+      <div className="enterprise-sheet-backdrop" onClick={onClose} />
+      <div className="enterprise-sheet">
+        <div className="enterprise-sheet-handle" />
+        <div className="enterprise-sheet-title">{title}</div>
+        {multiline ? (
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder}
+            rows={4}
+            className="enterprise-sheet-input"
+          />
+        ) : (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder={placeholder}
+            className="enterprise-sheet-input"
+          />
+        )}
+        <div className="enterprise-sheet-actions">
+          <button className="enterprise-sheet-btn secondary" onClick={onClose}>
+            Отмена
+          </button>
+          <button className="enterprise-sheet-btn primary" onClick={handleSave} disabled={loading}>
+            {loading ? 'Сохраняем...' : 'Сохранить'}
+          </button>
+        </div>
+      </div>
     </>
   );
 }
 
 export default function Profile() {
-  const [picker, setPicker] = useState(null); // 'work_mode' | 'timezone' | 'currency'
+  const [picker, setPicker] = useState(null);
+  const [editor, setEditor] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
 
   const qc = useQueryClient();
@@ -199,183 +240,175 @@ export default function Profile() {
     staleTime: 5 * 60_000,
   });
 
-  const showSuccess = (msg = 'Сохранено ✓') => {
+  const showSuccess = (msg = 'Сохранено') => {
     hapticNotify('success');
     setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 2000);
+    setTimeout(() => setSuccessMsg(''), 1800);
   };
 
   const profileMutation = useMutation({
     mutationFn: updateMasterProfile,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['master-me'] }); showSuccess(); },
-    onError: () => hapticNotify('error'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      showSuccess('Профиль обновлён');
+    },
+    onError: (err) => {
+      hapticNotify('error');
+      const msg = err?.response?.data?.detail || 'Не удалось сохранить';
+      if (typeof WebApp?.showAlert === 'function') {
+        WebApp.showAlert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+      }
+    },
   });
 
   const tzMutation = useMutation({
     mutationFn: updateMasterTimezone,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['master-me'] }); showSuccess('Часовой пояс сохранён ✓'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      showSuccess('Часовой пояс сохранён');
+    },
     onError: () => hapticNotify('error'),
   });
 
   const curMutation = useMutation({
     mutationFn: updateMasterCurrency,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['master-me'] }); showSuccess('Валюта сохранена ✓'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      showSuccess('Валюта сохранена');
+    },
     onError: () => hapticNotify('error'),
   });
 
-  const handleCopyInvite = () => {
+  const handleCopyInvite = async () => {
     const link = inviteData?.invite_link;
     if (!link) return;
     haptic('medium');
-    if (typeof navigator?.clipboard?.writeText === 'function') {
-      navigator.clipboard.writeText(link).then(() => showSuccess('Ссылка скопирована ✓'));
-    } else if (typeof WebApp?.showPopup === 'function') {
+    try {
+      if (typeof navigator?.clipboard?.writeText === 'function') {
+        await navigator.clipboard.writeText(link);
+        showSuccess('Ссылка скопирована');
+        return;
+      }
+    } catch (_) {
+      // Fallback to popup below.
+    }
+    if (typeof WebApp?.showPopup === 'function') {
       WebApp.showPopup({ title: 'Инвайт-ссылка', message: link, buttons: [{ type: 'ok' }] });
     }
   };
 
   if (isLoading) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Загрузка...</div>;
+    return (
+      <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+        Загрузка профиля...
+      </div>
+    );
   }
 
-  const tzLabel = TIMEZONES.find(t => t.value === master?.timezone)?.label || master?.timezone || '—';
-  const curLabel = CURRENCIES.find(c => c.value === master?.currency)?.label || master?.currency || '—';
-  const workModeLabel = WORK_MODES.find(m => m.value === master?.work_mode)?.label || 'На выезде';
+  const tzLabel = TIMEZONES.find((t) => t.value === master?.timezone)?.label || master?.timezone || '—';
+  const curLabel = CURRENCIES.find((c) => c.value === master?.currency)?.label || master?.currency || '—';
+  const workModeLabel = WORK_MODES.find((m) => m.value === master?.work_mode)?.label || 'На выезде';
 
   return (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="enterprise-profile-page">
       {successMsg && (
-        <div style={{
-          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--tg-accent)', color: '#fff',
-          padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-          zIndex: 300, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}>
+        <div className="enterprise-profile-toast">
           {successMsg}
         </div>
       )}
 
-      {/* Avatar */}
-      <div style={{ padding: '24px 16px 16px', textAlign: 'center', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%',
-          background: 'var(--tg-accent)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: 28, fontWeight: 700, margin: '0 auto 12px',
-        }}>
+      <div className="enterprise-profile-hero">
+        <div className="enterprise-profile-avatar">
           {(master?.name || '?')[0].toUpperCase()}
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tg-text)' }}>{master?.name || '—'}</div>
-        {master?.sphere && <div style={{ fontSize: 14, color: 'var(--tg-hint)', marginTop: 4 }}>{master.sphere}</div>}
+        <div className="enterprise-profile-name">{master?.name || '—'}</div>
+        <div className="enterprise-profile-subtitle">{master?.sphere || 'Сфера не указана'}</div>
       </div>
 
-      {/* Profile fields */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Профиль
-        </div>
-        <EditableField
+      <SectionTitle>Профиль</SectionTitle>
+      <div className="enterprise-cell-group">
+        <Cell
+          icon={<UserIcon />}
           label="Имя"
-          value={master?.name}
-          onSave={(v) => profileMutation.mutate({ name: v })}
-          loading={profileMutation.isPending}
+          value={master?.name || 'не указано'}
+          onClick={() => setEditor({ field: 'name', title: 'Имя', value: master?.name || '', placeholder: 'Введите имя' })}
         />
-        <EditableField
+        <Cell
+          icon={<BriefcaseIcon />}
           label="Сфера деятельности"
-          value={master?.sphere}
-          onSave={(v) => profileMutation.mutate({ sphere: v })}
-          loading={profileMutation.isPending}
+          value={master?.sphere || 'не указано'}
+          onClick={() => setEditor({ field: 'sphere', title: 'Сфера деятельности', value: master?.sphere || '', placeholder: 'Например: барбер, мастер маникюра' })}
         />
-        <EditableField
+        <Cell
+          icon={<PhoneIcon />}
           label="Контакты"
-          value={master?.contacts}
-          onSave={(v) => profileMutation.mutate({ contacts: v })}
-          loading={profileMutation.isPending}
+          value={master?.contacts || 'не указано'}
+          onClick={() => setEditor({ field: 'contacts', title: 'Контакты', value: master?.contacts || '', placeholder: 'Телефон, Telegram, WhatsApp' })}
         />
-        <EditableField
+        <Cell
+          icon={<LinkIcon />}
           label="Соцсети"
-          value={master?.socials}
-          onSave={(v) => profileMutation.mutate({ socials: v })}
-          loading={profileMutation.isPending}
+          value={master?.socials || 'не указано'}
+          onClick={() => setEditor({ field: 'socials', title: 'Соцсети', value: master?.socials || '', placeholder: '@username или ссылка' })}
         />
-        <EditableField
+        <Cell
+          icon={<ClockIcon />}
           label="График работы"
-          value={master?.work_hours}
-          onSave={(v) => profileMutation.mutate({ work_hours: v })}
-          loading={profileMutation.isPending}
+          value={master?.work_hours || 'не указано'}
+          onClick={() => setEditor({ field: 'work_hours', title: 'График работы', value: master?.work_hours || '', placeholder: 'Пн-Пт 10:00-20:00' })}
         />
-        <EditableField
+      </div>
+
+      <SectionTitle>Формат работы</SectionTitle>
+      <div className="enterprise-cell-group">
+        <Cell
+          icon={<HomeIcon />}
+          label="Я работаю"
+          value={workModeLabel}
+          onClick={() => setPicker('work_mode')}
+        />
+        <Cell
+          icon={<MapPinIcon />}
           label="Мой адрес по умолчанию"
-          value={master?.work_address_default}
-          onSave={(v) => profileMutation.mutate({ work_address_default: v })}
-          loading={profileMutation.isPending}
+          value={master?.work_address_default || 'не указан'}
+          onClick={() => setEditor({
+            field: 'work_address_default',
+            title: 'Мой адрес по умолчанию',
+            value: master?.work_address_default || '',
+            placeholder: 'Адрес дома / кабинета / салона',
+            multiline: true,
+          })}
         />
       </div>
 
-      {/* Work mode / Timezone / Currency */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Настройки заказов
-        </div>
-        <div
-          onClick={() => { haptic(); setPicker('work_mode'); }}
-          style={{ padding: '12px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Я работаю</div>
-            <div style={{ fontSize: 15, color: 'var(--tg-text)', marginTop: 2 }}>{workModeLabel}</div>
-          </div>
-          <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Региональные настройки
-        </div>
-        <div
-          onClick={() => { haptic(); setPicker('timezone'); }}
-          style={{ padding: '12px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Часовой пояс</div>
-            <div style={{ fontSize: 15, color: 'var(--tg-text)', marginTop: 2 }}>{tzLabel}</div>
-          </div>
-          <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-        </div>
-        <div
-          onClick={() => { haptic(); setPicker('currency'); }}
-          style={{ padding: '12px 16px', background: 'var(--tg-section-bg)', borderBottom: '1px solid var(--tg-secondary-bg)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Валюта</div>
-            <div style={{ fontSize: 15, color: 'var(--tg-text)', marginTop: 2 }}>{curLabel}</div>
-          </div>
-          <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-        </div>
+      <SectionTitle>Регион</SectionTitle>
+      <div className="enterprise-cell-group">
+        <Cell
+          icon={<GlobeIcon />}
+          label="Часовой пояс"
+          value={tzLabel}
+          onClick={() => setPicker('timezone')}
+        />
+        <Cell
+          icon={<DollarIcon />}
+          label="Валюта"
+          value={curLabel}
+          onClick={() => setPicker('currency')}
+        />
       </div>
 
-      {/* Invite link */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Инвайт-ссылка
-        </div>
-        <div style={{ background: 'var(--tg-section-bg)', padding: '14px 16px', borderRadius: 0 }}>
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 8, wordBreak: 'break-all' }}>
-            {inviteData?.invite_link || '—'}
-          </div>
-          <button
-            onClick={handleCopyInvite}
-            disabled={!inviteData?.invite_link}
-            style={{
-              padding: '10px 20px', borderRadius: 10,
-              background: 'var(--tg-accent)', color: '#fff',
-              border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600,
-            }}
-          >
-            Копировать
-          </button>
-        </div>
+      <SectionTitle>Инвайт</SectionTitle>
+      <div className="enterprise-profile-invite">
+        <div className="enterprise-profile-invite-link">{inviteData?.invite_link || '—'}</div>
+        <button
+          className="enterprise-profile-copy-btn"
+          onClick={handleCopyInvite}
+          disabled={!inviteData?.invite_link}
+        >
+          Копировать ссылку
+        </button>
       </div>
 
-      {/* Pickers */}
       {picker === 'work_mode' && (
         <PickerSheet
           title="Я работаю"
@@ -383,8 +416,10 @@ export default function Profile() {
           value={master?.work_mode || 'travel'}
           onChange={(mode) => profileMutation.mutate({ work_mode: mode })}
           onClose={() => setPicker(null)}
+          loading={profileMutation.isPending}
         />
       )}
+
       {picker === 'timezone' && (
         <PickerSheet
           title="Часовой пояс"
@@ -392,8 +427,10 @@ export default function Profile() {
           value={master?.timezone}
           onChange={(tz) => tzMutation.mutate(tz)}
           onClose={() => setPicker(null)}
+          loading={tzMutation.isPending}
         />
       )}
+
       {picker === 'currency' && (
         <PickerSheet
           title="Валюта"
@@ -401,6 +438,22 @@ export default function Profile() {
           value={master?.currency}
           onChange={(cur) => curMutation.mutate(cur)}
           onClose={() => setPicker(null)}
+          loading={curMutation.isPending}
+        />
+      )}
+
+      {editor && (
+        <TextEditSheet
+          title={editor.title}
+          value={editor.value}
+          placeholder={editor.placeholder}
+          multiline={Boolean(editor.multiline)}
+          loading={profileMutation.isPending}
+          onClose={() => setEditor(null)}
+          onSave={async (nextValue) => {
+            await profileMutation.mutateAsync({ [editor.field]: nextValue });
+            setEditor(null);
+          }}
         />
       )}
     </div>
