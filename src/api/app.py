@@ -39,7 +39,11 @@ _miniapp_origin = f"{_parsed.scheme}://{_parsed.netloc}"
 # CORS for Mini App
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[_miniapp_origin, "http://localhost:5173"],  # Mini App + local dev
+    allow_origins=[
+        _miniapp_origin,
+        "http://localhost:5173",
+        "https://ru.app.crmfit.ru",
+    ],  # Mini App + local dev + RU proxy
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
