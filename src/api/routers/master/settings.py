@@ -1,9 +1,11 @@
 """Master settings endpoints — profile, timezone, currency, bonus settings, services."""
 
 import logging
+import re
 import secrets
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
@@ -23,6 +25,7 @@ from src.database import (
     update_master,
 )
 from src.models import Master
+from src.utils import normalize_phone
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,8 @@ ALLOWED_TIMEZONES = {
 }
 
 ALLOWED_CURRENCIES = {"RUB", "EUR", "ILS", "UAH", "BYN", "KZT", "USD", "TRY", "GEL", "UZS"}
+TELEGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
+INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
 
 BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
 MAX_BONUS_MEDIA_BYTES = 10 * 1024 * 1024
@@ -103,12 +108,47 @@ def _cleanup_local_media(media_ref: Optional[str]) -> None:
 # Profile
 # =============================================================================
 
+def _extract_username(raw: str, hosts: set[str]) -> Optional[str]:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    if value.startswith("@"):
+        return value[1:].strip()
+    if "://" in value or "/" in value:
+        parsed = urlparse(value if "://" in value else f"https://{value}")
+        host = (parsed.netloc or "").lower()
+        if host.startswith("www."):
+            host = host[4:]
+        if host not in hosts:
+            return None
+        first_part = (parsed.path or "").strip("/").split("/", 1)[0]
+        if first_part.startswith("@"):
+            first_part = first_part[1:]
+        return first_part.strip() or None
+    return value
+
+
+def _normalize_website(raw: str) -> Optional[str]:
+    value = (raw or "").strip()
+    if not value:
+        return None
+    candidate = value if "://" in value else f"https://{value}"
+    parsed = urlparse(candidate)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return candidate
+
 class ProfileUpdateBody(BaseModel):
     name: Optional[str] = None
     sphere: Optional[str] = None
     contacts: Optional[str] = None
     socials: Optional[str] = None
     work_hours: Optional[str] = None
+    phone: Optional[str] = None
+    telegram: Optional[str] = None
+    instagram: Optional[str] = None
+    website: Optional[str] = None
+    contact_address: Optional[str] = None
     work_mode: Optional[str] = None
     work_address_default: Optional[str] = None
     onboarding_banner_shown: Optional[bool] = None
@@ -132,6 +172,73 @@ class ProfileUpdateBody(BaseModel):
             raise ValueError("work_mode must be one of: home, travel")
         return v
 
+    @field_validator("phone")
+    @classmethod
+    def phone_normalized(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        normalized = normalize_phone(value)
+        if normalized:
+            return normalized
+        digits = re.sub(r"\D", "", value)
+        if len(digits) < 7 or len(digits) > 15:
+            raise ValueError("invalid phone number")
+        return f"+{digits}" if not value.startswith("+") else f"+{digits}"
+
+    @field_validator("telegram")
+    @classmethod
+    def telegram_valid(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        username = _extract_username(value, {"t.me", "telegram.me"})
+        if not username or not TELEGRAM_USERNAME_RE.fullmatch(username):
+            raise ValueError("invalid telegram username or link")
+        return f"@{username}"
+
+    @field_validator("instagram")
+    @classmethod
+    def instagram_valid(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        username = _extract_username(value, {"instagram.com", "instagr.am"})
+        if not username or not INSTAGRAM_USERNAME_RE.fullmatch(username):
+            raise ValueError("invalid instagram username or link")
+        return f"@{username}"
+
+    @field_validator("website")
+    @classmethod
+    def website_valid(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        normalized = _normalize_website(value)
+        if not normalized:
+            raise ValueError("invalid website url")
+        return normalized
+
+    @field_validator("contact_address")
+    @classmethod
+    def contact_address_len(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        if len(value) > 400:
+            raise ValueError("contact_address max 400 chars")
+        return value
+
 
 @router.put("/master/profile")
 async def update_master_profile(
@@ -139,9 +246,16 @@ async def update_master_profile(
     master: Master = Depends(get_current_master),
 ):
     """Update master profile fields."""
-    kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
-    if "work_address_default" in kwargs:
-        kwargs["work_address_default"] = kwargs["work_address_default"].strip() or None
+    payload = body.model_dump(exclude_unset=True)
+    kwargs = dict(payload)
+    nullable_text_fields = {
+        "sphere", "contacts", "socials", "work_hours", "phone",
+        "telegram", "instagram", "website", "contact_address",
+        "work_address_default",
+    }
+    for key in nullable_text_fields:
+        if key in kwargs and isinstance(kwargs[key], str):
+            kwargs[key] = kwargs[key].strip() or None
     if kwargs:
         await update_master(master.id, **kwargs)
     return {"ok": True}
