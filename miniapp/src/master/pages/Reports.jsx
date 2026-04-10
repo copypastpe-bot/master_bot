@@ -462,6 +462,12 @@ export default function Reports({ initialPeriod = 'month' }) {
   const [activePeriod, setActivePeriod] = useState(initialPeriod);
   const [showCustomSheet, setShowCustomSheet] = useState(false);
   const [customRange, setCustomRange] = useState(null); // { from, to }
+  const periods = [
+    { key: 'today', label: tr('Сегодня', 'Today') },
+    { key: 'week', label: tr('Неделя', 'Week') },
+    { key: 'month', label: tr('Месяц', 'Month') },
+    { key: 'custom', label: tr('Период', 'Range') },
+  ];
 
   const queryParams = activePeriod === 'custom' && customRange
     ? { date_from: customRange.from, date_to: customRange.to }
@@ -572,9 +578,3 @@ export default function Reports({ initialPeriod = 'month' }) {
     </div>
   );
 }
-  const periods = [
-    { key: 'today', label: tr('Сегодня', 'Today') },
-    { key: 'week', label: tr('Неделя', 'Week') },
-    { key: 'month', label: tr('Месяц', 'Month') },
-    { key: 'custom', label: tr('Период', 'Range') },
-  ];
