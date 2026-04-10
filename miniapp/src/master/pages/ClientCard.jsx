@@ -6,6 +6,7 @@ import {
   updateMasterClientNote,
   masterClientBonus,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -44,10 +45,11 @@ function StatBadge({ label, value }) {
 }
 
 function TabBar({ active, onChange }) {
+  const { tr } = useI18n();
   const tabs = [
-    { id: 'history', label: 'История' },
-    { id: 'bonuses', label: 'Бонусы' },
-    { id: 'actions', label: 'Действия' },
+    { id: 'history', label: tr('История', 'History') },
+    { id: 'bonuses', label: tr('Бонусы', 'Bonuses') },
+    { id: 'actions', label: tr('Действия', 'Actions') },
   ];
   return (
     <div style={{
@@ -89,12 +91,13 @@ function TabBar({ active, onChange }) {
 }
 
 function StatusBadge({ status }) {
+  const { tr } = useI18n();
   const map = {
-    done: { label: 'Выполнен', color: '#4caf50' },
-    new: { label: 'Новый', color: 'var(--tg-accent)' },
-    confirmed: { label: 'Подтверждён', color: 'var(--tg-accent)' },
-    moved: { label: 'Перенесён', color: '#ff9800' },
-    cancelled: { label: 'Отменён', color: 'var(--tg-destructive, #e53935)' },
+    done: { label: tr('Выполнен', 'Done'), color: '#4caf50' },
+    new: { label: tr('Новый', 'New'), color: 'var(--tg-accent)' },
+    confirmed: { label: tr('Подтверждён', 'Confirmed'), color: 'var(--tg-accent)' },
+    moved: { label: tr('Перенесён', 'Moved'), color: '#ff9800' },
+    cancelled: { label: tr('Отменён', 'Cancelled'), color: 'var(--tg-destructive, #e53935)' },
   };
   const s = map[status] || { label: status, color: 'var(--tg-hint)' };
   return (
@@ -112,6 +115,7 @@ function StatusBadge({ status }) {
 }
 
 function BonusSheet({ type, onClose, onSubmit, loading }) {
+  const { tr } = useI18n();
   const [amount, setAmount] = useState('');
   const [comment, setComment] = useState('');
   const isAccrual = type === 'accrue';
@@ -145,13 +149,13 @@ function BonusSheet({ type, onClose, onSubmit, loading }) {
         animation: 'slideUp 0.2s ease',
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-          {isAccrual ? '+ Начислить бонусы' : '- Списать бонусы'}
+          {isAccrual ? tr('+ Начислить бонусы', '+ Accrue bonuses') : tr('- Списать бонусы', '- Deduct bonuses')}
         </div>
         <input
           type="number"
           value={amount}
           onChange={e => setAmount(e.target.value)}
-          placeholder="Сумма"
+          placeholder={tr('Сумма', 'Amount')}
           autoFocus
           style={{
             width: '100%',
@@ -169,7 +173,7 @@ function BonusSheet({ type, onClose, onSubmit, loading }) {
           type="text"
           value={comment}
           onChange={e => setComment(e.target.value)}
-          placeholder="Комментарий (необязательно)"
+          placeholder={tr('Комментарий (необязательно)', 'Comment (optional)')}
           style={{
             width: '100%',
             padding: '10px 12px',
@@ -192,7 +196,7 @@ function BonusSheet({ type, onClose, onSubmit, loading }) {
               fontSize: 15, cursor: 'pointer',
             }}
           >
-            Отмена
+            {tr('Отмена', 'Cancel')}
           </button>
           <button
             onClick={handleSubmit}
@@ -204,7 +208,7 @@ function BonusSheet({ type, onClose, onSubmit, loading }) {
               border: 'none', cursor: 'pointer', opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? '...' : (isAccrual ? 'Начислить' : 'Списать')}
+            {loading ? '...' : (isAccrual ? tr('Начислить', 'Accrue') : tr('Списать', 'Deduct'))}
           </button>
         </div>
       </div>
@@ -218,6 +222,7 @@ function BonusSheet({ type, onClose, onSubmit, loading }) {
 // ---------------------------------------------------------------------------
 
 export default function ClientCard({ clientId, onBack, onNavigate }) {
+  const { tr, locale } = useI18n();
   const [tab, setTab] = useState('history');
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({});
@@ -248,26 +253,26 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 
   const editMutation = useMutation({
     mutationFn: (data) => updateMasterClient(clientId, data),
-    onSuccess: () => { invalidate(); setEditMode(false); showSuccess('Сохранено ✓'); },
+    onSuccess: () => { invalidate(); setEditMode(false); showSuccess(tr('Сохранено ✓', 'Saved ✓')); },
     onError: () => hapticNotify('error'),
   });
 
   const noteMutation = useMutation({
     mutationFn: (note) => updateMasterClientNote(clientId, note),
-    onSuccess: () => { invalidate(); setEditNote(false); showSuccess('Заметка сохранена ✓'); },
+    onSuccess: () => { invalidate(); setEditNote(false); showSuccess(tr('Заметка сохранена ✓', 'Note saved ✓')); },
     onError: () => hapticNotify('error'),
   });
 
   const bonusMutation = useMutation({
     mutationFn: ({ amount, comment }) => masterClientBonus(clientId, amount, comment),
-    onSuccess: () => { invalidate(); setBonusSheet(null); showSuccess('Бонусы обновлены ✓'); },
+    onSuccess: () => { invalidate(); setBonusSheet(null); showSuccess(tr('Бонусы обновлены ✓', 'Bonuses updated ✓')); },
     onError: () => hapticNotify('error'),
   });
 
   if (isLoading) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Загрузка...
+        {tr('Загрузка...', 'Loading...')}
       </div>
     );
   }
@@ -275,9 +280,9 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
   if (error || !client) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--tg-hint)' }}>Не удалось загрузить клиента</p>
+        <p style={{ color: 'var(--tg-hint)' }}>{tr('Не удалось загрузить клиента', 'Failed to load client')}</p>
         <button onClick={onBack} style={{ color: 'var(--tg-accent)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15 }}>
-          ← Назад
+          {tr('← Назад', '← Back')}
         </button>
       </div>
     );
@@ -321,7 +326,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         document.execCommand('copy');
         document.body.removeChild(ta);
       }
-      showSuccess('Номер скопирован');
+      showSuccess(tr('Номер скопирован', 'Number copied'));
     } catch {
       hapticNotify('error');
     }
@@ -352,20 +357,20 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         {editMode ? (
           // Edit form
           <div>
-            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>Имя</div>
+            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>{tr('Имя', 'Name')}</div>
             <input
               value={editForm.name || ''}
               onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))}
               style={inputStyle}
             />
-            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 10, marginBottom: 4 }}>Телефон</div>
+            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 10, marginBottom: 4 }}>{tr('Телефон', 'Phone')}</div>
             <input
               type="tel"
               value={editForm.phone || ''}
               onChange={e => setEditForm(p => ({ ...p, phone: e.target.value }))}
               style={inputStyle}
             />
-            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 10, marginBottom: 4 }}>Дата рождения</div>
+            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 10, marginBottom: 4 }}>{tr('Дата рождения', 'Birthday')}</div>
             <input
               type="date"
               ref={birthdayInputRef}
@@ -373,9 +378,9 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
               style={inputStyle}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-              <button onClick={() => { haptic(); setEditMode(false); }} style={btnSecondary}>Отмена</button>
+              <button onClick={() => { haptic(); setEditMode(false); }} style={btnSecondary}>{tr('Отмена', 'Cancel')}</button>
               <button onClick={handleEditSave} disabled={editMutation.isPending} style={btnPrimary}>
-                {editMutation.isPending ? '...' : 'Сохранить'}
+                {editMutation.isPending ? '...' : tr('Сохранить', 'Save')}
               </button>
             </div>
           </div>
@@ -395,8 +400,8 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
                     <button
                       onClick={handleCopyPhone}
                       style={btnIcon}
-                      aria-label="Скопировать номер"
-                      title="Скопировать номер"
+                      aria-label={tr('Скопировать номер', 'Copy number')}
+                      title={tr('Скопировать номер', 'Copy number')}
                     >
                       <CopyIcon />
                     </button>
@@ -405,7 +410,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
               )}
               {client.birthday && (
                 <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>
-                  ДР: {client.birthday}
+                  {tr('ДР', 'BD')}: {client.birthday}
                 </div>
               )}
             </div>
@@ -430,11 +435,11 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         gap: 8,
         marginTop: 10,
       }}>
-        <StatBadge label="Бонусы" value={`${client.bonus_balance || 0} ₽`} />
+        <StatBadge label={tr('Бонусы', 'Bonuses')} value={`${client.bonus_balance || 0} ₽`} />
         <div style={{ width: 1, background: 'var(--tg-secondary-bg)' }} />
-        <StatBadge label="Заказов" value={client.order_count || 0} />
+        <StatBadge label={tr('Заказов', 'Orders')} value={client.order_count || 0} />
         <div style={{ width: 1, background: 'var(--tg-secondary-bg)' }} />
-        <StatBadge label="Потрачено" value={`${(client.total_spent || 0).toLocaleString()} ₽`} />
+        <StatBadge label={tr('Потрачено', 'Spent')} value={`${(client.total_spent || 0).toLocaleString(locale)} ₽`} />
       </div>
 
       {/* Note */}
@@ -449,14 +454,14 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-              Заметка
+              {tr('Заметка', 'Note')}
             </div>
             {editNote ? (
               <div>
                 <textarea
                   value={noteValue}
                   onChange={e => setNoteValue(e.target.value)}
-                  placeholder="Заметка о клиенте..."
+                  placeholder={tr('Заметка о клиенте...', 'Client note...')}
                   rows={3}
                   autoFocus
                   style={{
@@ -467,9 +472,9 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
                   }}
                 />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => { haptic(); setEditNote(false); }} style={btnSecondary}>Отмена</button>
+                  <button onClick={() => { haptic(); setEditNote(false); }} style={btnSecondary}>{tr('Отмена', 'Cancel')}</button>
                   <button onClick={handleNoteSave} disabled={noteMutation.isPending} style={btnPrimary}>
-                    {noteMutation.isPending ? '...' : 'Сохранить'}
+                    {noteMutation.isPending ? '...' : tr('Сохранить', 'Save')}
                   </button>
                 </div>
               </div>
@@ -477,7 +482,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
               <div
                 style={{ fontSize: 14, color: client.note ? 'var(--tg-text)' : 'var(--tg-hint)', lineHeight: 1.4 }}
               >
-                {client.note || 'Нет заметки'}
+                {client.note || tr('Нет заметки', 'No note')}
               </div>
             )}
           </div>
@@ -533,11 +538,12 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 // ---------------------------------------------------------------------------
 
 function HistoryTab({ orders, onNavigate }) {
+  const { tr, locale } = useI18n();
   if (!orders.length) {
     return (
       <div style={contentCardStyle}>
         <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-          Нет заказов
+          {tr('Нет заказов', 'No orders')}
         </div>
       </div>
     );
@@ -546,7 +552,7 @@ function HistoryTab({ orders, onNavigate }) {
   const fmtDate = (str) => {
     if (!str) return '—';
     try {
-      return new Date(str).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' });
+      return new Date(str).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return str; }
   };
 
@@ -567,7 +573,7 @@ function HistoryTab({ orders, onNavigate }) {
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {o.services || 'Без услуг'}
+              {o.services || tr('Без услуг', 'No services')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
               {fmtDate(o.scheduled_at)}
@@ -575,7 +581,7 @@ function HistoryTab({ orders, onNavigate }) {
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--tg-text)' }}>
-              {(o.amount_total || 0).toLocaleString()} ₽
+              {(o.amount_total || 0).toLocaleString(locale)} ₽
             </div>
             <StatusBadge status={o.status} />
           </div>
@@ -590,9 +596,10 @@ function HistoryTab({ orders, onNavigate }) {
 // ---------------------------------------------------------------------------
 
 function BonusesTab({ balance, log, onAccrue, onDeduct }) {
+  const { tr, locale } = useI18n();
   const fmtDate = (str) => {
     if (!str) return '—';
-    try { return new Date(str).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); }
+    try { return new Date(str).toLocaleDateString(locale, { day: 'numeric', month: 'short' }); }
     catch { return str; }
   };
 
@@ -605,21 +612,21 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
         borderBottom: '1px solid var(--tg-secondary-bg)',
       }}>
         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--tg-text)' }}>
-          {balance.toLocaleString()} ₽
+          {balance.toLocaleString(locale)} ₽
         </div>
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>Бонусный баланс</div>
+        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>{tr('Бонусный баланс', 'Bonus balance')}</div>
       </div>
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--tg-secondary-bg)' }}>
-        <button onClick={onAccrue} style={{ ...btnPrimary, flex: 1 }}>+ Начислить</button>
-        <button onClick={onDeduct} style={{ ...btnSecondary, flex: 1 }}>Списать</button>
+        <button onClick={onAccrue} style={{ ...btnPrimary, flex: 1 }}>{tr('+ Начислить', '+ Accrue')}</button>
+        <button onClick={onDeduct} style={{ ...btnSecondary, flex: 1 }}>{tr('Списать', 'Deduct')}</button>
       </div>
 
       {/* Log */}
       {log.length === 0 ? (
         <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-          Нет операций
+          {tr('Нет операций', 'No operations')}
         </div>
       ) : (
         <div>
@@ -636,7 +643,7 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {entry.comment || (entry.type === 'accrual' ? 'Начисление' : 'Списание')}
+                  {entry.comment || (entry.type === 'accrual' ? tr('Начисление', 'Accrual') : tr('Списание', 'Deduction'))}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>{fmtDate(entry.date)}</div>
               </div>
@@ -661,13 +668,14 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
 // ---------------------------------------------------------------------------
 
 function ActionsTab({ onCreateOrder, onEdit }) {
+  const { tr } = useI18n();
   return (
     <div style={{ ...contentCardStyle, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <button onClick={onCreateOrder} style={{ ...btnPrimary, width: '100%', padding: '14px' }}>
-        + Создать заказ
+        {tr('+ Создать заказ', '+ Create order')}
       </button>
       <button onClick={onEdit} style={{ ...btnSecondary, width: '100%', padding: '14px' }}>
-        Редактировать
+        {tr('Редактировать', 'Edit')}
       </button>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   trackMasterReferralLinkCopied,
 } from '../../api/client';
 import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -146,6 +147,7 @@ function Cell({ icon, label, value, onClick, hideChevron = false }) {
 }
 
 export default function More({ onNavigate }) {
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
   const [paywallOpen, setPaywallOpen] = useState(false);
 
@@ -172,7 +174,7 @@ export default function More({ onNavigate }) {
       const url = data?.url;
       if (!url) {
         if (typeof WebApp?.showAlert === 'function') {
-          WebApp.showAlert('Не удалось создать ссылку подключения');
+          WebApp.showAlert(t('more.alerts.connectUrlFailed'));
         }
         return;
       }
@@ -190,7 +192,7 @@ export default function More({ onNavigate }) {
       qc.invalidateQueries({ queryKey: ['master-google-calendar'] });
       qc.invalidateQueries({ queryKey: ['master-me'] });
       if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Google Calendar отключён');
+        WebApp.showAlert(t('more.alerts.calendarDisconnected'));
       }
     },
   });
@@ -214,7 +216,7 @@ export default function More({ onNavigate }) {
       navigator.clipboard.writeText(link);
     }
     if (typeof WebApp?.showPopup === 'function') {
-      WebApp.showPopup({ title: 'Ссылка скопирована', message: link, buttons: [{ type: 'ok' }] });
+      WebApp.showPopup({ title: t('more.popup.copiedTitle'), message: link, buttons: [{ type: 'ok' }] });
     }
   };
 
@@ -236,10 +238,10 @@ export default function More({ onNavigate }) {
     if (typeof WebApp?.showPopup === 'function') {
       WebApp.showPopup(
         {
-          title: 'Отключить Google Calendar?',
-          message: 'Новые заказы перестанут автоматически добавляться в календарь.',
+          title: t('more.popup.disconnectTitle'),
+          message: t('more.popup.disconnectMessage'),
           buttons: [
-            { id: 'disconnect', type: 'destructive', text: 'Отключить' },
+            { id: 'disconnect', type: 'destructive', text: t('more.popup.disconnectButton') },
             { type: 'cancel' },
           ],
         },
@@ -252,16 +254,16 @@ export default function More({ onNavigate }) {
       return;
     }
 
-    if (typeof window !== 'undefined' && window.confirm('Отключить Google Calendar?')) {
+    if (typeof window !== 'undefined' && window.confirm(t('more.popup.disconnectConfirm'))) {
       disconnectGcMutation.mutate();
     }
   };
 
   const gcValue = gcLoading
-    ? '...'
+    ? t('more.googleCalendar.loading')
     : gcData?.connected
-      ? (gcData?.email || 'Подключён')
-      : 'Не подключён';
+      ? (gcData?.email || t('more.googleCalendar.connectedFallback'))
+      : t('more.googleCalendar.disconnected');
   const isSubscriptionActive = subscription?.is_active ?? true;
   const subscriptionUntil = subscription?.subscription_until;
   const subscriptionDays = subscription?.days_left ?? 0;
@@ -296,7 +298,7 @@ export default function More({ onNavigate }) {
     }
     trackMasterReferralLinkCopied('more-paywall').catch(() => {});
     if (typeof WebApp?.showAlert === 'function') {
-      WebApp.showAlert('Ссылка скопирована');
+      WebApp.showAlert(t('common.copied'));
     }
     setPaywallOpen(false);
   };
@@ -309,12 +311,17 @@ export default function More({ onNavigate }) {
       >
         <div>
           <div className="enterprise-subscription-card-title">
-            Подписка
+            {t('more.subscription.title')}
           </div>
           <div className={`enterprise-subscription-card-subtitle${isSubscriptionActive ? '' : ' is-expired'}`}>
             {isSubscriptionActive
-              ? `до ${subscriptionUntil ? new Date(subscriptionUntil).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '—'} · осталось ${subscriptionDays} дн`
-              : 'Подписка истекла'}
+              ? t('more.subscription.activeUntil', {
+                date: subscriptionUntil
+                  ? new Date(subscriptionUntil).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
+                  : t('common.dash'),
+                days: subscriptionDays,
+              })
+              : t('more.subscription.expired')}
           </div>
         </div>
         <span className={`enterprise-subscription-card-star${isSubscriptionActive ? '' : ' is-expired'}`}>
@@ -322,57 +329,57 @@ export default function More({ onNavigate }) {
         </span>
       </button>
 
-      <SectionTitle>Клиенты</SectionTitle>
+      <SectionTitle>{t('more.sections.clients')}</SectionTitle>
       <div className="enterprise-cell-group">
-        <Cell icon={<UsersIcon />} label="Список клиентов" onClick={() => onNavigate('clients')} />
+        <Cell icon={<UsersIcon />} label={t('more.cells.clientsList')} onClick={() => onNavigate('clients')} />
         <Cell
           icon={<LinkIcon />}
-          label="Пригласить клиента"
+          label={t('more.cells.inviteClient')}
           value={inviteLoading ? '...' : undefined}
           onClick={inviteData?.invite_link ? handleCopyInvite : undefined}
         />
       </div>
 
-      <SectionTitle>Маркетинг</SectionTitle>
+      <SectionTitle>{t('more.sections.marketing')}</SectionTitle>
       <div className="enterprise-cell-group">
         <Cell
           icon={<SendIcon />}
-          label="Рассылки"
+          label={t('more.cells.broadcast')}
           value={isSubscriptionActive ? undefined : '🔒'}
           hideChevron={!isSubscriptionActive}
           onClick={isSubscriptionActive ? () => onNavigate('broadcast') : handleLockedTap}
         />
         <Cell
           icon={<MegaphoneIcon />}
-          label="Акции"
+          label={t('more.cells.promos')}
           value={isSubscriptionActive ? undefined : '🔒'}
           hideChevron={!isSubscriptionActive}
           onClick={isSubscriptionActive ? () => onNavigate('promos') : handleLockedTap}
         />
       </div>
 
-      <SectionTitle>Настройки</SectionTitle>
+      <SectionTitle>{t('more.sections.settings')}</SectionTitle>
       <div className="enterprise-cell-group">
-        <Cell icon={<UserIcon />} label="Профиль мастера" onClick={() => onNavigate('profile')} />
-        <Cell icon={<GiftIcon />} label="Бонусная программа" onClick={() => onNavigate('bonus')} />
-        <Cell icon={<ToolIcon />} label="Справочник услуг" onClick={() => onNavigate('services')} />
+        <Cell icon={<UserIcon />} label={t('more.cells.profile')} onClick={() => onNavigate('profile')} />
+        <Cell icon={<GiftIcon />} label={t('more.cells.bonus')} onClick={() => onNavigate('bonus')} />
+        <Cell icon={<ToolIcon />} label={t('more.cells.services')} onClick={() => onNavigate('services')} />
         <Cell
           icon={<CalendarIcon />}
-          label="Google Calendar"
+          label={t('more.cells.googleCalendar')}
           value={gcValue}
           onClick={handleGoogleCalendar}
         />
       </div>
 
-      <SectionTitle>Поддержка</SectionTitle>
+      <SectionTitle>{t('more.sections.support')}</SectionTitle>
       <div className="enterprise-cell-group">
-        <Cell icon={<MessageIcon />} label="Написать в поддержку" onClick={handleSupport} />
+        <Cell icon={<MessageIcon />} label={t('more.cells.support')} onClick={handleSupport} />
       </div>
 
-      <SectionTitle>О приложении</SectionTitle>
+      <SectionTitle>{t('more.sections.about')}</SectionTitle>
       <div className="enterprise-cell-group">
-        <Cell label="Версия" value="2.0.0" />
-        <Cell label="crmfit.ru" />
+        <Cell label={t('more.cells.version')} value="2.0.0" />
+        <Cell label={t('more.cells.domain')} />
       </div>
 
       <SubscriptionPaywallSheet

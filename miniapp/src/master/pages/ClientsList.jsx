@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getMasterClients } from '../../api/client';
 import ClientAddSheet from '../components/ClientAddSheet';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -23,6 +24,7 @@ const ClearIcon = () => (
 );
 
 export default function ClientsList({ onNavigate }) {
+  const { tr } = useI18n();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [clients, setClients] = useState([]);
@@ -69,7 +71,7 @@ export default function ClientsList({ onNavigate }) {
           setTotalPages(data.pages || 1);
         }
       } catch (e) {
-        if (!cancelled) setError('Не удалось загрузить клиентов');
+        if (!cancelled) setError(tr('Не удалось загрузить клиентов', 'Failed to load clients'));
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -118,7 +120,7 @@ export default function ClientsList({ onNavigate }) {
     onNavigate('client', { id: client.id });
   };
 
-  const formatPhone = (phone) => phone || '—';
+  const formatPhone = (phone) => phone || tr('—', '—');
 
   const formatBalance = (balance) => {
     if (!balance) return null;
@@ -152,7 +154,7 @@ export default function ClientsList({ onNavigate }) {
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Имя или телефон..."
+            placeholder={tr('Имя или телефон...', 'Name or phone...')}
             style={{
               flex: 1,
               background: 'none',
@@ -184,7 +186,7 @@ export default function ClientsList({ onNavigate }) {
       {/* Content */}
       {loading && (
         <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-          Загрузка...
+          {tr('Загрузка...', 'Loading...')}
         </div>
       )}
 
@@ -197,8 +199,8 @@ export default function ClientsList({ onNavigate }) {
       {!loading && !error && clients.length === 0 && (
         <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
           {debouncedQuery
-            ? `Никого не нашли по запросу «${debouncedQuery}»`
-            : 'У вас пока нет клиентов. Отправьте инвайт-ссылку!'}
+            ? tr(`Никого не нашли по запросу «${debouncedQuery}»`, `No clients found for “${debouncedQuery}”`)
+            : tr('У вас пока нет клиентов. Отправьте инвайт-ссылку!', 'You have no clients yet. Share your invite link!')}
         </div>
       )}
 
@@ -251,7 +253,7 @@ export default function ClientsList({ onNavigate }) {
                 <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 2, display: 'flex', gap: 8 }}>
                   <span>{formatPhone(client.phone)}</span>
                   {client.order_count > 0 && (
-                    <span>· {client.order_count} заказов</span>
+                    <span>{tr(`· ${client.order_count} заказов`, `· ${client.order_count} orders`)}</span>
                   )}
                 </div>
               </div>
@@ -280,7 +282,7 @@ export default function ClientsList({ onNavigate }) {
 
       {loadingMore && (
         <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13 }}>
-          Загрузка...
+          {tr('Загрузка...', 'Loading...')}
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getBonuses, getOrders } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
+import { useI18n } from '../i18n';
 
 const BONUS_ICONS = {
   accrual:  { icon: '+', color: '#4caf50' },
@@ -21,6 +22,7 @@ const STATUS_ICONS = {
 };
 
 export default function Bonuses({ onNavigate }) {
+  const { t, locale } = useI18n();
   const [tab, setTab] = useState('bonuses');
   const qc = useQueryClient();
 
@@ -36,7 +38,7 @@ export default function Bonuses({ onNavigate }) {
     <div style={{ padding: '16px 16px 0' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2>Бонусы</h2>
+        <h2>{t('bonuses.title')}</h2>
         <button
           onClick={() => qc.invalidateQueries()}
           style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', cursor: 'pointer', fontSize: 20 }}
@@ -48,7 +50,7 @@ export default function Bonuses({ onNavigate }) {
         display: 'flex', background: 'var(--tg-surface)',
         borderRadius: 12, padding: 3, marginBottom: 20,
       }}>
-        {[['bonuses', 'Бонусы'], ['history', 'История']].map(([id, label]) => (
+        {[['bonuses', t('bonuses.tabs.bonuses')], ['history', t('bonuses.tabs.history')]].map(([id, label]) => (
           <button
             key={id}
             onClick={() => setTab(id)}
@@ -72,7 +74,7 @@ export default function Bonuses({ onNavigate }) {
             background: 'var(--tg-surface)',
             borderRadius: 20, padding: '20px', marginBottom: 20, textAlign: 'center',
           }}>
-            <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>Баланс</p>
+            <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>{t('bonuses.balance')}</p>
             {bLoading
               ? <Skeleton width={120} height={44} style={{ margin: '0 auto' }} />
               : <p style={{ fontSize: 44, fontWeight: 800, color: 'var(--tg-accent)' }}>
@@ -84,7 +86,7 @@ export default function Bonuses({ onNavigate }) {
           {bLoading
             ? [...Array(3)].map((_, i) => <Skeleton key={i} height={50} style={{ marginBottom: 8 }} />)
             : log.length === 0
-              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>Операций нет</p>
+              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>{t('bonuses.noOperations')}</p>
               : log.map((op, i) => {
                   const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
                   const sign = op.amount > 0 ? '+' : '';
@@ -104,7 +106,7 @@ export default function Bonuses({ onNavigate }) {
                           <p style={{ fontSize: 14 }}>{op.comment || op.type}</p>
                           <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>
                             {op.created_at
-                              ? new Date(op.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+                              ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
                               : ''}
                           </p>
                         </div>
@@ -123,7 +125,7 @@ export default function Bonuses({ onNavigate }) {
           {oLoading
             ? [...Array(3)].map((_, i) => <Skeleton key={i} height={60} style={{ marginBottom: 8 }} />)
             : orders.length === 0
-              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>Заказов нет</p>
+              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>{t('bonuses.noOrders')}</p>
               : orders.map((order, i) => {
                   const { icon } = STATUS_ICONS[order.status] || { icon: '•' };
                   return (
@@ -135,9 +137,9 @@ export default function Bonuses({ onNavigate }) {
                       <div>
                         <p style={{ fontSize: 14, fontWeight: 500 }}>
                           {order.scheduled_at
-                            ? new Date(order.scheduled_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-                            : '—'}
-                          {'  '}{order.services || 'Услуга'}
+                            ? new Date(order.scheduled_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+                            : t('common.dash')}
+                          {'  '}{order.services || t('bonuses.serviceDefault')}
                         </p>
                         {order.amount_total != null && (
                           <p style={{ fontSize: 13, color: 'var(--tg-hint)' }}>{order.amount_total} ₽</p>

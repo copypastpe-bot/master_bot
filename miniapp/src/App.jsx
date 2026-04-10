@@ -1,5 +1,4 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
-const WebApp = window.Telegram?.WebApp;
 import Home from './pages/Home';
 import Contact from './pages/Contact';
 import Bonuses from './pages/Bonuses';
@@ -10,6 +9,8 @@ import { getAuthRole, getClientMasters, linkToMaster, setActiveMasterId } from '
 import MasterOnboarding from './master/pages/MasterOnboarding';
 import MasterSelectScreen from './pages/MasterSelectScreen';
 import MasterTypeUIProvider from './master/components/MasterTypeUIProvider';
+import { useI18n } from './i18n';
+const WebApp = window.Telegram?.WebApp;
 
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
@@ -85,6 +86,7 @@ function extractReferralCode(startParamRaw) {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [role, setRole] = useState(null); // null = loading
   const [masters, setMasters] = useState(null); // null = not yet loaded
   const [activeMasterId, setActiveMasterIdState] = useState(null);
@@ -153,9 +155,9 @@ export default function App() {
       return (
         <div style={{ padding: '24px 16px', textAlign: 'center', marginTop: 60 }}>
           <p style={{ fontSize: 40, marginBottom: 16 }}>👋</p>
-          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Нет мастеров</p>
+          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t('app.noMasters.title')}</p>
           <p style={{ color: 'var(--tg-hint)', fontSize: 14, lineHeight: 1.5 }}>
-            Попросите мастера отправить вам ссылку для подключения
+            {t('app.noMasters.subtitle')}
           </p>
         </div>
       );

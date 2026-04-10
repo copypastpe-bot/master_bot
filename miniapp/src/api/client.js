@@ -3,6 +3,18 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 
 const api = axios.create({ baseURL: API_URL });
+const LANG_STORAGE_KEY = 'miniapp_lang';
+
+function getLang() {
+  try {
+    const stored = (localStorage.getItem(LANG_STORAGE_KEY) || '').toLowerCase();
+    if (stored.startsWith('en')) return 'en';
+  } catch {
+    // ignore storage errors
+  }
+  const tgLang = (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '').toLowerCase();
+  return tgLang.startsWith('en') ? 'en' : 'ru';
+}
 
 api.interceptors.request.use((config) => {
   // Read initData fresh each request from Telegram's injected script
@@ -24,7 +36,10 @@ api.interceptors.response.use(
       if (!isSubscriptionRequired) {
         const WebApp = window.Telegram?.WebApp;
         if (typeof WebApp?.showAlert === 'function') {
-          WebApp.showAlert('Сессия истекла, перезапустите приложение');
+          const msg = getLang() === 'en'
+            ? 'Session expired, please restart the app'
+            : 'Сессия истекла, перезапустите приложение';
+          WebApp.showAlert(msg);
         }
       }
     }

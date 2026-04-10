@@ -1,9 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-const WebApp = window.Telegram?.WebApp;
 import App from './App';
+import { I18nProvider } from './i18n';
 import './theme.css';
+const WebApp = window.Telegram?.WebApp;
 
 // Initialize Telegram WebApp
 if (typeof WebApp?.ready === 'function') {
@@ -24,7 +25,9 @@ const queryClient = new QueryClient({
 });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <QueryClientProvider client={queryClient}>
-    <App />
-  </QueryClientProvider>
+  <I18nProvider>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </I18nProvider>
 );

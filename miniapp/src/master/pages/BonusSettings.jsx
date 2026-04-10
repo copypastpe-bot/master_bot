@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMasterBonusSettings, getMasterMe, updateMasterBonusSettings } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -73,7 +74,7 @@ function getCurrencySymbol(code) {
     KZT: '₸',
     TRY: '₺',
     GEL: '₾',
-    UZS: 'сум',
+    UZS: 'UZS',
   };
   return map[code] || code || '₽';
 }
@@ -170,6 +171,7 @@ function MessageCell({ label, value, onClick, isLast = false }) {
 }
 
 export default function BonusSettings({ onNavigate }) {
+  const { t } = useI18n();
   const [localSettings, setLocalSettings] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
   const qc = useQueryClient();
@@ -196,7 +198,7 @@ export default function BonusSettings({ onNavigate }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['master-bonus-settings'] });
       hapticNotify('success');
-      setSuccessMsg('Сохранено');
+      setSuccessMsg(t('bonusSettings.toastSaved'));
       setTimeout(() => setSuccessMsg(''), 1600);
     },
     onError: () => hapticNotify('error'),
@@ -211,7 +213,7 @@ export default function BonusSettings({ onNavigate }) {
   if (isLoading || !localSettings) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Загрузка...
+        {t('bonusSettings.loading')}
       </div>
     );
   }
@@ -226,15 +228,15 @@ export default function BonusSettings({ onNavigate }) {
     <div className="enterprise-bonus-page">
       {successMsg && <div className="enterprise-profile-toast">{successMsg}</div>}
 
-      <SectionTitle>Бонусная программа</SectionTitle>
+      <SectionTitle>{t('bonusSettings.sections.program')}</SectionTitle>
       <div className="enterprise-cell-group">
         <div className="enterprise-bonus-switch-row">
           <div className="enterprise-bonus-switch-left">
             <span className="enterprise-cell-icon"><GiftIcon /></span>
             <div>
-              <div className="enterprise-bonus-switch-title">Бонусная программа</div>
+              <div className="enterprise-bonus-switch-title">{t('bonusSettings.switch.title')}</div>
               <div className="enterprise-bonus-switch-subtitle">
-                {localSettings.bonus_enabled ? 'Включена' : 'Выключена'}
+                {localSettings.bonus_enabled ? t('bonusSettings.switch.enabled') : t('bonusSettings.switch.disabled')}
               </div>
             </div>
           </div>
@@ -246,57 +248,61 @@ export default function BonusSettings({ onNavigate }) {
         </div>
       </div>
 
-      <SectionTitle>Параметры</SectionTitle>
+      <SectionTitle>{t('bonusSettings.sections.params')}</SectionTitle>
       <div className="enterprise-cell-group">
         <div className="enterprise-bonus-param-head">
           <span className="enterprise-cell-icon"><PercentIcon /></span>
-          <span>Начисления и списания</span>
+          <span>{t('bonusSettings.params.title')}</span>
         </div>
         <NumRow
-          label="Процент начисления"
+          label={t('bonusSettings.params.bonusRate')}
           value={localSettings.bonus_rate}
           unit="%"
-          hint={`Клиент получит ${localSettings.bonus_rate}% от суммы заказа`}
+          hint={t('bonusSettings.params.bonusRateHint', { value: localSettings.bonus_rate })}
           onChange={(v) => update('bonus_rate', v)}
           disabled={disabled}
         />
         <NumRow
-          label="Макс. списание"
+          label={t('bonusSettings.params.maxSpend')}
           value={localSettings.bonus_max_spend}
           unit="%"
-          hint={`Клиент может оплатить бонусами до ${localSettings.bonus_max_spend}% заказа`}
+          hint={t('bonusSettings.params.maxSpendHint', { value: localSettings.bonus_max_spend })}
           onChange={(v) => update('bonus_max_spend', v)}
           disabled={disabled}
         />
         <NumRow
-          label="Приветственный бонус"
+          label={t('bonusSettings.params.welcomeBonus')}
           value={localSettings.bonus_welcome}
           unit={currencyUnit}
-          hint={localSettings.bonus_welcome > 0 ? `При первом визите: ${localSettings.bonus_welcome}${currencyUnit}` : '0 = выключено'}
+          hint={localSettings.bonus_welcome > 0
+            ? t('bonusSettings.params.welcomeHintEnabled', { value: localSettings.bonus_welcome, unit: currencyUnit })
+            : t('bonusSettings.params.disabledHint')}
           onChange={(v) => update('bonus_welcome', v)}
           disabled={disabled}
         />
         <NumRow
-          label="Бонус на день рождения"
+          label={t('bonusSettings.params.birthdayBonus')}
           value={localSettings.bonus_birthday}
           unit={currencyUnit}
-          hint={localSettings.bonus_birthday > 0 ? `В день рождения: ${localSettings.bonus_birthday}${currencyUnit}` : '0 = выключено'}
+          hint={localSettings.bonus_birthday > 0
+            ? t('bonusSettings.params.birthdayHintEnabled', { value: localSettings.bonus_birthday, unit: currencyUnit })
+            : t('bonusSettings.params.disabledHint')}
           onChange={(v) => update('bonus_birthday', v)}
           disabled={disabled}
           isLast
         />
       </div>
 
-      <SectionTitle>Сообщения</SectionTitle>
+      <SectionTitle>{t('bonusSettings.sections.messages')}</SectionTitle>
       <div className="enterprise-cell-group">
         <MessageCell
-          label="Приветствие"
-          value={hasWelcomeTemplate ? 'Кастомизировано' : 'Стандартный текст'}
+          label={t('bonusSettings.messages.welcome')}
+          value={hasWelcomeTemplate ? t('bonusSettings.messages.customized') : t('bonusSettings.messages.default')}
           onClick={() => onNavigate?.('bonus_message', { kind: 'welcome' })}
         />
         <MessageCell
-          label="Поздравление"
-          value={hasBirthdayTemplate ? 'Кастомизировано' : 'Стандартный текст'}
+          label={t('bonusSettings.messages.birthday')}
+          value={hasBirthdayTemplate ? t('bonusSettings.messages.customized') : t('bonusSettings.messages.default')}
           onClick={() => onNavigate?.('bonus_message', { kind: 'birthday' })}
           isLast
         />

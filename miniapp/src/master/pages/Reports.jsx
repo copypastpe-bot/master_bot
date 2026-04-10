@@ -11,15 +11,14 @@ import {
 import { getMasterReports } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import MonthCalendar from '../components/MonthCalendar';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
-const MONTH_SHORT = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-
-function formatCurrency(n) {
-  return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + ' ₽';
+function formatCurrency(n, locale) {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₽';
 }
 
 function formatYAxis(n) {
@@ -27,34 +26,25 @@ function formatYAxis(n) {
   return n;
 }
 
-function formatXAxisTick(dateStr, totalDays) {
+function formatXAxisTick(dateStr, totalDays, locale) {
   const d = new Date(dateStr + 'T00:00:00');
   if (totalDays > 30 && d.getDay() !== 1) return '';
-  return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]}`;
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
-function formatTooltipDate(dateStr) {
+function formatTooltipDate(dateStr, locale) {
   const d = new Date(dateStr + 'T00:00:00');
-  return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function formatInputDate(ymd) {
-  if (!ymd) return 'Выбрать дату';
+function formatInputDate(ymd, locale, tr) {
+  if (!ymd) return tr('Выбрать дату', 'Pick date');
   try {
-    return new Date(ymd + 'T00:00:00').toLocaleDateString('ru-RU');
+    return new Date(ymd + 'T00:00:00').toLocaleDateString(locale);
   } catch {
     return ymd;
   }
 }
-
-// ─── Period tabs ──────────────────────────────────────────────────────────────
-
-const PERIODS = [
-  { key: 'today', label: 'Сегодня' },
-  { key: 'week',  label: 'Неделя'  },
-  { key: 'month', label: 'Месяц'   },
-  { key: 'custom',label: 'Период'  },
-];
 
 const ELEVATED_CARD_STYLE = {
   background: 'var(--tg-surface)',
@@ -97,7 +87,7 @@ function KpiCard({ icon, value, label }) {
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, locale }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -107,9 +97,9 @@ function CustomTooltip({ active, payload, label }) {
       padding: '8px 12px',
       fontSize: 13,
     }}>
-      <div style={{ color: 'var(--tg-hint)', marginBottom: 2 }}>{formatTooltipDate(label)}</div>
+      <div style={{ color: 'var(--tg-hint)', marginBottom: 2 }}>{formatTooltipDate(label, locale)}</div>
       <div style={{ color: 'var(--tg-text)', fontWeight: 600 }}>
-        {formatCurrency(payload[0].value)}
+        {formatCurrency(payload[0].value, locale)}
       </div>
     </div>
   );
@@ -117,11 +107,11 @@ function CustomTooltip({ active, payload, label }) {
 
 // ─── Revenue chart ────────────────────────────────────────────────────────────
 
-function RevenueChart({ data }) {
+function RevenueChart({ data, locale, tr }) {
   if (!data || data.length === 0) {
     return (
       <div style={{ color: 'var(--tg-hint)', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
-        Нет данных для графика
+        {tr('Нет данных для графика', 'No chart data')}
       </div>
     );
   }
@@ -131,10 +121,10 @@ function RevenueChart({ data }) {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0' }}>
         <div style={{ color: 'var(--tg-text)', fontSize: 22, fontWeight: 700 }}>
-          {formatCurrency(dayRevenue)}
+          {formatCurrency(dayRevenue, locale)}
         </div>
         <div style={{ color: 'var(--tg-hint)', fontSize: 13, marginTop: 4 }}>
-          за {formatTooltipDate(data[0].date)}
+          {tr('за', 'for')} {formatTooltipDate(data[0].date, locale)}
         </div>
       </div>
     );
@@ -154,7 +144,7 @@ function RevenueChart({ data }) {
         </defs>
         <XAxis
           dataKey="date"
-          tickFormatter={(v) => formatXAxisTick(v, totalDays)}
+          tickFormatter={(v) => formatXAxisTick(v, totalDays, locale)}
           interval={tickInterval}
           tick={{ fontSize: 10, fill: 'var(--tg-hint)' }}
           axisLine={false}
@@ -167,7 +157,7 @@ function RevenueChart({ data }) {
           tickLine={false}
           width={36}
         />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip locale={locale} />} />
         <Area
           type="monotone"
           dataKey="revenue"
@@ -184,14 +174,14 @@ function RevenueChart({ data }) {
 
 // ─── Top services ─────────────────────────────────────────────────────────────
 
-function TopServices({ services }) {
+function TopServices({ services, tr }) {
   if (!services || services.length === 0) return null;
   const max = services[0].count;
 
   return (
     <div style={{ ...ELEVATED_CARD_STYLE, marginTop: 16, padding: '14px 14px 12px' }}>
       <h3 style={{ color: 'var(--tg-text)', fontSize: 16, fontWeight: 700, margin: '0 0 12px' }}>
-        Топ услуг
+        {tr('Топ услуг', 'Top services')}
       </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {services.slice(0, 5).map((s, i) => (
@@ -233,7 +223,7 @@ function ReportsSkeleton() {
 
 // ─── Period tabs ──────────────────────────────────────────────────────────────
 
-function PeriodTabs({ active, onSwitch, customLabel }) {
+function PeriodTabs({ active, onSwitch, customLabel, periods }) {
   return (
     <div style={{
       ...ELEVATED_CARD_STYLE,
@@ -245,7 +235,7 @@ function PeriodTabs({ active, onSwitch, customLabel }) {
         gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
         gap: 6,
       }}>
-      {PERIODS.map(({ key, label }) => {
+      {periods.map(({ key, label }) => {
         const isActive = active === key;
         return (
           <button
@@ -293,7 +283,7 @@ function PeriodTabs({ active, onSwitch, customLabel }) {
 
 // ─── Custom period bottom sheet ───────────────────────────────────────────────
 
-function CustomPeriodSheet({ onApply, onClose }) {
+function CustomPeriodSheet({ onApply, onClose, locale, tr }) {
   const today = new Date().toISOString().slice(0, 10);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -303,10 +293,10 @@ function CustomPeriodSheet({ onApply, onClose }) {
   const [viewMonth, setViewMonth] = useState(new Date().getMonth() + 1);
 
   const handleApply = () => {
-    if (!from || !to) { setError('Укажите обе даты'); return; }
-    if (to < from) { setError('Конец должен быть не раньше начала'); return; }
+    if (!from || !to) { setError(tr('Укажите обе даты', 'Specify both dates')); return; }
+    if (to < from) { setError(tr('Конец должен быть не раньше начала', 'End date must not be earlier than start date')); return; }
     const diff = (new Date(to) - new Date(from)) / 86400000;
-    if (diff > 365) { setError('Максимум 365 дней'); return; }
+    if (diff > 365) { setError(tr('Максимум 365 дней', 'Maximum 365 days')); return; }
     onApply(from, to);
   };
 
@@ -371,7 +361,7 @@ function CustomPeriodSheet({ onApply, onClose }) {
         padding: '20px 16px 32px',
       }}>
         <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 16 }}>
-          Произвольный период
+          {tr('Произвольный период', 'Custom range')}
         </div>
         <div
           style={{
@@ -382,23 +372,23 @@ function CustomPeriodSheet({ onApply, onClose }) {
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Начало</div>
+            <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>{tr('Начало', 'Start')}</div>
             <button
               type="button"
               onClick={() => openPicker('from')}
               style={inputStyle}
             >
-              {formatInputDate(from)}
+              {formatInputDate(from, locale, tr)}
             </button>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>Конец</div>
+            <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginBottom: 4 }}>{tr('Конец', 'End')}</div>
             <button
               type="button"
               onClick={() => openPicker('to')}
               style={inputStyle}
             >
-              {formatInputDate(to)}
+              {formatInputDate(to, locale, tr)}
             </button>
           </div>
         </div>
@@ -419,7 +409,7 @@ function CustomPeriodSheet({ onApply, onClose }) {
             cursor: 'pointer',
           }}
         >
-          Показать
+          {tr('Показать', 'Apply')}
         </button>
       </div>
 
@@ -468,6 +458,7 @@ function CustomPeriodSheet({ onApply, onClose }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Reports({ initialPeriod = 'month' }) {
+  const { tr, locale } = useI18n();
   const [activePeriod, setActivePeriod] = useState(initialPeriod);
   const [showCustomSheet, setShowCustomSheet] = useState(false);
   const [customRange, setCustomRange] = useState(null); // { from, to }
@@ -502,7 +493,7 @@ export default function Reports({ initialPeriod = 'month' }) {
 
   const customLabel = customRange
     ? (() => {
-        const fmt = (s) => new Date(s + 'T00:00:00').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+        const fmt = (s) => new Date(s + 'T00:00:00').toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: '2-digit' });
         return `${fmt(customRange.from)} – ${fmt(customRange.to)}`;
       })()
     : undefined;
@@ -512,13 +503,13 @@ export default function Reports({ initialPeriod = 'month' }) {
   if (isError) {
     return (
       <div style={{ padding: '16px 16px 100px', maxWidth: 760, margin: '0 auto' }}>
-        <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} />
+        <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} periods={periods} />
         <div style={{ textAlign: 'center', padding: '48px 0' }}>
-          <p style={{ color: 'var(--tg-hint)', marginBottom: 12 }}>Не удалось загрузить данные</p>
+          <p style={{ color: 'var(--tg-hint)', marginBottom: 12 }}>{tr('Не удалось загрузить данные', 'Failed to load data')}</p>
           <button onClick={refetch} style={{
             background: 'var(--tg-button)', color: 'var(--tg-button-text)',
             border: 'none', borderRadius: 10, padding: '10px 24px', fontSize: 14, cursor: 'pointer',
-          }}>Повторить</button>
+          }}>{tr('Повторить', 'Retry')}</button>
         </div>
       </div>
     );
@@ -529,22 +520,22 @@ export default function Reports({ initialPeriod = 'month' }) {
 
   return (
     <div style={{ padding: '16px 16px 100px', maxWidth: 760, margin: '0 auto' }}>
-      <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} />
+      <PeriodTabs active={activePeriod} onSwitch={handlePeriodSwitch} customLabel={customLabel} periods={periods} />
 
       {!hasData ? (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--tg-hint)', fontSize: 15 }}>
-          За этот период данных нет
+          {tr('За этот период данных нет', 'No data for this period')}
         </div>
       ) : (
         <>
           {/* KPI grid 2×3 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-            <KpiCard icon="💰" value={formatCurrency(kpi.revenue || 0)} label="Выручка" />
-            <KpiCard icon="🛒" value={kpi.order_count || 0} label="Заказов" />
-            <KpiCard icon="👥" value={kpi.new_clients || 0} label="Новых клиентов" />
-            <KpiCard icon="🔄" value={kpi.repeat_clients || 0} label="Повторных" />
-            <KpiCard icon="🧾" value={formatCurrency(kpi.avg_check || 0)} label="Средний чек" />
-            <KpiCard icon="📋" value={kpi.total_clients || 0} label="Всего в базе" />
+            <KpiCard icon="💰" value={formatCurrency(kpi.revenue || 0, locale)} label={tr('Выручка', 'Revenue')} />
+            <KpiCard icon="🛒" value={kpi.order_count || 0} label={tr('Заказов', 'Orders')} />
+            <KpiCard icon="👥" value={kpi.new_clients || 0} label={tr('Новых клиентов', 'New clients')} />
+            <KpiCard icon="🔄" value={kpi.repeat_clients || 0} label={tr('Повторных', 'Repeat')} />
+            <KpiCard icon="🧾" value={formatCurrency(kpi.avg_check || 0, locale)} label={tr('Средний чек', 'Average check')} />
+            <KpiCard icon="📋" value={kpi.total_clients || 0} label={tr('Всего в базе', 'Total clients')} />
           </div>
 
           {/* Revenue chart */}
@@ -560,13 +551,13 @@ export default function Reports({ initialPeriod = 'month' }) {
               marginBottom: 8,
               paddingLeft: 8,
             }}>
-              Выручка по дням
+              {tr('Выручка по дням', 'Revenue by day')}
             </div>
-            <RevenueChart data={data?.chart_data} />
+            <RevenueChart data={data?.chart_data} locale={locale} tr={tr} />
           </div>
 
           {/* Top services */}
-          <TopServices services={data?.top_services} />
+          <TopServices services={data?.top_services} tr={tr} />
         </>
       )}
 
@@ -574,8 +565,16 @@ export default function Reports({ initialPeriod = 'month' }) {
         <CustomPeriodSheet
           onApply={handleCustomApply}
           onClose={() => setShowCustomSheet(false)}
+          locale={locale}
+          tr={tr}
         />
       )}
     </div>
   );
 }
+  const periods = [
+    { key: 'today', label: tr('Сегодня', 'Today') },
+    { key: 'week', label: tr('Неделя', 'Week') },
+    { key: 'month', label: tr('Месяц', 'Month') },
+    { key: 'custom', label: tr('Период', 'Range') },
+  ];

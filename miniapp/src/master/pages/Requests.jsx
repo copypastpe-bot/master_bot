@@ -6,6 +6,7 @@ import {
   getMasterRequestMedia,
   getMasterRequestMediaUrl,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -58,34 +59,23 @@ const TYPE_ICONS = {
   ),
 };
 
-const REQUEST_TYPES = {
-  order_request: { title: 'Заявка на заказ' },
-  question: { title: 'Вопрос от клиента' },
-  media: { title: 'Медиафайл' },
-};
-
-const MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн',
-  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-
-function formatDate(isoString) {
+function formatDate(isoString, locale, tr) {
   if (!isoString) return '';
   const d = new Date(isoString);
   const now = new Date();
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  const time = `${hh}:${mm}`;
-  if (d.toDateString() === now.toDateString()) return `сегодня ${time}`;
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return `${tr('сегодня', 'today')} ${time}`;
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `вчера ${time}`;
-  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} ${time}`;
+  if (d.toDateString() === yesterday.toDateString()) return `${tr('вчера', 'yesterday')} ${time}`;
+  return d.toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function FilterTabs({ active, onChange }) {
+function FilterTabs({ active, onChange, tr }) {
   const filters = [
-    { key: 'new', label: 'Новые' },
-    { key: 'all', label: 'Все' },
-    { key: 'closed', label: 'Закрытые' },
+    { key: 'new', label: tr('Новые', 'New') },
+    { key: 'all', label: tr('Все', 'All') },
+    { key: 'closed', label: tr('Закрытые', 'Closed') },
   ];
 
   return (
@@ -121,7 +111,7 @@ function ActionBtn({ children, onClick, accent, small }) {
   );
 }
 
-function MediaPreview({ reqId, legacyFileId }) {
+function MediaPreview({ reqId, legacyFileId, tr }) {
   const [viewerIndex, setViewerIndex] = useState(null);
   const [zoom, setZoom] = useState(1);
 
@@ -174,7 +164,7 @@ function MediaPreview({ reqId, legacyFileId }) {
   if (isLoading) {
     return (
       <div className="requests-media-loading">
-        <span>Загрузка вложений...</span>
+        <span>{tr('Загрузка вложений...', 'Loading attachments...')}</span>
       </div>
     );
   }
@@ -196,7 +186,7 @@ function MediaPreview({ reqId, legacyFileId }) {
               >
                 <img
                   src={item.url}
-                  alt={`фото ${index + 1}`}
+                  alt={tr(`фото ${index + 1}`, `photo ${index + 1}`)}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
               </button>
@@ -222,7 +212,7 @@ function MediaPreview({ reqId, legacyFileId }) {
             onClick={(e) => { e.stopPropagation(); closeViewer(); }}
             className="requests-viewer-btn-close"
           >
-            Закрыть
+            {tr('Закрыть', 'Close')}
           </button>
 
           {media.length > 1 && (
@@ -247,7 +237,7 @@ function MediaPreview({ reqId, legacyFileId }) {
           <img
             onClick={(e) => e.stopPropagation()}
             src={activeMedia.url}
-            alt={`фото ${viewerIndex + 1}`}
+            alt={tr(`фото ${viewerIndex + 1}`, `photo ${viewerIndex + 1}`)}
             style={{
               maxWidth: '100%',
               maxHeight: '100%',
@@ -288,10 +278,16 @@ function MediaPreview({ reqId, legacyFileId }) {
   );
 }
 
-function RequestCard({ req, onClose, onNavigate }) {
+function RequestCard({ req, onClose, onNavigate, locale, tr }) {
   const [showMedia, setShowMedia] = useState(false);
   const isClosed = req.status === 'closed';
-  const typeInfo = REQUEST_TYPES[req.type] || { title: 'Заявка' };
+  const typeTitles = {
+    order_request: tr('Заявка на заказ', 'Order request'),
+    question: tr('Вопрос от клиента', 'Client question'),
+    media: tr('Медиафайл', 'Media file'),
+    default: tr('Заявка', 'Request'),
+  };
+  const typeInfo = { title: typeTitles[req.type] || typeTitles.default };
   const mediaCount = Number(req.media_count || 0);
   const hasMedia = mediaCount > 0 || Boolean(req.file_id);
 
@@ -328,16 +324,16 @@ function RequestCard({ req, onClose, onNavigate }) {
           <span className="requests-card-type-icon">{typeIcon}</span>
           <span>{typeInfo.title}</span>
         </div>
-        <span className="requests-card-time">{formatDate(req.created_at)}</span>
+        <span className="requests-card-time">{formatDate(req.created_at, locale, tr)}</span>
       </div>
 
       <div className="requests-card-client">{req.client_name}</div>
 
-      {req.client_phone && <div className="requests-card-meta">Тел: {req.client_phone}</div>}
-      {req.service_name && <div className="requests-card-meta">Услуга: {req.service_name}</div>}
+      {req.client_phone && <div className="requests-card-meta">{tr('Тел', 'Phone')}: {req.client_phone}</div>}
+      {req.service_name && <div className="requests-card-meta">{tr('Услуга', 'Service')}: {req.service_name}</div>}
       {req.desired_date && (
         <div className="requests-card-meta">
-          Когда: {req.desired_date}{req.desired_time ? ` в ${req.desired_time}` : ''}
+          {tr('Когда', 'When')}: {req.desired_date}{req.desired_time ? tr(` в ${req.desired_time}`, ` at ${req.desired_time}`) : ''}
         </div>
       )}
       {req.text && <div className="requests-card-message">"{req.text}"</div>}
@@ -349,23 +345,23 @@ function RequestCard({ req, onClose, onNavigate }) {
             onClick={() => { haptic(); setShowMedia(v => !v); }}
             className="requests-media-toggle"
           >
-            Вложения{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
+            {tr('Вложения', 'Attachments')}{mediaCount > 0 ? ` (${mediaCount})` : ''} {showMedia ? '▲' : '▼'}
           </button>
-          {showMedia && <MediaPreview reqId={req.id} legacyFileId={req.file_id} />}
+          {showMedia && <MediaPreview reqId={req.id} legacyFileId={req.file_id} tr={tr} />}
         </div>
       )}
 
       <div className="requests-actions">
         <div className="requests-actions-row">
-          <ActionBtn onClick={handleContact} accent>Написать</ActionBtn>
-          {req.client_id && <ActionBtn onClick={handleOpenClient}>Клиент</ActionBtn>}
+          <ActionBtn onClick={handleContact} accent>{tr('Написать', 'Message')}</ActionBtn>
+          {req.client_id && <ActionBtn onClick={handleOpenClient}>{tr('Клиент', 'Client')}</ActionBtn>}
         </div>
         {req.type === 'order_request' && !isClosed && (
-          <ActionBtn onClick={handleCreateOrder}>Создать заказ</ActionBtn>
+          <ActionBtn onClick={handleCreateOrder}>{tr('Создать заказ', 'Create order')}</ActionBtn>
         )}
         {!isClosed && (
           <ActionBtn onClick={() => { haptic(); onClose(req.id); }} small>
-            Закрыть заявку
+            {tr('Закрыть заявку', 'Close request')}
           </ActionBtn>
         )}
       </div>
@@ -374,6 +370,7 @@ function RequestCard({ req, onClose, onNavigate }) {
 }
 
 export default function Requests({ onNavigate, onBadgeChange }) {
+  const { tr, locale } = useI18n();
   const [filter, setFilter] = useState('new');
   const queryClient = useQueryClient();
 
@@ -430,31 +427,31 @@ export default function Requests({ onNavigate, onBadgeChange }) {
   return (
     <div className="requests-page">
       <div className="requests-header">
-        <h1>Заявки</h1>
-        {unreadCount > 0 && <span className="requests-unread-pill">Новых: {unreadCount}</span>}
+        <h1>{tr('Заявки', 'Requests')}</h1>
+        {unreadCount > 0 && <span className="requests-unread-pill">{tr('Новых', 'New')}: {unreadCount}</span>}
       </div>
 
-      <FilterTabs active={filter} onChange={setFilter} />
+      <FilterTabs active={filter} onChange={setFilter} tr={tr} />
 
       <div className="requests-list-wrap">
         {isLoading && (
           <div className="requests-screen-state">
-            <p>Загрузка...</p>
+            <p>{tr('Загрузка...', 'Loading...')}</p>
           </div>
         )}
 
         {isError && (
           <div className="requests-screen-state">
-            <p>Не удалось загрузить заявки</p>
+            <p>{tr('Не удалось загрузить заявки', 'Failed to load requests')}</p>
             <button type="button" onClick={() => refetch()} className="requests-retry-btn">
-              Повторить
+              {tr('Повторить', 'Retry')}
             </button>
           </div>
         )}
 
         {!isLoading && !isError && requests.length === 0 && (
           <div className="requests-screen-state">
-            <p>{filter === 'new' ? 'Новых заявок нет' : 'Заявок нет'}</p>
+            <p>{filter === 'new' ? tr('Новых заявок нет', 'No new requests') : tr('Заявок нет', 'No requests')}</p>
           </div>
         )}
 
@@ -464,6 +461,8 @@ export default function Requests({ onNavigate, onBadgeChange }) {
             req={req}
             onClose={(id) => closeMutation.mutate(id)}
             onNavigate={handleNavigate}
+            locale={locale}
+            tr={tr}
           />
         ))}
       </div>

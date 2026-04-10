@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 const WebApp = window.Telegram?.WebApp;
 
 function haptic() {
@@ -11,9 +12,12 @@ export default function SubscriptionPaywallSheet({
   onClose,
   onPay,
   onInvite,
-  title = 'Нужна подписка',
-  description = 'Создание заказов доступно на активном тарифе',
+  title,
+  description,
 }) {
+  const { t } = useI18n();
+  const resolvedTitle = title || t('paywall.title');
+  const resolvedDescription = description || t('paywall.description');
   if (!open) return null;
 
   return (
@@ -70,10 +74,10 @@ export default function SubscriptionPaywallSheet({
 
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--tg-text)', marginBottom: 4 }}>
-            {title}
+            {resolvedTitle}
           </div>
           <div style={{ color: 'var(--tg-hint)', fontSize: 16, lineHeight: 1.35 }}>
-            {description}
+            {resolvedDescription}
           </div>
         </div>
 
@@ -92,7 +96,7 @@ export default function SubscriptionPaywallSheet({
             marginBottom: 10,
           }}
         >
-          ★ Оплатить Stars
+          {t('paywall.pay')}
         </button>
 
         <button
@@ -109,7 +113,7 @@ export default function SubscriptionPaywallSheet({
             cursor: 'pointer',
           }}
         >
-          Пригласить друга
+          {t('paywall.invite')}
         </button>
       </div>
     </div>

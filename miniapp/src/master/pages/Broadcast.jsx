@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { getBroadcastCanSend, getBroadcastSegments, previewBroadcast, sendBroadcast } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import { useBackButton } from '../hooks/useBackButton';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -45,6 +46,7 @@ function ProgressBar({ step }) {
 // ─── Back button ──────────────────────────────────────────────────────────────
 
 function BackBtn({ onClick }) {
+  const { tr } = useI18n();
   return (
     <button
       onClick={() => { haptic(); onClick(); }}
@@ -60,7 +62,7 @@ function BackBtn({ onClick }) {
         gap: 4,
       }}
     >
-      ← Назад
+      {tr('← Назад', '← Back')}
     </button>
   );
 }
@@ -68,10 +70,11 @@ function BackBtn({ onClick }) {
 // ─── Step 1: Segment selection ────────────────────────────────────────────────
 
 function StepSegment({ segments, selected, onSelect, onNext }) {
+  const { tr } = useI18n();
   return (
     <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 12px' }}>
-        Выберите аудиторию
+        {tr('Выберите аудиторию', 'Select audience')}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -127,7 +130,7 @@ function StepSegment({ segments, selected, onSelect, onNext }) {
             opacity: selected ? 1 : 0.5,
           }}
         >
-          Далее
+          {tr('Далее', 'Next')}
         </button>
       </div>
     </div>
@@ -137,6 +140,7 @@ function StepSegment({ segments, selected, onSelect, onNext }) {
 // ─── Step 1: Text input ───────────────────────────────────────────────────────
 
 function StepText({ text, onTextChange, onNext }) {
+  const { tr } = useI18n();
   const textareaRef = useRef(null);
   const remaining = MAX_TEXT - text.length;
   const canContinue = text.trim().length > 0 && text.length <= MAX_TEXT;
@@ -163,7 +167,7 @@ function StepText({ text, onTextChange, onNext }) {
   return (
     <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: '0 0 14px', lineHeight: 1.4 }}>
-        Введите текст сообщения, которое хотите отправить
+        {tr('Введите текст сообщения, которое хотите отправить', 'Enter message text to send')}
       </p>
 
       {/* {name} insert button */}
@@ -184,14 +188,14 @@ function StepText({ text, onTextChange, onNext }) {
           cursor: 'pointer',
         }}
       >
-        + Имя клиента
+        {tr('+ Имя клиента', '+ Client name')}
       </button>
 
       <textarea
         ref={textareaRef}
         value={text}
         onChange={(e) => onTextChange(e.target.value)}
-        placeholder="Например: Привет, {name}! Напоминаем о записи..."
+        placeholder={tr('Например: Привет, {name}! Напоминаем о записи...', 'For example: Hi, {name}! Reminder about your booking...')}
         rows={8}
         style={{
           width: '100%',
@@ -215,7 +219,7 @@ function StepText({ text, onTextChange, onNext }) {
         color: remaining < 0 ? '#e74c3c' : remaining < 100 ? '#e67e22' : 'var(--tg-hint)',
         marginTop: 4,
       }}>
-        {remaining < 0 ? `Превышено на ${-remaining}` : `Осталось ${remaining}`}
+        {remaining < 0 ? tr(`Превышено на ${-remaining}`, `Exceeded by ${-remaining}`) : tr(`Осталось ${remaining}`, `Remaining ${remaining}`)}
       </div>
 
       <div style={{ position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom) + 60px)', left: 0, right: 0, padding: '12px 16px', background: 'var(--tg-bg)', zIndex: 200 }}>
@@ -235,7 +239,7 @@ function StepText({ text, onTextChange, onNext }) {
             opacity: canContinue ? 1 : 0.5,
           }}
         >
-          Далее
+          {tr('Далее', 'Next')}
         </button>
       </div>
     </div>
@@ -248,6 +252,7 @@ const PHOTO_MAX_MB = 10;
 const VIDEO_MAX_MB = 50;
 
 function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNext }) {
+  const { tr } = useI18n();
   const inputRef = useRef(null);
 
   const handleFileSelect = (e) => {
@@ -258,14 +263,14 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
     const isVideo = file.type === 'video/mp4';
 
     if (!isPhoto && !isVideo) {
-      alert('Поддерживаются только JPEG, PNG и MP4');
+      alert(tr('Поддерживаются только JPEG, PNG и MP4', 'Only JPEG, PNG and MP4 are supported'));
       return;
     }
 
     const maxBytes = isPhoto ? PHOTO_MAX_MB * 1024 * 1024 : VIDEO_MAX_MB * 1024 * 1024;
     if (file.size > maxBytes) {
       const limit = isPhoto ? PHOTO_MAX_MB : VIDEO_MAX_MB;
-      alert(`Файл превышает ${limit} МБ`);
+      alert(tr(`Файл превышает ${limit} МБ`, `File exceeds ${limit} MB`));
       e.target.value = '';
       return;
     }
@@ -289,7 +294,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
   return (
     <div style={{ padding: '0 16px calc(env(safe-area-inset-bottom) + 140px)' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 16px' }}>
-        Добавьте фото или видео к сообщению (необязательно)
+        {tr('Добавьте фото или видео к сообщению (необязательно)', 'Add photo or video to the message (optional)')}
       </p>
 
       <input
@@ -318,10 +323,10 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
         >
           <span style={{ fontSize: 36 }}>📎</span>
           <span style={{ color: 'var(--tg-button)', fontSize: 15, fontWeight: 600 }}>
-            Выбрать фото или видео
+            {tr('Выбрать фото или видео', 'Choose photo or video')}
           </span>
           <span style={{ color: 'var(--tg-hint)', fontSize: 12 }}>
-            JPEG, PNG до {PHOTO_MAX_MB} МБ · MP4 до {VIDEO_MAX_MB} МБ
+            {tr(`JPEG, PNG до ${PHOTO_MAX_MB} МБ · MP4 до ${VIDEO_MAX_MB} МБ`, `JPEG, PNG up to ${PHOTO_MAX_MB} MB · MP4 up to ${VIDEO_MAX_MB} MB`)}
           </span>
         </button>
       ) : (
@@ -354,7 +359,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
                   {mediaFile.name}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
-                  {fileSizeMb} МБ
+                  {tr(`${fileSizeMb} МБ`, `${fileSizeMb} MB`)}
                 </div>
               </div>
             </div>
@@ -373,7 +378,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
               cursor: 'pointer',
             }}
           >
-            Удалить
+            {tr('Удалить', 'Remove')}
           </button>
         </div>
       )}
@@ -402,7 +407,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
               cursor: 'pointer',
             }}
           >
-            Пропустить
+            {tr('Пропустить', 'Skip')}
           </button>
         )}
         <button
@@ -420,7 +425,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
             cursor: 'pointer',
           }}
         >
-          Далее
+          {tr('Далее', 'Next')}
         </button>
       </div>
     </div>
@@ -430,6 +435,7 @@ function StepMedia({ mediaFile, mediaType, onFileChange, onRemove, onSkip, onNex
 // ─── Step 4: Preview & send ───────────────────────────────────────────────────
 
 function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoading, onSend, isSending }) {
+  const { tr } = useI18n();
   const { recipients_count = 0, preview_text = '', sample_recipients = [] } = previewData || {};
 
   // Show Telegram MainButton on this step only
@@ -441,7 +447,7 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
       return;
     }
 
-    WebApp.MainButton.setText(`Отправить ${recipients_count} клиентам`);
+    WebApp.MainButton.setText(tr(`Отправить ${recipients_count} клиентам`, `Send to ${recipients_count} clients`));
     WebApp.MainButton.color = WebApp.themeParams?.button_color || '#2481cc';
     WebApp.MainButton.textColor = WebApp.themeParams?.button_text_color || '#ffffff';
     WebApp.MainButton.show();
@@ -459,7 +465,7 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
   if (isLoading) {
     return (
       <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Загрузка предпросмотра...
+        {tr('Загрузка предпросмотра...', 'Loading preview...')}
       </div>
     );
   }
@@ -479,11 +485,11 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
         <span style={{ fontSize: 22 }}>👥</span>
         <div>
           <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--tg-text)' }}>
-            {recipients_count} получателей
+            {tr(`${recipients_count} получателей`, `${recipients_count} recipients`)}
           </div>
           {sample_recipients.length > 0 && (
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
-              {sample_recipients.join(', ')}{recipients_count > 3 ? ` и ещё ${recipients_count - 3}` : ''}
+              {sample_recipients.join(', ')}{recipients_count > 3 ? tr(` и ещё ${recipients_count - 3}`, ` and ${recipients_count - 3} more`) : ''}
             </div>
           )}
         </div>
@@ -502,14 +508,14 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
         }}>
           <span style={{ fontSize: 22 }}>{mediaType === 'photo' ? '🖼️' : '🎥'}</span>
           <div style={{ fontSize: 14, color: 'var(--tg-text)' }}>
-            {mediaType === 'photo' ? 'Фото приложено' : 'Видео приложено'}
+            {mediaType === 'photo' ? tr('Фото приложено', 'Photo attached') : tr('Видео приложено', 'Video attached')}
           </div>
         </div>
       )}
 
       {/* Preview message */}
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 6px' }}>
-        Пример сообщения
+        {tr('Пример сообщения', 'Message preview')}
       </p>
       <div style={{
         padding: '12px 14px',
@@ -534,7 +540,7 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
           fontSize: 14,
           textAlign: 'center',
         }}>
-          В этом сегменте нет клиентов с включёнными уведомлениями
+          {tr('В этом сегменте нет клиентов с включёнными уведомлениями', 'No clients with notifications enabled in this segment')}
         </div>
       )}
     </div>
@@ -544,6 +550,7 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
 // ─── Success screen ───────────────────────────────────────────────────────────
 
 function SuccessScreen({ result, onReset }) {
+  const { tr } = useI18n();
   const { sent_count = 0, failed_count = 0 } = result;
   const total = sent_count + failed_count;
 
@@ -559,7 +566,7 @@ function SuccessScreen({ result, onReset }) {
     }}>
       <div style={{ fontSize: 56 }}>✅</div>
       <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--tg-text)' }}>
-        Рассылка отправлена
+        {tr('Рассылка отправлена', 'Broadcast sent')}
       </div>
       <div style={{
         padding: '16px 20px',
@@ -569,11 +576,11 @@ function SuccessScreen({ result, onReset }) {
         maxWidth: 300,
       }}>
         <div style={{ fontSize: 15, color: 'var(--tg-text)', marginBottom: 8 }}>
-          Отправлено: <strong>{sent_count}</strong> из <strong>{total}</strong>
+          {tr('Отправлено', 'Sent')}: <strong>{sent_count}</strong> {tr('из', 'of')} <strong>{total}</strong>
         </div>
         {failed_count > 0 && (
           <div style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-            Не доставлено: {failed_count}
+            {tr('Не доставлено', 'Failed')}: {failed_count}
           </div>
         )}
       </div>
@@ -591,7 +598,7 @@ function SuccessScreen({ result, onReset }) {
           cursor: 'pointer',
         }}
       >
-        Новая рассылка
+        {tr('Новая рассылка', 'New broadcast')}
       </button>
     </div>
   );
@@ -600,6 +607,7 @@ function SuccessScreen({ result, onReset }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Broadcast() {
+  const { tr } = useI18n();
   const [step, setStep] = useState(1);
   const [text, setText] = useState('');
   const [mediaFile, setMediaFile] = useState(null);
@@ -670,8 +678,8 @@ export default function Broadcast() {
       }
       const isTimeout = err?.code === 'ECONNABORTED' || (err?.response?.status >= 504);
       const msg = isTimeout
-        ? 'Рассылка заняла больше времени — проверьте результат позже'
-        : (err?.response?.data?.detail || 'Ошибка отправки');
+        ? tr('Рассылка заняла больше времени — проверьте результат позже', 'Broadcast took longer, check result later')
+        : (err?.response?.data?.detail || tr('Ошибка отправки', 'Send error'));
       alert(msg);
     },
   });
@@ -738,7 +746,7 @@ export default function Broadcast() {
           fontWeight: 700,
           margin: '0 0 8px',
         }}>
-          Массовые рассылки
+          {tr('Массовые рассылки', 'Broadcasts')}
         </h2>
         <p style={{
           color: 'var(--tg-hint)',
@@ -746,7 +754,7 @@ export default function Broadcast() {
           margin: '0 0 24px',
           lineHeight: 1.5,
         }}>
-          Добавьте клиентов, чтобы делать массовые рассылки
+          {tr('Добавьте клиентов, чтобы делать массовые рассылки', 'Add clients to run broadcasts')}
         </p>
 
         <div style={{
@@ -770,14 +778,14 @@ export default function Broadcast() {
             fontWeight: 600,
             margin: '0 0 4px',
           }}>
-            Ссылка-приглашение для клиентов
+            {tr('Ссылка-приглашение для клиентов', 'Client invite link')}
           </p>
           <p style={{
             color: 'var(--tg-hint)',
             fontSize: 13,
             margin: '0 0 12px',
           }}>
-            Отправьте ссылку, чтобы пригласить клиента
+            {tr('Отправьте ссылку, чтобы пригласить клиента', 'Send this link to invite a client')}
           </p>
           <div style={{
             background: 'var(--tg-bg)',
@@ -810,7 +818,7 @@ export default function Broadcast() {
               cursor: 'pointer',
             }}
           >
-            Копировать ссылку
+            {tr('Копировать ссылку', 'Copy link')}
           </button>
         </div>
       </div>
@@ -836,7 +844,7 @@ export default function Broadcast() {
             fontWeight: 700,
             color: 'var(--tg-text)',
           }}>
-            Массовые рассылки
+            {tr('Массовые рассылки', 'Broadcasts')}
           </h2>
         </div>
 
@@ -866,11 +874,11 @@ export default function Broadcast() {
       {step === 3 && (
         segmentsLoading ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-            Загрузка...
+            {tr('Загрузка...', 'Loading...')}
           </div>
         ) : segmentsError ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-            Ошибка загрузки сегментов
+            {tr('Ошибка загрузки сегментов', 'Failed to load segments')}
           </div>
         ) : (
           <StepSegment

@@ -6,6 +6,7 @@ import {
   updateMasterBonusSettings,
   uploadMasterBonusPhoto,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 const API_URL = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
@@ -28,25 +29,27 @@ function toAbsoluteMediaUrl(url) {
   return `${API_URL}${url}`;
 }
 
-const TITLE = {
-  welcome: 'Приветствие',
-  birthday: 'Поздравление с ДР',
-};
-
-const SAMPLE_DEFAULT = {
+const SAMPLE_DEFAULT_RU = {
   welcome: 'Привет, {name}! Ваш бонус: {inv_bonus}',
   birthday: 'С днём рождения, {name}! Подарок: {bd_bonus}',
 };
 
-function applyPreview(template, settings, kind) {
-  const source = (template || '').trim() || SAMPLE_DEFAULT[kind] || SAMPLE_DEFAULT.welcome;
+const SAMPLE_DEFAULT_EN = {
+  welcome: 'Hi, {name}! Your bonus: {inv_bonus}',
+  birthday: 'Happy birthday, {name}! Gift: {bd_bonus}',
+};
+
+function applyPreview(template, settings, kind, lang) {
+  const defaults = lang === 'en' ? SAMPLE_DEFAULT_EN : SAMPLE_DEFAULT_RU;
+  const source = (template || '').trim() || defaults[kind] || defaults.welcome;
   return source
-    .replaceAll('{name}', 'Анна')
+    .replaceAll('{name}', lang === 'en' ? 'Anna' : 'Анна')
     .replaceAll('{inv_bonus}', String(settings?.bonus_welcome ?? 0))
     .replaceAll('{bd_bonus}', String(settings?.bonus_birthday ?? 0));
 }
 
 export default function BonusMessageEditor({ kind = 'welcome' }) {
+  const { tr, lang } = useI18n();
   const qc = useQueryClient();
   const fileRef = useRef(null);
   const textareaRef = useRef(null);
@@ -100,7 +103,7 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
       await qc.invalidateQueries({ queryKey: ['master-bonus-settings'] });
       setSelectedFile(null);
       setRemovePhoto(false);
-      setToast('Сохранено ✓');
+      setToast(tr('Сохранено ✓', 'Saved ✓'));
       hapticNotify('success');
       setTimeout(() => setToast(''), 1800);
     },
@@ -147,10 +150,10 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
   };
 
   if (isLoading || !data) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Загрузка...</div>;
+    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>{tr('Загрузка...', 'Loading...')}</div>;
   }
 
-  const previewText = applyPreview(text, data, kind);
+  const previewText = applyPreview(text, data, kind, lang);
 
   return (
     <div style={{ padding: '16px 16px 88px' }}>
@@ -166,10 +169,10 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
       )}
 
       <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--tg-text)', marginBottom: 6 }}>
-        {TITLE[kind] || 'Сообщение'}
+        {kind === 'birthday' ? tr('Поздравление с ДР', 'Birthday message') : tr('Приветствие', 'Welcome message')}
       </div>
       <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 12 }}>
-        Если поле пустое, используется стандартный текст бота.
+        {tr('Если поле пустое, используется стандартный текст бота.', 'If empty, default bot text is used.')}
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -196,7 +199,7 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
         ref={textareaRef}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Введите текст сообщения"
+        placeholder={tr('Введите текст сообщения', 'Enter message text')}
         rows={8}
         style={{
           width: '100%',
@@ -215,7 +218,7 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
       />
 
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-hint)', marginBottom: 8 }}>
-        Изображение
+        {tr('Изображение', 'Image')}
       </div>
 
       {previewImage ? (
@@ -235,7 +238,7 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
           marginBottom: 10,
           background: 'var(--tg-section-bg)',
         }}>
-          Изображение не добавлено
+          {tr('Изображение не добавлено', 'No image attached')}
         </div>
       )}
 
@@ -248,14 +251,14 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
       />
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <button onClick={onPickImage} style={btnSecondary}>Выбрать изображение</button>
+        <button onClick={onPickImage} style={btnSecondary}>{tr('Выбрать изображение', 'Choose image')}</button>
         {(previewImage || selectedFile || existingPhotoUrl) && (
-          <button onClick={onRemoveImage} style={btnDangerGhost}>Удалить</button>
+          <button onClick={onRemoveImage} style={btnDangerGhost}>{tr('Удалить', 'Remove')}</button>
         )}
       </div>
 
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tg-hint)', marginBottom: 6 }}>
-        Предпросмотр
+        {tr('Предпросмотр', 'Preview')}
       </div>
       <div style={{
         whiteSpace: 'pre-wrap',
@@ -275,7 +278,7 @@ export default function BonusMessageEditor({ kind = 'welcome' }) {
         disabled={saveMutation.isPending}
         style={{ ...btnPrimary, width: '100%', marginTop: 16, opacity: saveMutation.isPending ? 0.7 : 1 }}
       >
-        {saveMutation.isPending ? 'Сохраняем...' : 'Сохранить'}
+        {saveMutation.isPending ? tr('Сохраняем...', 'Saving...') : tr('Сохранить', 'Save')}
       </button>
     </div>
   );

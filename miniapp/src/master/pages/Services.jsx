@@ -8,6 +8,7 @@ import {
   archiveMasterService,
   restoreMasterService,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -72,16 +73,16 @@ function getCurrencySymbol(code) {
     KZT: '₸',
     TRY: '₺',
     GEL: '₾',
-    UZS: 'сум',
+    UZS: 'UZS',
   };
   return map[code] || code || '₽';
 }
 
-function formatPrice(value, currencySymbol) {
-  return `${(value || 0).toLocaleString('ru-RU')} ${currencySymbol}`;
+function formatPrice(value, currencySymbol, locale) {
+  return `${(value || 0).toLocaleString(locale)} ${currencySymbol}`;
 }
 
-function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySymbol }) {
+function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySymbol, t }) {
   const isNew = !initial;
   const [name, setName] = useState(initial?.name || '');
   const [price, setPrice] = useState(String(initial?.price || ''));
@@ -106,18 +107,18 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
       <div className="enterprise-sheet-backdrop" onClick={onClose} />
       <div className="enterprise-sheet enterprise-services-sheet">
         <div className="enterprise-sheet-handle" />
-        <div className="enterprise-sheet-title">{isNew ? 'Новая услуга' : 'Редактировать услугу'}</div>
+        <div className="enterprise-sheet-title">{isNew ? t('services.sheet.titleNew') : t('services.sheet.titleEdit')}</div>
 
-        <label className="enterprise-services-sheet-label">Название</label>
+        <label className="enterprise-services-sheet-label">{t('services.sheet.name')}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Например: ремонт измельчителя"
+          placeholder={t('services.sheet.namePlaceholder')}
           autoFocus
           className="enterprise-sheet-input"
         />
 
-        <label className="enterprise-services-sheet-label">Цена, {currencySymbol}</label>
+        <label className="enterprise-services-sheet-label">{t('services.sheet.price', { currency: currencySymbol })}</label>
         <input
           type="number"
           value={price}
@@ -126,11 +127,11 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
           className="enterprise-sheet-input"
         />
 
-        <label className="enterprise-services-sheet-label">Описание</label>
+        <label className="enterprise-services-sheet-label">{t('services.sheet.description')}</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Необязательно"
+          placeholder={t('services.sheet.descriptionPlaceholder')}
           rows={3}
           className="enterprise-sheet-input"
         />
@@ -146,14 +147,14 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
               }}
               disabled={loading}
             >
-              В архив
+              {t('services.sheet.archive')}
             </button>
           )}
           <button type="button" className="enterprise-sheet-btn secondary" onClick={onClose}>
-            Отмена
+            {t('common.cancel')}
           </button>
           <button type="button" className="enterprise-sheet-btn primary" onClick={handleSave} disabled={loading}>
-            {loading ? 'Сохраняем...' : 'Сохранить'}
+            {loading ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -162,6 +163,7 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
 }
 
 export default function Services() {
+  const { t, locale } = useI18n();
   const [sheet, setSheet] = useState(null);
   const [tab, setTab] = useState('active');
   const [successMsg, setSuccessMsg] = useState('');
@@ -181,7 +183,7 @@ export default function Services() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['master-services-all'] });
 
-  const showSuccess = (msg = 'Готово') => {
+  const showSuccess = (msg = t('services.toasts.ready')) => {
     hapticNotify('success');
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 1600);
@@ -192,7 +194,7 @@ export default function Services() {
     onSuccess: () => {
       invalidate();
       setSheet(null);
-      showSuccess('Услуга добавлена');
+      showSuccess(t('services.toasts.created'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -202,7 +204,7 @@ export default function Services() {
     onSuccess: () => {
       invalidate();
       setSheet(null);
-      showSuccess('Сохранено');
+      showSuccess(t('services.toasts.saved'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -212,7 +214,7 @@ export default function Services() {
     onSuccess: () => {
       invalidate();
       setSheet(null);
-      showSuccess('Услуга архивирована');
+      showSuccess(t('services.toasts.archived'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -221,7 +223,7 @@ export default function Services() {
     mutationFn: restoreMasterService,
     onSuccess: () => {
       invalidate();
-      showSuccess('Услуга восстановлена');
+      showSuccess(t('services.toasts.restored'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -229,7 +231,7 @@ export default function Services() {
   if (isLoading) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Загрузка...
+        {t('services.loading')}
       </div>
     );
   }
@@ -249,10 +251,10 @@ export default function Services() {
   const mutationLoading = createMutation.isPending || updateMutation.isPending || archiveMutation.isPending;
 
   return (
-    <div className="enterprise-services-page">
+      <div className="enterprise-services-page">
       {successMsg && <div className="enterprise-profile-toast">{successMsg}</div>}
 
-      <SectionTitle>Режим отображения</SectionTitle>
+      <SectionTitle>{t('services.sections.displayMode')}</SectionTitle>
       <div className="enterprise-services-tabs">
         <button
           type="button"
@@ -262,7 +264,7 @@ export default function Services() {
             setTab('active');
           }}
         >
-          Активные ({active.length})
+          {t('services.tabs.active', { count: active.length })}
         </button>
         <button
           type="button"
@@ -272,11 +274,11 @@ export default function Services() {
             setTab('archived');
           }}
         >
-          Архив ({archived.length})
+          {t('services.tabs.archived', { count: archived.length })}
         </button>
       </div>
 
-      <SectionTitle>Управление</SectionTitle>
+      <SectionTitle>{t('services.sections.management')}</SectionTitle>
       <div className="enterprise-services-add-wrap">
         <button
           type="button"
@@ -287,14 +289,14 @@ export default function Services() {
           }}
         >
           <PlusIcon />
-          <span>Добавить услугу</span>
+          <span>{t('services.addService')}</span>
         </button>
       </div>
 
-      <SectionTitle>{tab === 'active' ? 'Активные услуги' : 'Архив услуг'}</SectionTitle>
+      <SectionTitle>{tab === 'active' ? t('services.sections.activeServices') : t('services.sections.archivedServices')}</SectionTitle>
       <div className="enterprise-cell-group">
         {tab === 'active' && active.length === 0 && (
-          <div className="enterprise-services-empty">Нет активных услуг</div>
+          <div className="enterprise-services-empty">{t('services.empty.active')}</div>
         )}
 
         {tab === 'active' && active.map((service, idx) => (
@@ -310,15 +312,15 @@ export default function Services() {
             <span className="enterprise-cell-icon"><ToolIcon /></span>
             <span className="enterprise-cell-label enterprise-services-label">
               <span className="enterprise-services-name">{service.name}</span>
-              <span className="enterprise-services-desc">{service.description || 'Без описания'}</span>
+              <span className="enterprise-services-desc">{service.description || t('common.noDescription')}</span>
             </span>
-            <span className="enterprise-cell-value">{formatPrice(service.price, currencySymbol)}</span>
+            <span className="enterprise-cell-value">{formatPrice(service.price, currencySymbol, locale)}</span>
             <span className="enterprise-cell-chevron"><ChevronIcon /></span>
           </button>
         ))}
 
         {tab === 'archived' && archived.length === 0 && (
-          <div className="enterprise-services-empty">Архив пуст</div>
+          <div className="enterprise-services-empty">{t('services.empty.archived')}</div>
         )}
 
         {tab === 'archived' && archived.map((service, idx) => (
@@ -327,7 +329,7 @@ export default function Services() {
               <span className="enterprise-cell-icon"><ToolIcon /></span>
               <div className="enterprise-services-label">
                 <div className="enterprise-services-name">{service.name}</div>
-                <div className="enterprise-services-desc">{formatPrice(service.price, currencySymbol)}</div>
+                <div className="enterprise-services-desc">{formatPrice(service.price, currencySymbol, locale)}</div>
               </div>
             </div>
             <button
@@ -339,7 +341,7 @@ export default function Services() {
                 restoreMutation.mutate(service.id);
               }}
             >
-              Восстановить
+              {t('services.restore')}
             </button>
           </div>
         ))}
@@ -353,6 +355,7 @@ export default function Services() {
           onArchive={() => sheet.service && archiveMutation.mutate(sheet.service.id)}
           loading={mutationLoading}
           currencySymbol={currencySymbol}
+          t={t}
         />
       )}
     </div>

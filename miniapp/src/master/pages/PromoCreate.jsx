@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createMasterPromo, getPromoRecipientsCount } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic(type = 'light') {
@@ -36,6 +37,7 @@ function ProgressBar({ step, total }) {
 }
 
 export default function PromoCreate({ onBack, onCreated }) {
+  const { tr, locale } = useI18n();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     title: '',
@@ -63,26 +65,26 @@ export default function PromoCreate({ onBack, onCreated }) {
       qc.invalidateQueries({ queryKey: ['master-promos'] });
       setSuccess(data);
     },
-    onError: () => { hapticNotify('error'); setError('Ошибка при создании акции'); },
+    onError: () => { hapticNotify('error'); setError(tr('Ошибка при создании акции', 'Failed to create promo')); },
   });
 
   const nextStep = () => {
     setError('');
     if (step === 1) {
       if (!form.title.trim() || !form.text.trim()) {
-        setError('Заполните название и описание');
+        setError(tr('Заполните название и описание', 'Fill title and description'));
         hapticNotify('error');
         return;
       }
     }
     if (step === 2) {
       if (!form.active_to) {
-        setError('Укажите дату окончания');
+        setError(tr('Укажите дату окончания', 'Specify end date'));
         hapticNotify('error');
         return;
       }
       if (form.active_to <= form.active_from) {
-        setError('Дата окончания должна быть позже даты начала');
+        setError(tr('Дата окончания должна быть позже даты начала', 'End date must be later than start date'));
         hapticNotify('error');
         return;
       }
@@ -98,7 +100,7 @@ export default function PromoCreate({ onBack, onCreated }) {
 
   const fmtDate = (str) => {
     if (!str) return '—';
-    try { return new Date(str + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }); }
+    try { return new Date(str + 'T00:00:00').toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }); }
     catch { return str; }
   };
 
@@ -108,11 +110,11 @@ export default function PromoCreate({ onBack, onCreated }) {
       <div style={{ padding: '48px 16px', textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
         <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 8 }}>
-          Акция создана!
+          {tr('Акция создана!', 'Promo created!')}
         </div>
         {success.sent_count > 0 && (
           <div style={{ fontSize: 14, color: 'var(--tg-hint)', marginBottom: 24 }}>
-            Уведомлено {success.sent_count} клиентов
+            {tr(`Уведомлено ${success.sent_count} клиентов`, `Notified ${success.sent_count} clients`)}
           </div>
         )}
         <button
@@ -123,7 +125,7 @@ export default function PromoCreate({ onBack, onCreated }) {
             fontSize: 15, fontWeight: 600, border: 'none', cursor: 'pointer',
           }}
         >
-          К списку акций
+          {tr('К списку акций', 'Back to promos')}
         </button>
       </div>
     );
@@ -136,42 +138,42 @@ export default function PromoCreate({ onBack, onCreated }) {
       {step === 1 && (
         <div style={{ padding: '0 16px' }}>
           <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 16, color: 'var(--tg-text)' }}>
-            Шаг 1 — Название и описание
+            {tr('Шаг 1 — Название и описание', 'Step 1 - Title and description')}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>Название *</div>
+          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>{tr('Название *', 'Title *')}</div>
           <input
             value={form.title}
             onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-            placeholder="Скидка 20% на уборку"
+            placeholder={tr('Скидка 20% на уборку', '20% off cleaning')}
             autoFocus
             style={inputStyle}
           />
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>Описание / условия *</div>
+          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>{tr('Описание / условия *', 'Description / terms *')}</div>
           <textarea
             value={form.text}
             onChange={e => setForm(p => ({ ...p, text: e.target.value }))}
-            placeholder="Только в этом месяце на все услуги!"
+            placeholder={tr('Только в этом месяце на все услуги!', 'This month only for all services!')}
             rows={4}
             style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', minHeight: 96 }}
           />
           {error && <div style={{ color: 'var(--tg-destructive, #e53935)', fontSize: 13, marginTop: 8 }}>{error}</div>}
-          <button onClick={nextStep} style={{ ...btnPrimary, width: '100%', marginTop: 16 }}>Далее →</button>
+          <button onClick={nextStep} style={{ ...btnPrimary, width: '100%', marginTop: 16 }}>{tr('Далее →', 'Next ->')}</button>
         </div>
       )}
 
       {step === 2 && (
         <div style={{ padding: '0 16px' }}>
           <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 16, color: 'var(--tg-text)' }}>
-            Шаг 2 — Даты
+            {tr('Шаг 2 — Даты', 'Step 2 - Dates')}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>Дата начала</div>
+          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>{tr('Дата начала', 'Start date')}</div>
           <input
             type="date"
             value={form.active_from}
             onChange={e => setForm(p => ({ ...p, active_from: e.target.value }))}
             style={inputStyle}
           />
-          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>Дата окончания *</div>
+          <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>{tr('Дата окончания *', 'End date *')}</div>
           <input
             type="date"
             value={form.active_to}
@@ -181,8 +183,8 @@ export default function PromoCreate({ onBack, onCreated }) {
           />
           {error && <div style={{ color: 'var(--tg-destructive, #e53935)', fontSize: 13, marginTop: 8 }}>{error}</div>}
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-            <button onClick={() => { haptic(); setStep(1); }} style={{ ...btnSecondary, flex: 1 }}>← Назад</button>
-            <button onClick={nextStep} style={{ ...btnPrimary, flex: 2 }}>Далее →</button>
+            <button onClick={() => { haptic(); setStep(1); }} style={{ ...btnSecondary, flex: 1 }}>{tr('← Назад', '← Back')}</button>
+            <button onClick={nextStep} style={{ ...btnPrimary, flex: 2 }}>{tr('Далее →', 'Next ->')}</button>
           </div>
         </div>
       )}
@@ -190,7 +192,7 @@ export default function PromoCreate({ onBack, onCreated }) {
       {step === 3 && (
         <div style={{ padding: '0 16px' }}>
           <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 16, color: 'var(--tg-text)' }}>
-            Шаг 3 — Подтверждение
+            {tr('Шаг 3 — Подтверждение', 'Step 3 - Confirm')}
           </div>
 
           {/* Summary */}
@@ -219,10 +221,10 @@ export default function PromoCreate({ onBack, onCreated }) {
               style={{ width: 18, height: 18, cursor: 'pointer' }}
             />
             <label htmlFor="notify" style={{ flex: 1, fontSize: 14, cursor: 'pointer', color: 'var(--tg-text)' }}>
-              Уведомить клиентов о новой акции
+              {tr('Уведомить клиентов о новой акции', 'Notify clients about new promo')}
               {form.notify_clients && recipientsCount > 0 && (
                 <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
-                  Будет отправлено {recipientsCount} клиентам
+                  {tr(`Будет отправлено ${recipientsCount} клиентам`, `Will be sent to ${recipientsCount} clients`)}
                 </div>
               )}
             </label>
@@ -231,13 +233,13 @@ export default function PromoCreate({ onBack, onCreated }) {
           {error && <div style={{ color: 'var(--tg-destructive, #e53935)', fontSize: 13, marginBottom: 8 }}>{error}</div>}
 
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { haptic(); setStep(2); }} style={{ ...btnSecondary, flex: 1 }}>← Назад</button>
+            <button onClick={() => { haptic(); setStep(2); }} style={{ ...btnSecondary, flex: 1 }}>{tr('← Назад', '← Back')}</button>
             <button
               onClick={handleSubmit}
               disabled={mutation.isPending}
               style={{ ...btnPrimary, flex: 2, opacity: mutation.isPending ? 0.7 : 1 }}
             >
-              {mutation.isPending ? 'Создаём...' : 'Создать акцию'}
+              {mutation.isPending ? tr('Создаём...', 'Creating...') : tr('Создать акцию', 'Create promo')}
             </button>
           </div>
         </div>

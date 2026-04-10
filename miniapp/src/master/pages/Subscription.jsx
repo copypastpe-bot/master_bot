@@ -6,13 +6,14 @@ import {
   trackMasterReferralLinkCopied,
 } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
 const PLANS = [
-  { payload: 'plan_month', stars: 200, days: 30, label: '1 месяц' },
-  { payload: 'plan_quarter', stars: 500, days: 90, label: '3 месяца', popular: true, discount: 'Выгода 17%' },
-  { payload: 'plan_year', stars: 1700, days: 365, label: '1 год', discount: 'Выгода 29%' },
+  { payload: 'plan_month', stars: 200, days: 30, labelKey: 'subscription.plans.month' },
+  { payload: 'plan_quarter', stars: 500, days: 90, labelKey: 'subscription.plans.quarter', popular: true, discountKey: 'subscription.plans.quarterDiscount' },
+  { payload: 'plan_year', stars: 1700, days: 365, labelKey: 'subscription.plans.year', discountKey: 'subscription.plans.yearDiscount' },
 ];
 
 function haptic() {
@@ -39,29 +40,29 @@ function openTelegramInvoice(invoiceLink) {
   });
 }
 
-function formatDate(value) {
-  if (!value) return '—';
+function formatDate(value, locale, t) {
+  if (!value) return t('common.dash');
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function formatDateShort(value) {
-  if (!value) return '—';
+function formatDateShort(value, locale, t) {
+  if (!value) return t('common.dash');
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
 }
 
-function HistoryRow({ item, isLast }) {
+function HistoryRow({ item, isLast, t, locale }) {
   const title = item.type === 'payment'
     ? item.plan_label
     : item.type === 'referral_payment'
-      ? `Реферал: +${item.days_added} дн`
-      : `Реферал: +${item.days_added} дн`;
+      ? t('subscription.history.referral', { days: item.days_added })
+      : t('subscription.history.referral', { days: item.days_added });
   const amount = item.type === 'payment'
-    ? `${(item.stars_amount || 0).toLocaleString('ru-RU')} ★`
-    : 'бонус';
+    ? `${(item.stars_amount || 0).toLocaleString(locale)} ★`
+    : t('subscription.history.bonus');
 
   return (
     <div
@@ -79,7 +80,7 @@ function HistoryRow({ item, isLast }) {
           {title}
         </div>
         <div style={{ color: 'var(--tg-hint)', fontSize: 13 }}>
-          {formatDate(item.created_at)}
+          {formatDate(item.created_at, locale, t)}
         </div>
       </div>
       <div style={{ color: item.type === 'payment' ? 'var(--tg-text)' : 'var(--tg-accent)', fontSize: 16, fontWeight: 700 }}>
@@ -90,6 +91,7 @@ function HistoryRow({ item, isLast }) {
 }
 
 export default function Subscription() {
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
   const [selectedPlan, setSelectedPlan] = useState('plan_quarter');
   const [isPaymentPolling, setIsPaymentPolling] = useState(false);
@@ -167,8 +169,8 @@ export default function Subscription() {
         if (typeof WebApp?.showAlert === 'function') {
           WebApp.showAlert(
             updated
-              ? 'Оплата прошла, подписка обновлена'
-              : 'Оплата прошла. Обновление подписки может занять несколько секунд.'
+              ? t('subscription.alerts.paidUpdated')
+              : t('subscription.alerts.paidPending')
           );
         }
         return;
@@ -176,25 +178,25 @@ export default function Subscription() {
 
       if (status === 'cancelled') {
         if (typeof WebApp?.showAlert === 'function') {
-          WebApp.showAlert('Оплата отменена');
+          WebApp.showAlert(t('subscription.alerts.cancelled'));
         }
         return;
       }
 
       if (status === 'failed') {
         if (typeof WebApp?.showAlert === 'function') {
-          WebApp.showAlert('Оплата не прошла');
+          WebApp.showAlert(t('subscription.alerts.failed'));
         }
         return;
       }
 
       if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert(`Статус оплаты: ${status}`);
+        WebApp.showAlert(t('subscription.alerts.status', { status }));
       }
     } catch (_) {
       setIsPaymentPolling(false);
       if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Не удалось запустить оплату');
+        WebApp.showAlert(t('subscription.alerts.launchFailed'));
       }
     }
   };
@@ -213,7 +215,7 @@ export default function Subscription() {
     }
     copyMutation.mutate('subscription');
     if (typeof WebApp?.showAlert === 'function') {
-      WebApp.showAlert('Ссылка скопирована');
+      WebApp.showAlert(t('common.copied'));
     }
   };
 
@@ -230,7 +232,7 @@ export default function Subscription() {
   if (isError) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 16px' }}>
-        <p style={{ marginBottom: 10, color: 'var(--tg-text)' }}>Не удалось загрузить подписку</p>
+        <p style={{ marginBottom: 10, color: 'var(--tg-text)' }}>{t('subscription.errors.loadFailed')}</p>
         <button
           onClick={() => { haptic(); refetch(); }}
           style={{
@@ -243,7 +245,7 @@ export default function Subscription() {
             cursor: 'pointer',
           }}
         >
-          Повторить
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -267,17 +269,17 @@ export default function Subscription() {
         <div>
           <div style={{ color: statusStyles.title, fontSize: 17, fontWeight: 700 }}>
             {statusKind === 'expired'
-              ? 'Подписка истекла'
+              ? t('subscription.status.expiredTitle')
               : statusKind === 'trial'
-                ? 'Пробный период'
-                : `Активна до ${formatDate(data.subscription_until)}`}
+                ? t('subscription.status.trialTitle')
+                : t('subscription.status.activeUntil', { date: formatDate(data.subscription_until, locale, t) })}
           </div>
           <div style={{ color: statusStyles.text, fontSize: 14, marginTop: 2 }}>
             {statusKind === 'expired'
-              ? 'Оплатите для продолжения'
+              ? t('subscription.status.payToContinue')
               : statusKind === 'trial'
-                ? `Истекает ${formatDateShort(data.subscription_until)} · ${data.days_left} дней`
-                : `Осталось ${data.days_left} дней`}
+                ? t('subscription.status.trialExpires', { date: formatDateShort(data.subscription_until, locale, t), days: data.days_left })
+                : t('subscription.status.daysLeft', { days: data.days_left })}
           </div>
         </div>
         <div style={{ color: statusStyles.icon, fontSize: 31, lineHeight: 1 }}>
@@ -286,7 +288,7 @@ export default function Subscription() {
       </div>
 
       <div style={{ color: 'var(--tg-hint)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 2px 8px' }}>
-        {statusKind === 'expired' ? 'Выберите тариф' : 'Продлить'}
+        {statusKind === 'expired' ? t('subscription.sections.choosePlan') : t('subscription.sections.renew')}
       </div>
       <div
         style={{
@@ -322,12 +324,13 @@ export default function Subscription() {
               <div>
                 {plan.popular && (
                   <div style={{ color: 'var(--tg-button)', fontSize: 12, fontWeight: 700, marginBottom: 2 }}>
-                    Популярный
+                    {t('subscription.plans.popular')}
                   </div>
                 )}
-                <div style={{ color: 'var(--tg-text)', fontSize: 17, fontWeight: 700 }}>{plan.label}</div>
+                <div style={{ color: 'var(--tg-text)', fontSize: 17, fontWeight: 700 }}>{t(plan.labelKey)}</div>
                 <div style={{ color: 'var(--tg-hint)', fontSize: 14 }}>
-                  {plan.days} дней{plan.discount ? ` · ${plan.discount}` : ''}
+                  {t('subscription.plans.days', { days: plan.days })}
+                  {plan.discountKey ? ` · ${t(plan.discountKey)}` : ''}
                 </div>
               </div>
               <div
@@ -341,7 +344,7 @@ export default function Subscription() {
                   fontSize: 17,
                 }}
               >
-                {plan.stars.toLocaleString('ru-RU')} ★
+                {plan.stars.toLocaleString(locale)} ★
               </div>
             </button>
           );
@@ -366,10 +369,10 @@ export default function Subscription() {
         }}
       >
         {invoiceMutation.isPending
-          ? 'Создаём счёт...'
+          ? t('subscription.payment.creating')
           : isPaymentPolling
-            ? 'Проверяем оплату...'
-            : '★ Оплатить Stars'}
+            ? t('subscription.payment.checking')
+            : t('subscription.payment.pay')}
       </button>
 
       <div
@@ -386,8 +389,8 @@ export default function Subscription() {
         }}
       >
         <div>
-          <div style={{ color: 'var(--tg-text)', fontSize: 16, fontWeight: 700 }}>Пригласить друга</div>
-          <div style={{ color: 'var(--tg-hint)', fontSize: 14 }}>+14 дней за каждого</div>
+          <div style={{ color: 'var(--tg-text)', fontSize: 16, fontWeight: 700 }}>{t('subscription.referral.title')}</div>
+          <div style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{t('subscription.referral.subtitle')}</div>
         </div>
         <button
           onClick={handleCopyReferral}
@@ -401,7 +404,7 @@ export default function Subscription() {
             fontSize: 20,
             cursor: 'pointer',
           }}
-          title="Скопировать ссылку"
+          title={t('subscription.referral.copyTitle')}
         >
           🔗
         </button>
@@ -420,12 +423,12 @@ export default function Subscription() {
             fontWeight: 600,
           }}
         >
-          Оплатите до окончания триала, дни добавятся сверху
+          {t('subscription.trialNote')}
         </div>
       )}
 
       <div style={{ color: 'var(--tg-hint)', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 2px 8px' }}>
-        История
+        {t('subscription.sections.history')}
       </div>
       <div
         style={{
@@ -437,11 +440,17 @@ export default function Subscription() {
       >
         {(data.payment_history || []).length === 0 ? (
           <div style={{ color: 'var(--tg-hint)', padding: '14px 0', textAlign: 'center' }}>
-            Пока пусто
+            {t('subscription.history.empty')}
           </div>
         ) : (
           (data.payment_history || []).map((item, idx, arr) => (
-            <HistoryRow key={`${item.type}_${item.created_at || idx}`} item={item} isLast={idx === arr.length - 1} />
+            <HistoryRow
+              key={`${item.type}_${item.created_at || idx}`}
+              item={item}
+              isLast={idx === arr.length - 1}
+              t={t}
+              locale={locale}
+            />
           ))
         )}
       </div>

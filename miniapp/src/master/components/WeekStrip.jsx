@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
-
-const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 /** Returns Monday of the week containing `d`. */
 function getWeekStart(d) {
@@ -33,6 +32,7 @@ function toYMD(d) {
 const SWIPE_THRESHOLD = 50; // px
 
 export default function WeekStrip({ selectedDate, onSelectDate, activeDates = [] }) {
+  const { tr, locale } = useI18n();
   const activeDateSet = new Set(activeDates);
   const todayStr = toYMD(new Date());
 
@@ -129,7 +129,7 @@ export default function WeekStrip({ selectedDate, onSelectDate, activeDates = []
         padding: '8px 16px 4px',
       }}>
         <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>
-          {days[0].toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
+          {days[0].toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
         </span>
         {!isCurrentWeek && (
           <button
@@ -144,7 +144,7 @@ export default function WeekStrip({ selectedDate, onSelectDate, activeDates = []
               fontWeight: 500,
             }}
           >
-            Сегодня
+            {tr('Сегодня', 'Today')}
           </button>
         )}
       </div>
@@ -202,7 +202,7 @@ export default function WeekStrip({ selectedDate, onSelectDate, activeDates = []
                       : 'var(--tg-hint)',
                   fontWeight: isSelected || isToday ? 600 : 400,
                 }}>
-                  {DAY_LABELS[idx]}
+                  {day.toLocaleDateString(locale, { weekday: 'short' })}
                 </span>
 
                 {/* Day number with selection circle */}

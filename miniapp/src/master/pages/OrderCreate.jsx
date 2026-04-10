@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { useBackButton } from '../hooks/useBackButton';
 import ClientAddSheet from '../components/ClientAddSheet';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -30,10 +31,9 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
-function formatDateRu(dateStr) {
+function formatDateLocal(dateStr, locale) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-  return `${d} ${MONTHS[m - 1]} ${y}`;
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function get14Days() {
@@ -51,8 +51,6 @@ const TIME_PRESETS = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
   '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
 ];
-
-const DAY_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 // ─── Progress bar ────────────────────────────────────────────────────────────
 
@@ -89,6 +87,7 @@ function ProgressBar({ step }) {
 // ─── Step 1: Client search ───────────────────────────────────────────────────
 
 function StepClient({ selected, onSelect, onNext }) {
+  const { tr } = useI18n();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -116,14 +115,14 @@ function StepClient({ selected, onSelect, onNext }) {
   return (
     <div style={{ padding: '0 16px 16px' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 8px' }}>
-        Начните вводить имя или телефон
+        {tr('Начните вводить имя или телефон', 'Start typing name or phone')}
       </p>
 
       <input
         type="text"
         value={query}
         onChange={handleChange}
-        placeholder="Поиск клиента..."
+        placeholder={tr('Поиск клиента...', 'Search client...')}
         autoFocus
         style={{
           width: '100%',
@@ -154,7 +153,7 @@ function StepClient({ selected, onSelect, onNext }) {
             cursor: 'pointer',
           }}
         >
-          + Новый клиент
+          {tr('+ Новый клиент', '+ New client')}
         </button>
       )}
 
@@ -185,7 +184,7 @@ function StepClient({ selected, onSelect, onNext }) {
               fontSize: 12,
             }}
           >
-            Изменить
+            {tr('Изменить', 'Change')}
           </button>
         </div>
       )}
@@ -194,13 +193,13 @@ function StepClient({ selected, onSelect, onNext }) {
         <div style={{ marginTop: 8 }}>
           {isFetching && (
             <div style={{ textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13, padding: 12 }}>
-              Поиск...
+              {tr('Поиск...', 'Searching...')}
             </div>
           )}
           {!isFetching && clients.length === 0 && (
             <div style={{ textAlign: 'center' }}>
               <div style={{ color: 'var(--tg-hint)', fontSize: 13, padding: '12px 0 8px' }}>
-                Клиенты не найдены
+                {tr('Клиенты не найдены', 'No clients found')}
               </div>
             </div>
           )}
@@ -244,7 +243,7 @@ function StepClient({ selected, onSelect, onNext }) {
           opacity: selected ? 1 : 0.5,
         }}
       >
-        Далее →
+        {tr('Далее →', 'Next ->')}
       </button>
 
       {showAddSheet && (
@@ -265,6 +264,7 @@ function StepClient({ selected, onSelect, onNext }) {
 // ─── Step 2: Services ────────────────────────────────────────────────────────
 
 function StepServices({ selected, onSelect, onNext, onBack }) {
+  const { tr, locale } = useI18n();
   const [custom, setCustom] = useState({ name: '', price: '' });
   const [showCustom, setShowCustom] = useState(false);
   const [customList, setCustomList] = useState([]);
@@ -353,7 +353,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
                 {sel ? '✓ ' : ''}{svc.name}
               </span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>
-                {svc.price ? `${svc.price.toLocaleString()} ₽` : 'цена не указана'}
+                {svc.price ? `${svc.price.toLocaleString(locale)} ₽` : tr('цена не указана', 'price not specified')}
               </span>
             </button>
             {sel && noPrice && (
@@ -365,7 +365,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
               }}>
                 <input
                   type="number"
-                  placeholder="Введите цену ₽"
+                  placeholder={tr('Введите цену ₽', 'Enter price ₽')}
                   value={priceOverrides[svc.id] || ''}
                   onChange={(e) => updateServicePrice(svc.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
@@ -412,7 +412,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
             <span style={{ fontSize: 14, fontWeight: isSel ? 600 : 400 }}>
               {isSel ? '✓ ' : ''}{item.name}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString()} ₽</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString(locale)} ₽</span>
           </button>
         );
       })}
@@ -426,7 +426,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
         }}>
           <input
             type="text"
-            placeholder="Название услуги"
+            placeholder={tr('Название услуги', 'Service name')}
             value={custom.name}
             onChange={(e) => setCustom({ ...custom, name: e.target.value })}
             style={{
@@ -445,7 +445,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="number"
-              placeholder="Цена ₽"
+              placeholder={tr('Цена ₽', 'Price ₽')}
               value={custom.price}
               onChange={(e) => setCustom({ ...custom, price: e.target.value })}
               style={{
@@ -474,7 +474,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
                 opacity: (!custom.name.trim() || !custom.price) ? 0.5 : 1,
               }}
             >
-              Добавить
+              {tr('Добавить', 'Add')}
             </button>
           </div>
         </div>
@@ -493,7 +493,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
             marginBottom: 8,
           }}
         >
-          + Произвольная услуга
+          {tr('+ Произвольная услуга', '+ Custom service')}
         </button>
       )}
 
@@ -506,9 +506,9 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
           justifyContent: 'space-between',
           marginBottom: 12,
         }}>
-          <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>Итого</span>
+          <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--tg-text)' }}>
-            {total.toLocaleString()} ₽
+            {total.toLocaleString(locale)} ₽
           </span>
         </div>
       )}
@@ -527,7 +527,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
             cursor: 'pointer',
           }}
         >
-          ← Назад
+          {tr('← Назад', '← Back')}
         </button>
         <button
           onClick={() => { haptic(); onNext(); }}
@@ -545,7 +545,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
             opacity: canNext ? 1 : 0.5,
           }}
         >
-          Далее →
+          {tr('Далее →', 'Next ->')}
         </button>
       </div>
     </div>
@@ -567,6 +567,7 @@ function StepDateTime({
   workMode,
   masterDefaultAddress,
 }) {
+  const { tr, locale } = useI18n();
   const queryClient = useQueryClient();
   const days14 = get14Days();
   const isHomeMode = workMode === 'home';
@@ -600,11 +601,11 @@ function StepDateTime({
       setAddressLabel('');
       setAddressError('');
       if (typeof WebApp?.showAlert === 'function') {
-        WebApp.showAlert('Адрес клиента сохранён');
+        WebApp.showAlert(tr('Адрес клиента сохранён', 'Client address saved'));
       }
     },
     onError: (error) => {
-      const msg = error?.response?.data?.detail || 'Не удалось сохранить адрес';
+      const msg = error?.response?.data?.detail || tr('Не удалось сохранить адрес', 'Failed to save address');
       setAddressError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     },
   });
@@ -642,7 +643,7 @@ function StepDateTime({
     haptic('medium');
     setAddressError('');
     if (!normalizedAddress) {
-      setAddressError('Введите адрес для сохранения');
+      setAddressError(tr('Введите адрес для сохранения', 'Enter address to save'));
       return;
     }
     try {
@@ -668,7 +669,7 @@ function StepDateTime({
         try {
           await saveMasterDefaultAddressMutation.mutateAsync(normalizedAddress);
         } catch (error) {
-          const msg = error?.response?.data?.detail || 'Не удалось сохранить ваш адрес';
+          const msg = error?.response?.data?.detail || tr('Не удалось сохранить ваш адрес', 'Failed to save your address');
           setAddressError(typeof msg === 'string' ? msg : JSON.stringify(msg));
           return;
         }
@@ -680,7 +681,7 @@ function StepDateTime({
   return (
     <div style={{ padding: '0 16px 16px' }}>
       {/* Mini calendar: 2 weeks grid */}
-      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 6px' }}>Дата</p>
+      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 6px' }}>{tr('Дата', 'Date')}</p>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(7, 1fr)',
@@ -713,7 +714,9 @@ function StepDateTime({
                 gap: 1,
               }}
             >
-              <span style={{ fontSize: 9, opacity: 0.7 }}>{DAY_SHORT[dayOfWeek]}</span>
+              <span style={{ fontSize: 9, opacity: 0.7 }}>
+                {new Date(d + 'T12:00:00').toLocaleDateString(locale, { weekday: 'short' })}
+              </span>
               <span style={{ fontSize: 14, fontWeight: isSelected ? 700 : 400 }}>{dayNum}</span>
             </button>
           );
@@ -721,7 +724,7 @@ function StepDateTime({
       </div>
 
       {/* Time presets */}
-      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 6px' }}>Время</p>
+      <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 6px' }}>{tr('Время', 'Time')}</p>
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -765,7 +768,7 @@ function StepDateTime({
 
       {/* Address */}
       <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '16px 0 6px' }}>
-        {isHomeMode ? 'Ваш адрес' : 'Адрес клиента'}
+        {isHomeMode ? tr('Ваш адрес', 'Your address') : tr('Адрес клиента', 'Client address')}
       </p>
       {!isHomeMode && savedAddresses.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -796,7 +799,7 @@ function StepDateTime({
         type="text"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
-        placeholder={isHomeMode ? 'Ваш адрес по умолчанию' : 'Адрес клиента'}
+        placeholder={isHomeMode ? tr('Ваш адрес по умолчанию', 'Your default address') : tr('Адрес клиента', 'Client address')}
         style={{
           width: '100%',
           padding: '10px 12px',
@@ -816,7 +819,7 @@ function StepDateTime({
             type="text"
             value={addressLabel}
             onChange={(e) => setAddressLabel(e.target.value)}
-            placeholder="Метка (дом, работа...)"
+            placeholder={tr('Метка (дом, работа...)', 'Label (home, office...)')}
             style={{
               flex: 1,
               padding: '10px 12px',
@@ -844,13 +847,13 @@ function StepDateTime({
               opacity: saveClientAddressMutation.isPending ? 0.65 : 1,
             }}
           >
-            {saveClientAddressMutation.isPending ? 'Сохр...' : 'Сохранить'}
+            {saveClientAddressMutation.isPending ? tr('Сохр...', 'Saving...') : tr('Сохранить', 'Save')}
           </button>
         </div>
       )}
       {isHomeMode && (
         <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '4px 0 20px' }}>
-          Этот адрес будет использоваться по умолчанию для заказов в режиме «дома».
+          {tr('Этот адрес будет использоваться по умолчанию для заказов в режиме «дома».', 'This address will be used by default for home-mode orders.')}
         </p>
       )}
       {!!addressError && (
@@ -873,7 +876,7 @@ function StepDateTime({
             cursor: 'pointer',
           }}
         >
-          ← Назад
+          {tr('← Назад', '← Back')}
         </button>
         <button
           onClick={handleNext}
@@ -891,7 +894,7 @@ function StepDateTime({
             opacity: canNext ? 1 : 0.5,
           }}
         >
-          Далее →
+          {tr('Далее →', 'Next ->')}
         </button>
       </div>
     </div>
@@ -901,6 +904,7 @@ function StepDateTime({
 // ─── Step 4: Summary ─────────────────────────────────────────────────────────
 
 function StepSummary({ client, services, date, time, address, onBack, onCreated }) {
+  const { tr, locale } = useI18n();
   const [error, setError] = useState('');
 
   const total = services.reduce((sum, s) => sum + (s.price || 0), 0);
@@ -914,13 +918,13 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
       onCreated(order);
     },
     onError: (err) => {
-      const msg = err?.response?.data?.detail || 'Ошибка при создании заказа';
+      const msg = err?.response?.data?.detail || tr('Ошибка при создании заказа', 'Failed to create order');
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
       if (typeof WebApp?.MainButton?.enable === 'function') {
         WebApp.MainButton.enable();
       }
       if (typeof WebApp?.MainButton?.setText === 'function') {
-        WebApp.MainButton.setText('Создать заказ');
+        WebApp.MainButton.setText(tr('Создать заказ', 'Create order'));
       }
     },
   });
@@ -947,7 +951,7 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
   // MainButton setup
   useEffect(() => {
     if (typeof WebApp?.MainButton?.setText === 'function') {
-      WebApp.MainButton.setText('Создать заказ');
+      WebApp.MainButton.setText(tr('Создать заказ', 'Create order'));
     }
     if (typeof WebApp?.MainButton?.show === 'function') {
       WebApp.MainButton.show();
@@ -966,18 +970,18 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         WebApp.MainButton.offClick(handleCreate);
       }
     };
-  }, [handleCreate]);
+  }, [handleCreate, tr]);
 
   // Loading state
   useEffect(() => {
     if (mutation.isPending) {
       if (typeof WebApp?.MainButton?.disable === 'function') WebApp.MainButton.disable();
-      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText('Создаём...');
+      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText(tr('Создаём...', 'Creating...'));
     } else if (!mutation.isSuccess) {
       if (typeof WebApp?.MainButton?.enable === 'function') WebApp.MainButton.enable();
-      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText('Создать заказ');
+      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText(tr('Создать заказ', 'Create order'));
     }
-  }, [mutation.isPending, mutation.isSuccess]);
+  }, [mutation.isPending, mutation.isSuccess, tr]);
 
   return (
     <div style={{ padding: '0 16px 16px' }}>
@@ -987,8 +991,8 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         padding: 16,
         marginBottom: 12,
       }}>
-        <SummaryRow label="Клиент" value={client.name} />
-        <SummaryRow label="Телефон" value={client.phone || '—'} />
+        <SummaryRow label={tr('Клиент', 'Client')} value={client.name} />
+        <SummaryRow label={tr('Телефон', 'Phone')} value={client.phone || '—'} />
       </div>
 
       <div style={{
@@ -997,12 +1001,12 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         padding: 16,
         marginBottom: 12,
       }}>
-        <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 8px' }}>Услуги</p>
+        <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 8px' }}>{tr('Услуги', 'Services')}</p>
         {services.map((s, idx) => (
           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontSize: 14, color: 'var(--tg-text)' }}>{s.name}</span>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)' }}>
-              {s.price.toLocaleString()} ₽
+              {s.price.toLocaleString(locale)} ₽
             </span>
           </div>
         ))}
@@ -1013,9 +1017,9 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
           display: 'flex',
           justifyContent: 'space-between',
         }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)' }}>Итого</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)' }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tg-text)' }}>
-            {total.toLocaleString()} ₽
+            {total.toLocaleString(locale)} ₽
           </span>
         </div>
       </div>
@@ -1026,9 +1030,9 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         padding: 16,
         marginBottom: 20,
       }}>
-        <SummaryRow label="Дата" value={formatDateRu(date)} />
-        <SummaryRow label="Время" value={time} />
-        {address && <SummaryRow label="Адрес" value={address} />}
+        <SummaryRow label={tr('Дата', 'Date')} value={formatDateLocal(date, locale)} />
+        <SummaryRow label={tr('Время', 'Time')} value={time} />
+        {address && <SummaryRow label={tr('Адрес', 'Address')} value={address} />}
       </div>
 
       {error && (
@@ -1059,7 +1063,7 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
           opacity: mutation.isPending ? 0.5 : 1,
         }}
       >
-        ← Назад
+        {tr('← Назад', '← Back')}
       </button>
     </div>
   );
@@ -1077,6 +1081,7 @@ function SummaryRow({ label, value }) {
 // ─── Success screen ──────────────────────────────────────────────────────────
 
 function SuccessScreen({ order, onBack }) {
+  const { tr } = useI18n();
   useEffect(() => {
     if (typeof WebApp?.HapticFeedback?.notificationOccurred === 'function') {
       WebApp.HapticFeedback.notificationOccurred('success');
@@ -1095,10 +1100,10 @@ function SuccessScreen({ order, onBack }) {
     }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
       <h2 style={{ margin: '0 0 8px', color: 'var(--tg-text)', fontSize: 20 }}>
-        Заказ создан!
+        {tr('Заказ создан!', 'Order created!')}
       </h2>
       <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: '0 0 32px' }}>
-        Заказ #{order?.id} успешно добавлен в расписание
+        {tr(`Заказ #${order?.id} успешно добавлен в расписание`, `Order #${order?.id} added to schedule successfully`)}
       </p>
       <button
         onClick={() => { haptic(); onBack(); }}
@@ -1113,7 +1118,7 @@ function SuccessScreen({ order, onBack }) {
           cursor: 'pointer',
         }}
       >
-        Вернуться к расписанию
+        {tr('Вернуться к расписанию', 'Back to schedule')}
       </button>
     </div>
   );
@@ -1122,6 +1127,7 @@ function SuccessScreen({ order, onBack }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function OrderCreate({ params, onBack, onCreated }) {
+  const { tr } = useI18n();
   const prefill = params?.prefill;
   const prefillClientId = prefill?.client_id || params?.preselectedClientId || null;
   const prefillClientName = prefill?.client_name || params?.preselectedClientName || '';
@@ -1174,7 +1180,12 @@ export default function OrderCreate({ params, onBack, onCreated }) {
     }
   }, [step]);
 
-  const TITLES = ['Выбор клиента', 'Услуги', 'Дата и время', 'Подтверждение'];
+  const TITLES = [
+    tr('Выбор клиента', 'Client selection'),
+    tr('Услуги', 'Services'),
+    tr('Дата и время', 'Date and time'),
+    tr('Подтверждение', 'Confirmation'),
+  ];
 
   if (createdOrder) {
     return <SuccessScreen order={createdOrder} onBack={onBack} />;

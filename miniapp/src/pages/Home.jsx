@@ -3,22 +3,23 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, getOrders, getBonuses } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
+import { useI18n } from '../i18n';
 const WebApp = window.Telegram?.WebApp;
 
-function relativeDate(dateStr) {
+function relativeDate(dateStr, t) {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((date - now) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Сегодня';
-  if (diffDays === 1) return 'Завтра';
-  if (diffDays > 1) return `Через ${diffDays} дн.`;
+  if (diffDays === 0) return t('home.relative.today');
+  if (diffDays === 1) return t('home.relative.tomorrow');
+  if (diffDays > 1) return t('home.relative.inDays', { count: diffDays });
   return '';
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr, locale) {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString('ru-RU', {
+  return new Date(dateStr).toLocaleString(locale, {
     day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
   });
 }
@@ -32,6 +33,7 @@ const BONUS_ICONS = {
 };
 
 export default function Home({ onNavigate, masters = [], activeMasterId, onMasterChange }) {
+  const { t, locale } = useI18n();
   const qc = useQueryClient();
   const [showMasterPicker, setShowMasterPicker] = useState(false);
 
@@ -59,17 +61,17 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
-          <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>Добро пожаловать</p>
+          <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{t('home.welcome')}</p>
           {meLoading
             ? <Skeleton width={140} height={22} style={{ marginTop: 4 }} />
-            : <h2 style={{ fontSize: 20, fontWeight: 700 }}>{me?.client?.name || '—'}</h2>
+            : <h2 style={{ fontSize: 20, fontWeight: 700 }}>{me?.client?.name || t('common.dash')}</h2>
           }
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button
             onClick={() => qc.invalidateQueries()}
             style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', cursor: 'pointer', fontSize: 20 }}
-            title="Обновить"
+            title={t('common.refresh')}
           >↻</button>
           <div style={{
             width: 42, height: 42, borderRadius: '50%',
@@ -90,7 +92,7 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
         padding: '20px',
         marginBottom: 16,
       }}>
-        <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>Бонусный баланс</p>
+        <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>{t('home.bonusBalance')}</p>
         {bonusesLoading
           ? <Skeleton width={100} height={36} style={{ marginBottom: 8 }} />
           : <p style={{ fontSize: 36, fontWeight: 800, color: 'var(--tg-accent)', lineHeight: 1.1 }}>
@@ -110,7 +112,7 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
                 }}
               >
                 <p style={{ color: 'var(--tg-hint)', fontSize: 13 }}>
-                  Мастер: {me?.master?.name || '—'}
+                  {t('home.masterPrefix', { name: me?.master?.name || t('common.dash') })}
                 </p>
                 {multiMaster && (
                   <span style={{ color: 'var(--tg-hint)', fontSize: 11 }}>▼</span>
@@ -141,13 +143,13 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
               <span style={{ fontSize: 13, color: 'var(--tg-accent)' }}>
-                📅 {formatDate(upcoming.scheduled_at)}
+                📅 {formatDate(upcoming.scheduled_at, locale)}
               </span>
               <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                {relativeDate(upcoming.scheduled_at)}
+                {relativeDate(upcoming.scheduled_at, t)}
               </span>
             </div>
-            <p style={{ fontWeight: 600 }}>{upcoming.services || 'Услуга не указана'}</p>
+            <p style={{ fontWeight: 600 }}>{upcoming.services || t('home.serviceNotSpecified')}</p>
             {upcoming.address && (
               <p style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 2 }}>{upcoming.address}</p>
             )}
@@ -158,7 +160,7 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
       {/* Recent bonus operations */}
       {recentBonuses.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 10 }}>Последние операции</p>
+          <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 10 }}>{t('home.recentOperations')}</p>
           {recentBonuses.map((op, i) => {
             const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
             const sign = op.amount > 0 ? '+' : '';
@@ -176,7 +178,7 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
                   <span style={{ color, fontWeight: 600 }}>{sign}{op.amount} ₽</span>
                   <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>
                     {op.created_at
-                      ? new Date(op.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+                      ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
                       : ''}
                   </p>
                 </div>
@@ -206,7 +208,7 @@ export default function Home({ onNavigate, masters = [], activeMasterId, onMaste
               padding: '20px 16px 40px',
             }}
           >
-            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Сменить мастера</p>
+            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{t('home.switchMaster')}</p>
             {masters.map((m, i) => (
               <div
                 key={m.master_id}

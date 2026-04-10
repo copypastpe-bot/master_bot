@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 const WebApp = window.Telegram?.WebApp;
 
 const HomeIcon = () => (
@@ -32,13 +33,14 @@ const MoreIcon = () => (
 );
 
 const tabs = [
-  { id: 'home', label: 'Главная', Icon: HomeIcon },
-  { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
-  { id: 'requests', label: 'Заявки', Icon: BellIcon },
-  { id: 'more', label: 'Ещё', Icon: MoreIcon },
+  { id: 'home', key: 'nav.master.home', Icon: HomeIcon },
+  { id: 'calendar', key: 'nav.master.calendar', Icon: CalendarIcon },
+  { id: 'requests', key: 'nav.master.requests', Icon: BellIcon },
+  { id: 'more', key: 'nav.master.more', Icon: MoreIcon },
 ];
 
 export default function MasterNav({ active, onNavigate = () => {}, requestsBadge = 0 }) {
+  const { t } = useI18n();
   const handleTab = (id) => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
       WebApp.HapticFeedback.impactOccurred('light');
@@ -48,7 +50,7 @@ export default function MasterNav({ active, onNavigate = () => {}, requestsBadge
 
   return (
     <nav className="master-nav">
-      {tabs.map(({ id, label, Icon }) => {
+      {tabs.map(({ id, key, Icon }) => {
         const isActive = active === id;
         const badge = id === 'requests' && requestsBadge > 0 ? requestsBadge : 0;
         return (
@@ -66,7 +68,7 @@ export default function MasterNav({ active, onNavigate = () => {}, requestsBadge
                 </span>
               )}
             </span>
-            <span>{label}</span>
+            <span>{t(key)}</span>
           </button>
         );
       })}

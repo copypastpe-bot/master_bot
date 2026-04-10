@@ -10,30 +10,22 @@ import { Skeleton } from '../../components/Skeleton';
 import StatCard from '../components/StatCard';
 import OrderCard from '../components/OrderCard';
 import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
-const WEEKDAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-const MONTHS = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('ru-RU', {
+function formatCurrency(amount, locale) {
+  return new Intl.NumberFormat(locale, {
     style: 'decimal',
     maximumFractionDigits: 0,
   }).format(amount) + ' ₽';
 }
 
-function formatDate(d) {
-  const dayName = WEEKDAYS[d.getDay()];
-  // Capitalise first letter
-  const dayNameCap = dayName.charAt(0).toUpperCase() + dayName.slice(1);
-  return `${dayNameCap}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+function formatDate(d, locale) {
+  return d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long' });
 }
 
-function OrdersSection({ title, orders, onNavigate, emptyContent }) {
+function OrdersSection({ title, orders, onNavigate, emptyContent, tr }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{
@@ -54,7 +46,7 @@ function OrdersSection({ title, orders, onNavigate, emptyContent }) {
           color: 'var(--tg-hint)',
           fontSize: 13,
         }}>
-          {orders.length > 0 ? `${orders.length} зап.` : ''}
+          {orders.length > 0 ? tr(`${orders.length} зап.`, `${orders.length} bookings`) : ''}
         </span>
       </div>
 
@@ -67,7 +59,7 @@ function OrdersSection({ title, orders, onNavigate, emptyContent }) {
           fontSize: 14,
           textAlign: 'center',
         }}>
-          {emptyContent ?? 'Свободный день! 🎉'}
+          {emptyContent ?? tr('Свободный день! 🎉', 'Free day! 🎉')}
         </div>
       ) : (
         <div style={{
@@ -112,6 +104,7 @@ function DashboardSkeleton() {
 }
 
 export default function Dashboard({ onNavigate }) {
+  const { tr } = useI18n();
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['master-dashboard'],
     queryFn: getMasterDashboard,
@@ -131,7 +124,7 @@ export default function Dashboard({ onNavigate }) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 24px' }}>
         <p style={{ color: 'var(--tg-text)', marginBottom: 8 }}>
-          Не удалось загрузить данные
+          {tr('Не удалось загрузить данные', 'Failed to load data')}
         </p>
         <button
           onClick={() => {
@@ -150,7 +143,7 @@ export default function Dashboard({ onNavigate }) {
             cursor: 'pointer',
           }}
         >
-          Повторить
+          {tr('Повторить', 'Retry')}
         </button>
       </div>
     );
@@ -160,6 +153,7 @@ export default function Dashboard({ onNavigate }) {
 }
 
 function DashboardContent({ data, subscription, onNavigate }) {
+  const { tr, locale } = useI18n();
   const queryClient = useQueryClient();
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -212,7 +206,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
     }
     trackMasterReferralLinkCopied('dashboard-paywall').catch(() => {});
     if (typeof WebApp?.showAlert === 'function') {
-      WebApp.showAlert('Ссылка скопирована');
+      WebApp.showAlert(tr('Ссылка скопирована', 'Link copied'));
     }
     setPaywallOpen(false);
   };
@@ -275,7 +269,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
             margin: 0,
             lineHeight: 1.4,
           }}>
-            Добавь первого клиента, чтобы увидеть как работают напоминания
+            {tr('Добавь первого клиента, чтобы увидеть как работают напоминания', 'Add your first client to see how reminders work')}
           </p>
           <button
             onClick={handleBannerAdd}
@@ -291,7 +285,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
               whiteSpace: 'nowrap',
             }}
           >
-            Добавить →
+            {tr('Добавить →', 'Add ->')}
           </button>
           <button
             onClick={handleBannerDismiss}
@@ -319,7 +313,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
             fontWeight: 700,
             margin: 0,
           }}>
-            Привет, {data?.master_name || ''}!
+            {tr('Привет', 'Hello')}, {data?.master_name || ''}!
           </h2>
           <span style={{ color: isSubscriptionActive ? '#2f74d2' : '#888888', fontSize: 24, lineHeight: 1 }}>
             ★
@@ -330,7 +324,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
           fontSize: 13,
           margin: 0,
         }}>
-          {formatDate(today)}
+          {formatDate(today, locale)}
         </p>
       </div>
 
@@ -344,25 +338,25 @@ function DashboardContent({ data, subscription, onNavigate }) {
         }}>
           <StatCard
             icon="💰"
-            value={formatCurrency(stats.week_revenue || 0)}
-            label="Выручка за неделю"
+            value={formatCurrency(stats.week_revenue || 0, locale)}
+            label={tr('Выручка за неделю', 'Revenue this week')}
             onClick={handleReportsWeek}
           />
           <StatCard
             icon="📅"
-            value={formatCurrency(stats.month_revenue || 0)}
-            label="Выручка за месяц"
+            value={formatCurrency(stats.month_revenue || 0, locale)}
+            label={tr('Выручка за месяц', 'Revenue this month')}
             onClick={handleReportsMonth}
           />
           <StatCard
             icon="✅"
             value={stats.week_orders || 0}
-            label="Заказов за неделю"
+            label={tr('Заказов за неделю', 'Orders this week')}
           />
           <StatCard
             icon="👥"
             value={stats.total_clients || 0}
-            label="Всего клиентов"
+            label={tr('Всего клиентов', 'Total clients')}
             onClick={handleClients}
           />
         </div>
@@ -384,22 +378,23 @@ function DashboardContent({ data, subscription, onNavigate }) {
             margin: 0,
             lineHeight: 1.4,
           }}>
-            Выполни первый заказ и увидишь показатели своей работы в цифрах
+            {tr('Выполни первый заказ и увидишь показатели своей работы в цифрах', 'Complete your first order to see your performance in numbers')}
           </p>
         </div>
       )}
 
       {/* Block 3: Today's orders */}
       <OrdersSection
-        title="Сегодня"
+        title={tr('Сегодня', 'Today')}
         orders={todayOrders}
         onNavigate={onNavigate}
+        tr={tr}
         emptyContent={
           totalDoneOrders === 0 && todayOrders.length === 0 && tomorrowOrders.length === 0
             ? (
               <div>
                 <p style={{ margin: '0 0 10px', color: 'var(--tg-hint)' }}>
-                  Пока записей нет
+                  {tr('Пока записей нет', 'No bookings yet')}
                 </p>
                 <button
                   onClick={handleNewOrder}
@@ -414,22 +409,23 @@ function DashboardContent({ data, subscription, onNavigate }) {
                     cursor: 'pointer',
                   }}
                 >
-                  + Добавить первую запись
+                  {tr('+ Добавить первую запись', '+ Add first booking')}
                 </button>
               </div>
             )
             : todayOrders.length === 0
-              ? 'Записей на сегодня нет'
+              ? tr('Записей на сегодня нет', 'No bookings for today')
               : null
         }
       />
 
       {/* Block 4: Tomorrow's orders */}
       <OrdersSection
-        title="Завтра"
+        title={tr('Завтра', 'Tomorrow')}
         orders={tomorrowOrders}
         onNavigate={onNavigate}
-        emptyContent="Записей на завтра нет"
+        tr={tr}
+        emptyContent={tr('Записей на завтра нет', 'No bookings for tomorrow')}
       />
 
       {/* Block 5: Quick actions */}
@@ -448,7 +444,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
             width: '100%',
           }}
         >
-          + Новый заказ
+          {tr('+ Новый заказ', '+ New order')}
         </button>
 
         {(stats.pending_requests || 0) > 0 && (
@@ -466,7 +462,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
               width: '100%',
             }}
           >
-            Новые заявки ({stats.pending_requests})
+            {tr(`Новые заявки (${stats.pending_requests})`, `New requests (${stats.pending_requests})`)}
           </button>
         )}
       </div>

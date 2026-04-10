@@ -1,12 +1,7 @@
 import { useMemo } from 'react';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
-
-const MONTH_NAMES = [
-  'Январь','Февраль','Март','Апрель','Май','Июнь',
-  'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь',
-];
-const DAY_LABELS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toYMD(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
@@ -71,8 +66,20 @@ export default function MonthCalendar({
   activeDates = [],
   todayStr,
 }) {
+  const { tr, locale } = useI18n();
   const activeDateSet = new Set(activeDates);
   const cells = useMemo(() => buildGrid(viewYear, viewMonth), [viewYear, viewMonth]);
+  const monthLabel = useMemo(
+    () => new Date(viewYear, viewMonth - 1, 1).toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+    [viewYear, viewMonth, locale]
+  );
+  const dayLabels = useMemo(() => {
+    const monday = new Date(2024, 0, 1); // Monday
+    return Array.from({ length: 7 }, (_, idx) =>
+      new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + idx)
+        .toLocaleDateString(locale, { weekday: 'short' })
+    );
+  }, [locale]);
 
   const isCurrentMonth =
     viewYear === parseInt(todayStr.slice(0, 4)) &&
@@ -91,21 +98,21 @@ export default function MonthCalendar({
         <button
           onClick={() => { haptic(); onPrevMonth(); }}
           style={navBtn}
-          aria-label="Предыдущий месяц"
+          aria-label={tr('Предыдущий месяц', 'Previous month')}
         >
           ‹
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)' }}>
-            {MONTH_NAMES[viewMonth - 1]} {viewYear}
+            {monthLabel}
           </span>
           {!isCurrentMonth && (
             <button
               onClick={() => { haptic(); onGoToToday(); }}
               style={todayBtn}
             >
-              Сегодня
+              {tr('Сегодня', 'Today')}
             </button>
           )}
         </div>
@@ -113,7 +120,7 @@ export default function MonthCalendar({
         <button
           onClick={() => { haptic(); onNextMonth(); }}
           style={navBtn}
-          aria-label="Следующий месяц"
+          aria-label={tr('Следующий месяц', 'Next month')}
         >
           ›
         </button>
@@ -126,7 +133,7 @@ export default function MonthCalendar({
         padding: '0 8px',
         marginBottom: 2,
       }}>
-        {DAY_LABELS.map(d => (
+        {dayLabels.map(d => (
           <div key={d} style={{
             textAlign: 'center',
             fontSize: 11,

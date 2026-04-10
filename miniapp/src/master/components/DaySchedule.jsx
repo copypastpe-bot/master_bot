@@ -1,37 +1,28 @@
 import OrderCard from './OrderCard';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
-const WEEKDAY_NAMES = [
-  'Воскресенье', 'Понедельник', 'Вторник', 'Среда',
-  'Четверг', 'Пятница', 'Суббота',
-];
-
-const MONTH_NAMES_GENITIVE = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
-
-function formatDate(dateStr) {
+function formatDate(dateStr, locale) {
   const d = new Date(dateStr + 'T00:00:00');
-  const weekday = WEEKDAY_NAMES[d.getDay()];
-  const day = d.getDate();
-  const month = MONTH_NAMES_GENITIVE[d.getMonth()];
-  return `${weekday}, ${day} ${month}`;
-}
-
-function ordersWord(count) {
-  const n = Math.abs(count) % 100;
-  const n1 = n % 10;
-  if (n > 10 && n < 20) return 'заказов';
-  if (n1 > 1 && n1 < 5) return 'заказа';
-  if (n1 === 1) return 'заказ';
-  return 'заказов';
+  return d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export default function DaySchedule({ dateStr, orders, loading, onOrderClick, onCreateOrder }) {
-  const dateLabel = dateStr ? formatDate(dateStr) : '';
+  const { tr, locale } = useI18n();
+  const dateLabel = dateStr ? formatDate(dateStr, locale) : '';
   const totalOrders = Array.isArray(orders) ? orders.length : 0;
+  const ordersLabel = tr(
+    `${totalOrders} ${(() => {
+      const n = Math.abs(totalOrders) % 100;
+      const n1 = n % 10;
+      if (n > 10 && n < 20) return 'заказов';
+      if (n1 > 1 && n1 < 5) return 'заказа';
+      if (n1 === 1) return 'заказ';
+      return 'заказов';
+    })()}`,
+    `${totalOrders} ${totalOrders === 1 ? 'order' : 'orders'}`
+  );
 
   const handleCreateOrder = () => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
@@ -81,7 +72,7 @@ export default function DaySchedule({ dateStr, orders, loading, onOrderClick, on
                 marginTop: 3,
               }}
             >
-              {loading ? 'Загрузка...' : `${totalOrders} ${ordersWord(totalOrders)}`}
+              {loading ? tr('Загрузка...', 'Loading...') : ordersLabel}
             </div>
           </div>
 
@@ -100,7 +91,7 @@ export default function DaySchedule({ dateStr, orders, loading, onOrderClick, on
               flexShrink: 0,
             }}
           >
-            + Запись
+            {tr('+ Запись', '+ Booking')}
           </button>
         </div>
 
@@ -132,7 +123,7 @@ export default function DaySchedule({ dateStr, orders, loading, onOrderClick, on
                 📅
               </div>
               <div style={{ color: 'var(--tg-hint)', fontSize: 14 }}>
-                На этот день заказов пока нет
+                {tr('На этот день заказов пока нет', 'No orders for this day yet')}
               </div>
             </div>
           )}

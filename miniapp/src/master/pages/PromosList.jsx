@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMasterPromos } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic() {
@@ -9,15 +10,15 @@ function haptic() {
   }
 }
 
-function fmtDate(str) {
+function fmtDate(str, locale) {
   if (!str) return '—';
   try {
     const d = new Date(str + 'T00:00:00');
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    return d.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
   } catch { return str; }
 }
 
-function PromoCard({ promo, active, onClick }) {
+function PromoCard({ promo, active, onClick, tr, locale }) {
   return (
     <div
       onClick={() => { haptic(); onClick(promo.id); }}
@@ -35,11 +36,11 @@ function PromoCard({ promo, active, onClick }) {
             {promo.title}
           </div>
           <div style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-            {fmtDate(promo.active_from)} — {fmtDate(promo.active_to)}
+            {fmtDate(promo.active_from, locale)} — {fmtDate(promo.active_to, locale)}
           </div>
           {promo.sent_count > 0 && (
             <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 4 }}>
-              Уведомлено: {promo.sent_count} кл.
+              {tr(`Уведомлено: ${promo.sent_count} кл.`, `Notified: ${promo.sent_count} cl.`)}
             </div>
           )}
         </div>
@@ -49,7 +50,7 @@ function PromoCard({ promo, active, onClick }) {
           background: active ? '#4caf5022' : 'var(--tg-secondary-bg)',
           padding: '3px 8px', borderRadius: 6, flexShrink: 0,
         }}>
-          {active ? 'Активна' : 'Завершена'}
+          {active ? tr('Активна', 'Active') : tr('Завершена', 'Finished')}
         </span>
       </div>
     </div>
@@ -57,6 +58,7 @@ function PromoCard({ promo, active, onClick }) {
 }
 
 export default function PromosList({ onNavigate }) {
+  const { tr, locale } = useI18n();
   const [pastExpanded, setPastExpanded] = useState(false);
 
   const { data, isLoading, error } = useQuery({
@@ -66,10 +68,10 @@ export default function PromosList({ onNavigate }) {
   });
 
   if (isLoading) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Загрузка...</div>;
+    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>{tr('Загрузка...', 'Loading...')}</div>;
   }
   if (error) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Ошибка загрузки</div>;
+    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>{tr('Ошибка загрузки', 'Loading error')}</div>;
   }
 
   const active = data?.active || [];
@@ -88,22 +90,22 @@ export default function PromosList({ onNavigate }) {
             border: 'none', cursor: 'pointer',
           }}
         >
-          + Создать акцию
+          {tr('+ Создать акцию', '+ Create promo')}
         </button>
       </div>
 
       {/* Active promos */}
       {active.length === 0 ? (
         <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-          Нет активных акций
+          {tr('Нет активных акций', 'No active promos')}
         </div>
       ) : (
         <div>
           <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-            Активные ({active.length})
+            {tr(`Активные (${active.length})`, `Active (${active.length})`)}
           </div>
           {active.map(p => (
-            <PromoCard key={p.id} promo={p} active={true} onClick={(id) => onNavigate('promo', { id })} />
+            <PromoCard key={p.id} promo={p} active={true} onClick={(id) => onNavigate('promo', { id })} tr={tr} locale={locale} />
           ))}
         </div>
       )}
@@ -120,7 +122,7 @@ export default function PromosList({ onNavigate }) {
             }}
           >
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-hint)' }}>
-              Прошедшие ({past.length})
+              {tr(`Прошедшие (${past.length})`, `Past (${past.length})`)}
             </div>
             <span style={{
               color: 'var(--tg-hint)', fontSize: 16,
@@ -129,7 +131,7 @@ export default function PromosList({ onNavigate }) {
             }}>▶</span>
           </div>
           {pastExpanded && past.map(p => (
-            <PromoCard key={p.id} promo={p} active={false} onClick={(id) => onNavigate('promo', { id })} />
+            <PromoCard key={p.id} promo={p} active={false} onClick={(id) => onNavigate('promo', { id })} tr={tr} locale={locale} />
           ))}
         </div>
       )}

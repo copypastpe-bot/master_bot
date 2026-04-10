@@ -1,14 +1,17 @@
+import { useI18n } from '../i18n';
+
 export default function MasterSelectScreen({ masters, onSelect }) {
+  const { t, locale } = useI18n();
   return (
     <div style={{ padding: '16px 16px 24px' }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Выберите мастера</h2>
+      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{t('masterSelect.title')}</h2>
       <p style={{ color: 'var(--tg-hint)', fontSize: 14, marginBottom: 20 }}>
-        Вы подключены к нескольким мастерам
+        {t('masterSelect.subtitle')}
       </p>
       {masters.map((m) => {
         const initial = (m.master_name || '?')[0].toUpperCase();
         const lastDate = m.last_visit
-          ? new Date(m.last_visit).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+          ? new Date(m.last_visit).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
           : null;
         return (
           <div
@@ -47,15 +50,15 @@ export default function MasterSelectScreen({ masters, onSelect }) {
               )}
               <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
                 <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                  💎 {m.bonus_balance ?? 0} ₽
+                  {t('masterSelect.bonus', { amount: m.bonus_balance ?? 0 })}
                 </span>
                 <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                  📋 {m.order_count ?? 0} визитов
+                  {t('masterSelect.visits', { count: m.order_count ?? 0 })}
                 </span>
               </div>
               {lastDate && (
                 <p style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
-                  Последний визит: {lastDate}
+                  {t('masterSelect.lastVisit', { date: lastDate })}
                 </p>
               )}
             </div>

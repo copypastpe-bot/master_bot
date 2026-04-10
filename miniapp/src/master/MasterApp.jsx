@@ -20,29 +20,12 @@ import PromoCard from './pages/PromoCard';
 import Reports from './pages/Reports';
 import Requests from './pages/Requests';
 import Subscription from './pages/Subscription';
+import { useI18n } from '../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
-// ---------------------------------------------------------------------------
-// Screen-title map for Back button context
-// ---------------------------------------------------------------------------
-const SCREEN_TITLES = {
-  order: 'Заказ',
-  create_order: 'Новый заказ',
-  clients: 'Клиенты',
-  client: 'Клиент',
-  profile: 'Профиль',
-  bonus: 'Бонусная программа',
-  bonus_message: 'Сообщение',
-  services: 'Услуги',
-  promos: 'Акции',
-  promo_new: 'Новая акция',
-  promo: 'Акция',
-  reports: 'Аналитика',
-  subscription: 'Подписка',
-};
-
 export default function MasterApp() {
+  const { t } = useI18n();
   const [tab, setTab] = useState('home');
   // navStack: array of { type, id?, ...params }
   // Empty stack = tab root. Push = navigate forward. Pop = back.
@@ -154,7 +137,7 @@ export default function MasterApp() {
     if (type === 'clients') {
       return (
         <div className="master-shell">
-          <PageHeader title="Клиенты" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.clients')} onBack={handleBack} />
           <ClientsList onNavigate={(t, p) => push(t, p)} />
         </div>
       );
@@ -163,7 +146,7 @@ export default function MasterApp() {
     if (type === 'client') {
       return (
         <div className="master-shell">
-          <PageHeader title="Клиент" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.client')} onBack={handleBack} />
           <ClientCard
             clientId={id}
             onBack={handleBack}
@@ -176,7 +159,7 @@ export default function MasterApp() {
     if (type === 'profile') {
       return (
         <div className="master-shell">
-          <PageHeader title="Профиль мастера" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.profile')} onBack={handleBack} />
           <Profile />
         </div>
       );
@@ -185,14 +168,16 @@ export default function MasterApp() {
     if (type === 'bonus') {
       return (
         <div className="master-shell">
-          <PageHeader title="Бонусная программа" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.bonus')} onBack={handleBack} />
           <BonusSettings onNavigate={(t, p) => push(t, p)} />
         </div>
       );
     }
 
     if (type === 'bonus_message') {
-      const title = current.kind === 'birthday' ? 'Поздравление с ДР' : 'Приветствие';
+      const title = current.kind === 'birthday'
+        ? t('masterApp.titles.bonusBirthday')
+        : t('masterApp.titles.bonusWelcome');
       return (
         <div className="master-shell">
           <PageHeader title={title} onBack={handleBack} />
@@ -204,7 +189,7 @@ export default function MasterApp() {
     if (type === 'services') {
       return (
         <div className="master-shell">
-          <PageHeader title="Справочник услуг" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.services')} onBack={handleBack} />
           <Services />
         </div>
       );
@@ -213,7 +198,7 @@ export default function MasterApp() {
     if (type === 'promos') {
       return (
         <div className="master-shell">
-          <PageHeader title="Акции" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.promos')} onBack={handleBack} />
           <PromosList onNavigate={(t, p) => push(t, p)} />
         </div>
       );
@@ -222,7 +207,7 @@ export default function MasterApp() {
     if (type === 'promo_new') {
       return (
         <div className="master-shell">
-          <PageHeader title="Новая акция" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.promoNew')} onBack={handleBack} />
           <PromoCreate onBack={handleBack} onCreated={() => { handleBack(); }} />
         </div>
       );
@@ -236,16 +221,16 @@ export default function MasterApp() {
       if (!promo) {
         return (
           <div className="master-shell">
-            <PageHeader title="Акция" onBack={handleBack} />
+            <PageHeader title={t('masterApp.titles.promo')} onBack={handleBack} />
             <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-              Не найдено
+              {t('masterApp.promoNotFound')}
             </div>
           </div>
         );
       }
       return (
         <div className="master-shell">
-          <PageHeader title="Акция" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.promo')} onBack={handleBack} />
           <PromoCard promo={promo} onBack={handleBack} />
         </div>
       );
@@ -254,7 +239,7 @@ export default function MasterApp() {
     if (type === 'reports') {
       return (
         <div className="master-shell">
-          <PageHeader title="Аналитика" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.reports')} onBack={handleBack} />
           <Reports initialPeriod={current.period || 'month'} />
         </div>
       );
@@ -271,7 +256,7 @@ export default function MasterApp() {
     if (type === 'subscription') {
       return (
         <div className="master-shell">
-          <PageHeader title="Подписка" onBack={handleBack} />
+          <PageHeader title={t('masterApp.titles.subscription')} onBack={handleBack} />
           <Subscription />
         </div>
       );
@@ -288,7 +273,7 @@ export default function MasterApp() {
     // Fallback
     return (
       <div className="master-shell" style={{ padding: '24px 16px', textAlign: 'center' }}>
-        <p style={{ color: 'var(--tg-hint)', marginTop: 48 }}>Раздел в разработке</p>
+        <p style={{ color: 'var(--tg-hint)', marginTop: 48 }}>{t('masterApp.inDevelopment')}</p>
       </div>
     );
   }

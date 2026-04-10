@@ -6,6 +6,7 @@ import {
   moveMasterOrder,
   cancelMasterOrder,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -14,14 +15,6 @@ function haptic(type = 'light') {
     WebApp.HapticFeedback.impactOccurred(type);
   }
 }
-
-const STATUS_LABEL = {
-  new: 'Новый',
-  confirmed: 'Подтверждён',
-  done: 'Выполнен',
-  cancelled: 'Отменён',
-  moved: 'Перенесён',
-};
 
 const STATUS_COLOR = {
   new: 'var(--tg-button)',
@@ -39,27 +32,38 @@ const STATUS_TINT = {
   moved: 'rgba(142, 68, 173, 0.16)',
 };
 
-const PAYMENT_LABELS = {
-  cash: 'Наличные',
-  card: 'Карта',
-  transfer: 'Перевод',
-  invoice: 'По счёту',
-};
-
-function formatDateTime(iso) {
+function formatDateTime(iso, locale) {
   if (!iso) return '—';
   const d = new Date(iso.replace(' ', 'T'));
   if (isNaN(d)) return iso;
-  const day = d.getDate();
-  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-  const month = months[d.getMonth()];
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return { date: `${day} ${month}`, time: `${hh}:${mm}` };
+  const date = d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  return { date, time };
 }
 
-function formatAmount(value) {
-  return Number(value || 0).toLocaleString('ru-RU');
+function formatAmount(value, locale) {
+  return Number(value || 0).toLocaleString(locale);
+}
+
+function getStatusLabel(status, tr) {
+  const labels = {
+    new: tr('Новый', 'New'),
+    confirmed: tr('Подтверждён', 'Confirmed'),
+    done: tr('Выполнен', 'Done'),
+    cancelled: tr('Отменён', 'Cancelled'),
+    moved: tr('Перенесён', 'Moved'),
+  };
+  return labels[status] || status;
+}
+
+function getPaymentLabel(type, tr) {
+  const labels = {
+    cash: tr('Наличные', 'Cash'),
+    card: tr('Карта', 'Card'),
+    transfer: tr('Перевод', 'Transfer'),
+    invoice: tr('По счёту', 'Invoice'),
+  };
+  return labels[type] || type || '—';
 }
 
 // ============================================================
@@ -103,6 +107,7 @@ function BottomSheet({ open, onClose, title, children }) {
 // Complete Order Sheet
 // ============================================================
 function CompleteSheet({ order, master, onClose, onSuccess }) {
+  const { tr, locale } = useI18n();
   const [amount, setAmount] = useState(String(order.amount_total || 0));
   const [paymentType, setPaymentType] = useState('cash');
   const [useBonus, setUseBonus] = useState(false);
@@ -125,9 +130,9 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
   const handleSubmit = async () => {
     haptic('medium');
     setError('');
-    if (amountNum <= 0) { setError('Укажите сумму'); return; }
+    if (amountNum <= 0) { setError(tr('Укажите сумму', 'Specify amount')); return; }
     if (bonusSpentNum < 0 || bonusSpentNum > maxBonus) {
-      setError(`Бонусы: от 0 до ${maxBonus}`);
+      setError(tr(`Бонусы: от 0 до ${maxBonus}`, `Bonuses: from 0 to ${maxBonus}`));
       return;
     }
     setLoading(true);
@@ -140,7 +145,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
       });
       onSuccess(result);
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Ошибка при проведении');
+      setError(e?.response?.data?.detail || tr('Ошибка при проведении', 'Failed to complete order'));
     } finally {
       setLoading(false);
     }
@@ -149,7 +154,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
   return (
     <>
       <div style={{ marginBottom: 16 }}>
-        <label style={styles.label}>Сумма</label>
+        <label style={styles.label}>{tr('Сумма', 'Amount')}</label>
         <input
           type="number"
           value={amount}
@@ -160,7 +165,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={styles.label}>Способ оплаты</label>
+        <label style={styles.label}>{tr('Способ оплаты', 'Payment type')}</label>
         <div style={{ display: 'flex', gap: 8 }}>
           {['cash', 'card', 'transfer', 'invoice'].map(pt => (
             <button
@@ -173,7 +178,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
                 flex: 1,
               }}
             >
-              {PAYMENT_LABELS[pt]}
+              {getPaymentLabel(pt, tr)}
             </button>
           ))}
         </div>
@@ -189,7 +194,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
             }}
           >
             <span style={{ color: 'var(--tg-text)', fontSize: 15 }}>
-              Списать бонусы (баланс: {clientBalance})
+              {tr(`Списать бонусы (баланс: ${clientBalance})`, `Spend bonuses (balance: ${clientBalance})`)}
             </span>
             <div style={{
               width: 44, height: 24, borderRadius: 12,
@@ -205,7 +210,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
           </div>
           {useBonus && (
             <div>
-              <label style={styles.label}>Сумма бонусов (макс. {maxBonus})</label>
+              <label style={styles.label}>{tr(`Сумма бонусов (макс. ${maxBonus})`, `Bonus amount (max ${maxBonus})`)}</label>
               <input
                 type="number"
                 value={bonusSpent}
@@ -226,29 +231,29 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
       }}>
         {bonusSpentNum > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ color: 'var(--tg-hint)' }}>Списано бонусов:</span>
+            <span style={{ color: 'var(--tg-hint)' }}>{tr('Списано бонусов:', 'Bonuses spent:')}</span>
             <span>— {bonusSpentNum}</span>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ color: 'var(--tg-hint)' }}>Итого к оплате:</span>
+          <span style={{ color: 'var(--tg-hint)' }}>{tr('Итого к оплате:', 'Total to pay:')}</span>
           <span style={{ fontWeight: 600 }}>{amountPaid}</span>
         </div>
         {master?.bonus_enabled && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--tg-hint)' }}>Будет начислено:</span>
+            <span style={{ color: 'var(--tg-hint)' }}>{tr('Будет начислено:', 'Will be accrued:')}</span>
             <span style={{ color: '#27ae60' }}>+ {bonusAccrued}</span>
           </div>
         )}
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <label style={styles.label}>Комментарий к заказу</label>
+        <label style={styles.label}>{tr('Комментарий к заказу', 'Order comment')}</label>
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
           rows={3}
-          placeholder="Например: особенности услуги, пожелания, что сделали"
+          placeholder={tr('Например: особенности услуги, пожелания, что сделали', 'For example: service details, wishes, what was done')}
           style={{ ...styles.input, resize: 'vertical', minHeight: 82 }}
         />
       </div>
@@ -260,7 +265,7 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
         disabled={loading}
         style={{ ...styles.primaryBtn, opacity: loading ? 0.6 : 1 }}
       >
-        {loading ? 'Проводим...' : 'Подтвердить'}
+        {loading ? tr('Проводим...', 'Completing...') : tr('Подтвердить', 'Confirm')}
       </button>
     </>
   );
@@ -269,20 +274,17 @@ function CompleteSheet({ order, master, onClose, onSuccess }) {
 // ============================================================
 // Date/time display helpers
 // ============================================================
-const DATE_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-
-function formatDateDisplay(iso) {
-  if (!iso) return 'Выберите дату';
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${DATE_MONTHS[m - 1]} ${y}`;
+function formatDateDisplay(iso, locale, tr) {
+  if (!iso) return tr('Выберите дату', 'Pick date');
+  return new Date(iso + 'T00:00:00').toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function DatePickerField({ label, value, onChange, inputStyle, labelStyle }) {
+function DatePickerField({ label, value, onChange, inputStyle, labelStyle, locale, tr }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {label && <label style={labelStyle}>{label}</label>}
       <div style={{ position: 'relative' }}>
-        <div style={{ ...inputStyle, pointerEvents: 'none' }}>{formatDateDisplay(value)}</div>
+        <div style={{ ...inputStyle, pointerEvents: 'none' }}>{formatDateDisplay(value, locale, tr)}</div>
         <input
           type="date"
           value={value}
@@ -315,7 +317,8 @@ function TimePickerField({ label, value, onChange, inputStyle, labelStyle }) {
 // Move Order Sheet
 // ============================================================
 function MoveSheet({ order, onClose, onSuccess }) {
-  const scheduled = formatDateTime(order.scheduled_at);
+  const { tr, locale } = useI18n();
+  const scheduled = formatDateTime(order.scheduled_at, locale);
   const [newDate, setNewDate] = useState(
     order.scheduled_at ? order.scheduled_at.substring(0, 10) : ''
   );
@@ -328,13 +331,13 @@ function MoveSheet({ order, onClose, onSuccess }) {
   const handleSubmit = async () => {
     haptic('medium');
     setError('');
-    if (!newDate || !newTime) { setError('Укажите дату и время'); return; }
+    if (!newDate || !newTime) { setError(tr('Укажите дату и время', 'Specify date and time')); return; }
     setLoading(true);
     try {
       const result = await moveMasterOrder(order.id, { new_date: newDate, new_time: newTime });
       onSuccess(result);
     } catch (e) {
-      setError(e?.response?.data?.detail || 'Ошибка при переносе');
+      setError(e?.response?.data?.detail || tr('Ошибка при переносе', 'Failed to move order'));
     } finally {
       setLoading(false);
     }
@@ -343,14 +346,16 @@ function MoveSheet({ order, onClose, onSuccess }) {
   return (
     <>
       <DatePickerField
-        label="Новая дата"
+        label={tr('Новая дата', 'New date')}
         value={newDate}
         onChange={e => setNewDate(e.target.value)}
         inputStyle={styles.input}
         labelStyle={styles.label}
+        locale={locale}
+        tr={tr}
       />
       <TimePickerField
-        label="Новое время"
+        label={tr('Новое время', 'New time')}
         value={newTime}
         onChange={e => setNewTime(e.target.value)}
         inputStyle={styles.input}
@@ -364,7 +369,7 @@ function MoveSheet({ order, onClose, onSuccess }) {
         disabled={loading}
         style={{ ...styles.primaryBtn, opacity: loading ? 0.6 : 1 }}
       >
-        {loading ? 'Переносим...' : 'Перенести'}
+        {loading ? tr('Переносим...', 'Moving...') : tr('Перенести', 'Move')}
       </button>
     </>
   );
@@ -374,6 +379,7 @@ function MoveSheet({ order, onClose, onSuccess }) {
 // Main OrderDetail component
 // ============================================================
 export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) {
+  const { tr, locale } = useI18n();
   const queryClient = useQueryClient();
   const [sheet, setSheet] = useState(null); // 'complete' | 'move' | null
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -408,7 +414,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       const result = await cancelMasterOrder(orderId, {});
       handleActionSuccess(result);
     } catch (e) {
-      setActionError(e?.response?.data?.detail || 'Ошибка при отмене');
+      setActionError(e?.response?.data?.detail || tr('Ошибка при отмене', 'Failed to cancel'));
       setCancelConfirm(false);
     }
   };
@@ -418,7 +424,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
   if (isLoading) {
     return (
       <div style={{ padding: '16px' }}>
-        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>}
+        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>{tr('← Назад', '← Back')}</button>}
         <div style={{ marginTop: 24 }}>
           {[1, 2, 3].map(i => (
             <div key={i} style={{ ...styles.skeleton, marginBottom: 12, height: 60, borderRadius: 12 }} />
@@ -431,15 +437,15 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
   if (error || !order) {
     return (
       <div style={{ padding: '16px' }}>
-        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>← Назад</button>}
+        {!hasTgBack && <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>{tr('← Назад', '← Back')}</button>}
         <p style={{ color: '#e74c3c', marginTop: 24 }}>
-          {error?.response?.data?.detail || 'Заказ не найден'}
+          {error?.response?.data?.detail || tr('Заказ не найден', 'Order not found')}
         </p>
       </div>
     );
   }
 
-  const scheduled = formatDateTime(order.scheduled_at);
+  const scheduled = formatDateTime(order.scheduled_at, locale);
   const isActive = order.status === 'new' || order.status === 'confirmed';
   const client = order.client || {};
   const services = order.services || [];
@@ -450,7 +456,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       {!hasTgBack && (
         <div style={{ padding: '12px 16px 0' }}>
           <button onClick={() => { haptic(); onBack(); }} style={styles.backBtn}>
-            ← Назад
+            {tr('← Назад', '← Back')}
           </button>
         </div>
       )}
@@ -467,7 +473,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
           color: STATUS_COLOR[order.status] || 'var(--tg-hint)',
           marginBottom: 8,
         }}>
-          {STATUS_LABEL[order.status] || order.status}
+          {getStatusLabel(order.status, tr)}
         </span>
 
         {scheduled && (
@@ -484,7 +490,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
 
       {/* Block 2: Client */}
       <div style={styles.card}>
-        <h3 style={styles.cardTitle}>Клиент</h3>
+        <h3 style={styles.cardTitle}>{tr('Клиент', 'Client')}</h3>
         {client.tg_id ? (
           <a
             href={`tg://user?id=${client.tg_id}`}
@@ -509,7 +515,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
 
         {client.bonus_balance !== undefined && (
           <div style={{ marginTop: 10, fontSize: 13, color: 'var(--tg-hint)' }}>
-            Бонусный баланс: <span style={{ color: 'var(--tg-text)', fontWeight: 600 }}>
+            {tr('Бонусный баланс', 'Bonus balance')}: <span style={{ color: 'var(--tg-text)', fontWeight: 600 }}>
               {client.bonus_balance}
             </span>
           </div>
@@ -529,14 +535,14 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
               cursor: 'pointer',
             }}
           >
-            Открыть карточку клиента
+            {tr('Открыть карточку клиента', 'Open client card')}
           </button>
         )}
       </div>
 
       {/* Block 3: Services + Amount */}
       <div style={styles.card}>
-        <h3 style={styles.cardTitle}>Услуги</h3>
+        <h3 style={styles.cardTitle}>{tr('Услуги', 'Services')}</h3>
         {services.length > 0 ? (
           services.map((s, i) => (
             <div key={i} style={{
@@ -546,21 +552,21 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
             }}>
               <span style={{ color: 'var(--tg-text)', fontSize: 15 }}>{s.name}</span>
               {s.price > 0 && (
-                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{formatAmount(s.price)} ₽</span>
+                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{formatAmount(s.price, locale)} ₽</span>
               )}
             </div>
           ))
         ) : (
-          <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>Услуги не указаны</p>
+          <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{tr('Услуги не указаны', 'No services specified')}</p>
         )}
 
         <div style={{
           display: 'flex', justifyContent: 'space-between', marginTop: 8,
           paddingTop: 8, borderTop: '1px solid var(--tg-secondary-bg)',
         }}>
-          <span style={{ fontWeight: 600, color: 'var(--tg-text)', fontSize: 16 }}>Итого</span>
+          <span style={{ fontWeight: 600, color: 'var(--tg-text)', fontSize: 16 }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontWeight: 700, color: 'var(--tg-text)', fontSize: 16 }}>
-            {formatAmount(order.amount_total)} ₽
+            {formatAmount(order.amount_total, locale)} ₽
           </span>
         </div>
 
@@ -585,26 +591,26 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       {/* Block 3b: Payment info (for done orders) */}
       {order.status === 'done' && (
         <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Оплата</h3>
+          <h3 style={styles.cardTitle}>{tr('Оплата', 'Payment')}</h3>
           <div style={styles.row}>
-            <span style={styles.rowLabel}>Способ</span>
-            <span style={styles.rowValue}>{PAYMENT_LABELS[order.payment_type] || order.payment_type || '—'}</span>
+            <span style={styles.rowLabel}>{tr('Способ', 'Method')}</span>
+            <span style={styles.rowValue}>{getPaymentLabel(order.payment_type, tr)}</span>
           </div>
           {order.bonus_spent > 0 && (
             <div style={styles.row}>
-              <span style={styles.rowLabel}>Списано бонусов</span>
+              <span style={styles.rowLabel}>{tr('Списано бонусов', 'Bonuses spent')}</span>
               <span style={styles.rowValue}>— {order.bonus_spent}</span>
             </div>
           )}
           {order.bonus_accrued > 0 && (
             <div style={styles.row}>
-              <span style={styles.rowLabel}>Начислено бонусов</span>
+              <span style={styles.rowLabel}>{tr('Начислено бонусов', 'Bonuses accrued')}</span>
               <span style={{ ...styles.rowValue, color: '#27ae60' }}>+ {order.bonus_accrued}</span>
             </div>
           )}
           {order.note && (
             <div style={{ marginTop: 10 }}>
-              <div style={{ ...styles.rowLabel, marginBottom: 4 }}>Комментарий</div>
+              <div style={{ ...styles.rowLabel, marginBottom: 4 }}>{tr('Комментарий', 'Comment')}</div>
               <div style={{ color: 'var(--tg-text)', fontSize: 14, whiteSpace: 'pre-wrap' }}>
                 {order.note}
               </div>
@@ -616,7 +622,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       {/* Cancel reason */}
       {order.status === 'cancelled' && order.cancel_reason && (
         <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Причина отмены</h3>
+          <h3 style={styles.cardTitle}>{tr('Причина отмены', 'Cancellation reason')}</h3>
           <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: 0 }}>{order.cancel_reason}</p>
         </div>
       )}
@@ -628,19 +634,19 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
             onClick={() => { haptic(); setSheet('complete'); }}
             style={styles.actionBtn}
           >
-            Провести
+            {tr('Провести', 'Complete')}
           </button>
           <button
             onClick={() => { haptic(); setSheet('move'); }}
             style={{ ...styles.actionBtn, background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)' }}
           >
-            Перенести
+            {tr('Перенести', 'Move')}
           </button>
           <button
             onClick={() => { haptic(); setCancelConfirm(true); }}
             style={{ ...styles.actionBtn, background: '#e74c3c22', color: '#e74c3c' }}
           >
-            Отменить
+            {tr('Отменить', 'Cancel')}
           </button>
         </div>
       )}
@@ -653,7 +659,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       <BottomSheet
         open={sheet === 'complete'}
         onClose={() => setSheet(null)}
-        title="Провести заказ"
+        title={tr('Провести заказ', 'Complete order')}
       >
         <CompleteSheet
           order={order}
@@ -667,7 +673,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       <BottomSheet
         open={sheet === 'move'}
         onClose={() => setSheet(null)}
-        title="Перенести заказ"
+        title={tr('Перенести заказ', 'Move order')}
       >
         <MoveSheet
           order={order}
@@ -680,23 +686,23 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
       <BottomSheet
         open={cancelConfirm}
         onClose={() => setCancelConfirm(false)}
-        title="Отменить заказ?"
+        title={tr('Отменить заказ?', 'Cancel order?')}
       >
         <p style={{ color: 'var(--tg-hint)', fontSize: 14, marginBottom: 20 }}>
-          Заказ будет отменён, клиент получит уведомление.
+          {tr('Заказ будет отменён, клиент получит уведомление.', 'The order will be cancelled, the client will be notified.')}
         </p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => { haptic(); setCancelConfirm(false); }}
             style={{ ...styles.actionBtn, flex: 1, background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)' }}
           >
-            Нет
+            {tr('Нет', 'No')}
           </button>
           <button
             onClick={handleCancel}
             style={{ ...styles.actionBtn, flex: 1, background: '#e74c3c', color: '#fff' }}
           >
-            Да, отменить
+            {tr('Да, отменить', 'Yes, cancel')}
           </button>
         </div>
       </BottomSheet>

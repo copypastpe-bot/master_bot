@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-const WebApp = window.Telegram?.WebApp;
 import { getServices, createOrderRequest } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
+import { useI18n } from '../i18n';
+const WebApp = window.Telegram?.WebApp;
 
 export default function Booking({ onNavigate }) {
+  const { t } = useI18n();
   const [selectedService, setSelectedService] = useState(null);
   const [comment, setComment] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -54,9 +56,9 @@ export default function Booking({ onNavigate }) {
           margin: '0 auto 20px',
           fontSize: 36, color: '#4caf50',
         }}>✓</div>
-        <h2 style={{ marginBottom: 12 }}>Заявка отправлена!</h2>
+        <h2 style={{ marginBottom: 12 }}>{t('booking.submittedTitle')}</h2>
         <p style={{ color: 'var(--tg-hint)', marginBottom: 32, lineHeight: 1.6 }}>
-          Мастер свяжется с вами в ближайшее время.
+          {t('booking.submittedSubtitle')}
         </p>
         <button
           onClick={() => onNavigate('home')}
@@ -66,7 +68,7 @@ export default function Booking({ onNavigate }) {
             padding: '14px 32px', fontSize: 16, cursor: 'pointer',
           }}
         >
-          На главную
+          {t('common.toHome')}
         </button>
       </div>
     );
@@ -74,7 +76,7 @@ export default function Booking({ onNavigate }) {
 
   return (
     <div style={{ padding: '16px 16px 0', paddingBottom: 120 }}>
-      <h2 style={{ marginBottom: 20 }}>Запись к мастеру</h2>
+      <h2 style={{ marginBottom: 20 }}>{t('booking.title')}</h2>
 
       {/* Services grid */}
       {isLoading ? (
@@ -82,7 +84,7 @@ export default function Booking({ onNavigate }) {
           {[...Array(4)].map((_, i) => <Skeleton key={i} height={80} radius={16} />)}
         </div>
       ) : services.length === 0 ? (
-        <p style={{ color: 'var(--tg-hint)', marginBottom: 20 }}>Услуги не найдены</p>
+        <p style={{ color: 'var(--tg-hint)', marginBottom: 20 }}>{t('booking.noServices')}</p>
       ) : (
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr',
@@ -125,7 +127,7 @@ export default function Booking({ onNavigate }) {
       <textarea
         value={comment}
         onChange={e => setComment(e.target.value)}
-        placeholder="Адрес, пожелания..."
+        placeholder={t('booking.commentPlaceholder')}
         rows={3}
         style={{
           width: '100%', background: 'var(--tg-surface)',
@@ -150,7 +152,7 @@ export default function Booking({ onNavigate }) {
           zIndex: 50,
         }}
       >
-        {isSubmitting ? 'Отправка...' : 'Отправить заявку'}
+        {isSubmitting ? t('booking.submitting') : t('booking.submit')}
       </button>
     </div>
   );

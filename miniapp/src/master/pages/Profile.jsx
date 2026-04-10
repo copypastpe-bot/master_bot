@@ -7,6 +7,7 @@ import {
   updateMasterTimezone,
   updateMasterCurrency,
 } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -23,56 +24,42 @@ function hapticNotify(type = 'success') {
 }
 
 const TIMEZONES = [
-  { value: 'Europe/London', label: 'Лондон' },
-  { value: 'Europe/Lisbon', label: 'Лиссабон' },
-  { value: 'Europe/Madrid', label: 'Мадрид' },
-  { value: 'Europe/Paris', label: 'Париж' },
-  { value: 'Europe/Berlin', label: 'Берлин' },
-  { value: 'Europe/Rome', label: 'Рим' },
-  { value: 'Europe/Amsterdam', label: 'Амстердам' },
-  { value: 'Europe/Brussels', label: 'Брюссель' },
-  { value: 'Europe/Vienna', label: 'Вена' },
-  { value: 'Europe/Prague', label: 'Прага' },
-  { value: 'Europe/Warsaw', label: 'Варшава' },
-  { value: 'Europe/Belgrade', label: 'Белград' },
-  { value: 'Europe/Athens', label: 'Афины' },
-  { value: 'Europe/Bucharest', label: 'Бухарест' },
-  { value: 'Europe/Helsinki', label: 'Хельсинки' },
-  { value: 'Europe/Riga', label: 'Рига' },
-  { value: 'Europe/Vilnius', label: 'Вильнюс' },
-  { value: 'Europe/Tallinn', label: 'Таллин' },
-  { value: 'Asia/Jerusalem', label: 'Иерусалим' },
-  { value: 'Europe/Kaliningrad', label: 'Калининград (UTC+2)' },
-  { value: 'Europe/Moscow', label: 'Москва (UTC+3)' },
-  { value: 'Europe/Minsk', label: 'Минск (UTC+3)' },
-  { value: 'Europe/Kiev', label: 'Киев (UTC+2/3)' },
-  { value: 'Europe/Istanbul', label: 'Стамбул (UTC+3)' },
-  { value: 'Asia/Yekaterinburg', label: 'Екатеринбург (UTC+5)' },
-  { value: 'Asia/Almaty', label: 'Алматы (UTC+5)' },
-  { value: 'Asia/Novosibirsk', label: 'Новосибирск (UTC+7)' },
-  { value: 'Asia/Krasnoyarsk', label: 'Красноярск (UTC+7)' },
-  { value: 'Asia/Irkutsk', label: 'Иркутск (UTC+8)' },
-  { value: 'Asia/Vladivostok', label: 'Владивосток (UTC+10)' },
-  { value: 'Asia/Kamchatka', label: 'Камчатка (UTC+12)' },
+  { value: 'Europe/London', key: 'london' },
+  { value: 'Europe/Lisbon', key: 'lisbon' },
+  { value: 'Europe/Madrid', key: 'madrid' },
+  { value: 'Europe/Paris', key: 'paris' },
+  { value: 'Europe/Berlin', key: 'berlin' },
+  { value: 'Europe/Rome', key: 'rome' },
+  { value: 'Europe/Amsterdam', key: 'amsterdam' },
+  { value: 'Europe/Brussels', key: 'brussels' },
+  { value: 'Europe/Vienna', key: 'vienna' },
+  { value: 'Europe/Prague', key: 'prague' },
+  { value: 'Europe/Warsaw', key: 'warsaw' },
+  { value: 'Europe/Belgrade', key: 'belgrade' },
+  { value: 'Europe/Athens', key: 'athens' },
+  { value: 'Europe/Bucharest', key: 'bucharest' },
+  { value: 'Europe/Helsinki', key: 'helsinki' },
+  { value: 'Europe/Riga', key: 'riga' },
+  { value: 'Europe/Vilnius', key: 'vilnius' },
+  { value: 'Europe/Tallinn', key: 'tallinn' },
+  { value: 'Asia/Jerusalem', key: 'jerusalem' },
+  { value: 'Europe/Kaliningrad', key: 'kaliningrad' },
+  { value: 'Europe/Moscow', key: 'moscow' },
+  { value: 'Europe/Minsk', key: 'minsk' },
+  { value: 'Europe/Kiev', key: 'kiev' },
+  { value: 'Europe/Istanbul', key: 'istanbul' },
+  { value: 'Asia/Yekaterinburg', key: 'yekaterinburg' },
+  { value: 'Asia/Almaty', key: 'almaty' },
+  { value: 'Asia/Novosibirsk', key: 'novosibirsk' },
+  { value: 'Asia/Krasnoyarsk', key: 'krasnoyarsk' },
+  { value: 'Asia/Irkutsk', key: 'irkutsk' },
+  { value: 'Asia/Vladivostok', key: 'vladivostok' },
+  { value: 'Asia/Kamchatka', key: 'kamchatka' },
 ];
 
-const CURRENCIES = [
-  { value: 'RUB', label: 'Рубль ₽' },
-  { value: 'EUR', label: 'Евро €' },
-  { value: 'ILS', label: 'Шекель ₪' },
-  { value: 'UAH', label: 'Гривна ₴' },
-  { value: 'BYN', label: 'Белорусский рубль Br' },
-  { value: 'KZT', label: 'Тенге ₸' },
-  { value: 'USD', label: 'Доллар $' },
-  { value: 'TRY', label: 'Лира ₺' },
-  { value: 'GEL', label: 'Лари ₾' },
-  { value: 'UZS', label: 'Сум' },
-];
-
-const WORK_MODES = [
-  { value: 'home', label: 'Дома' },
-  { value: 'travel', label: 'На выезде' },
-];
+const CURRENCIES = ['RUB', 'EUR', 'ILS', 'UAH', 'BYN', 'KZT', 'USD', 'TRY', 'GEL', 'UZS'];
+const WORK_MODES = ['home', 'travel'];
+const LANG_OPTIONS = ['ru', 'en'];
 
 const iconProps = {
   width: 18,
@@ -150,6 +137,18 @@ const MapPinIcon = () => (
   </svg>
 );
 
+const LanguageIcon = () => (
+  <svg {...iconProps}>
+    <path d="M4 5h16" />
+    <path d="M12 3v2" />
+    <path d="M7 5c0 5 2 9 5 11" />
+    <path d="M17 5c0 5-2 9-5 11" />
+    <path d="M8 14h8" />
+    <path d="m14 21 2-6 2 6" />
+    <path d="M13 19h6" />
+  </svg>
+);
+
 const ChevronIcon = () => (
   <svg {...iconProps} width={14} height={14}>
     <path d="m9 18 6-6-6-6" />
@@ -160,12 +159,12 @@ function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
 }
 
-function Cell({ icon, label, value, onClick }) {
+function Cell({ icon, label, value, onClick, fallbackValue }) {
   return (
     <button className="enterprise-cell is-interactive" onClick={() => { haptic(); onClick(); }}>
       {icon && <span className="enterprise-cell-icon">{icon}</span>}
       <span className="enterprise-cell-label">{label}</span>
-      <span className="enterprise-cell-value">{value || 'не указано'}</span>
+      <span className="enterprise-cell-value">{value || fallbackValue}</span>
       <span className="enterprise-cell-chevron"><ChevronIcon /></span>
     </button>
   );
@@ -199,6 +198,7 @@ function PickerSheet({ title, options, value, onChange, onClose, loading }) {
 }
 
 function TextEditSheet({ title, value, placeholder, multiline, loading, onClose, onSave }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(value || '');
 
   const handleSave = async () => {
@@ -230,10 +230,10 @@ function TextEditSheet({ title, value, placeholder, multiline, loading, onClose,
         )}
         <div className="enterprise-sheet-actions">
           <button className="enterprise-sheet-btn secondary" onClick={onClose}>
-            Отмена
+            {t('common.cancel')}
           </button>
           <button className="enterprise-sheet-btn primary" onClick={handleSave} disabled={loading}>
-            {loading ? 'Сохраняем...' : 'Сохранить'}
+            {loading ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -242,6 +242,7 @@ function TextEditSheet({ title, value, placeholder, multiline, loading, onClose,
 }
 
 export default function Profile() {
+  const { t, lang, setLang } = useI18n();
   const [picker, setPicker] = useState(null);
   const [editor, setEditor] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
@@ -260,7 +261,7 @@ export default function Profile() {
     staleTime: 5 * 60_000,
   });
 
-  const showSuccess = (msg = 'Сохранено') => {
+  const showSuccess = (msg = t('profile.toasts.saved')) => {
     hapticNotify('success');
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 1800);
@@ -270,11 +271,11 @@ export default function Profile() {
     mutationFn: updateMasterProfile,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['master-me'] });
-      showSuccess('Профиль обновлён');
+      showSuccess(t('profile.toasts.profileUpdated'));
     },
     onError: (err) => {
       hapticNotify('error');
-      const msg = err?.response?.data?.detail || 'Не удалось сохранить';
+      const msg = err?.response?.data?.detail || t('profile.errors.saveFailed');
       if (typeof WebApp?.showAlert === 'function') {
         WebApp.showAlert(typeof msg === 'string' ? msg : JSON.stringify(msg));
       }
@@ -285,7 +286,7 @@ export default function Profile() {
     mutationFn: updateMasterTimezone,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['master-me'] });
-      showSuccess('Часовой пояс сохранён');
+      showSuccess(t('profile.toasts.timezoneSaved'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -294,7 +295,7 @@ export default function Profile() {
     mutationFn: updateMasterCurrency,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['master-me'] });
-      showSuccess('Валюта сохранена');
+      showSuccess(t('profile.toasts.currencySaved'));
     },
     onError: () => hapticNotify('error'),
   });
@@ -306,28 +307,49 @@ export default function Profile() {
     try {
       if (typeof navigator?.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(link);
-        showSuccess('Ссылка скопирована');
+        showSuccess(t('profile.toasts.linkCopied'));
         return;
       }
     } catch (_) {
       // Fallback to popup below.
     }
     if (typeof WebApp?.showPopup === 'function') {
-      WebApp.showPopup({ title: 'Инвайт-ссылка', message: link, buttons: [{ type: 'ok' }] });
+      WebApp.showPopup({ title: t('profile.popup.inviteTitle'), message: link, buttons: [{ type: 'ok' }] });
     }
   };
 
   if (isLoading) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-        Загрузка профиля...
+        {t('profile.loading')}
       </div>
     );
   }
 
-  const tzLabel = TIMEZONES.find((t) => t.value === master?.timezone)?.label || master?.timezone || '—';
-  const curLabel = CURRENCIES.find((c) => c.value === master?.currency)?.label || master?.currency || '—';
-  const workModeLabel = WORK_MODES.find((m) => m.value === master?.work_mode)?.label || 'На выезде';
+  const timezoneOptions = TIMEZONES.map((item) => ({
+    value: item.value,
+    label: t(`profile.timezones.${item.key}`),
+  }));
+
+  const currencyOptions = CURRENCIES.map((code) => ({
+    value: code,
+    label: t(`profile.currencies.${code}`),
+  }));
+
+  const workModeOptions = WORK_MODES.map((mode) => ({
+    value: mode,
+    label: t(`profile.workModes.${mode}`),
+  }));
+
+  const languageOptions = LANG_OPTIONS.map((code) => ({
+    value: code,
+    label: t(`profile.language.${code}`),
+  }));
+
+  const tzLabel = timezoneOptions.find((item) => item.value === master?.timezone)?.label || master?.timezone || t('common.dash');
+  const curLabel = currencyOptions.find((item) => item.value === master?.currency)?.label || master?.currency || t('common.dash');
+  const workModeLabel = workModeOptions.find((item) => item.value === master?.work_mode)?.label || t('profile.workModes.travel');
+  const langLabel = languageOptions.find((item) => item.value === lang)?.label || t('profile.language.ru');
 
   return (
     <div className="enterprise-profile-page">
@@ -341,98 +363,118 @@ export default function Profile() {
         <div className="enterprise-profile-avatar">
           {(master?.name || '?')[0].toUpperCase()}
         </div>
-        <div className="enterprise-profile-name">{master?.name || '—'}</div>
-        <div className="enterprise-profile-subtitle">{master?.sphere || 'Сфера не указана'}</div>
+        <div className="enterprise-profile-name">{master?.name || t('common.dash')}</div>
+        <div className="enterprise-profile-subtitle">{master?.sphere || t('profile.values.sphereNotSpecified')}</div>
       </div>
 
-      <SectionTitle>Профиль</SectionTitle>
+      <SectionTitle>{t('profile.sections.profile')}</SectionTitle>
       <div className="enterprise-cell-group">
         <Cell
           icon={<UserIcon />}
-          label="Имя"
-          value={master?.name || 'не указано'}
-          onClick={() => setEditor({ field: 'name', title: 'Имя', value: master?.name || '', placeholder: 'Введите имя' })}
+          label={t('profile.fields.name')}
+          value={master?.name}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'name', title: t('profile.fields.name'), value: master?.name || '', placeholder: t('profile.placeholders.name') })}
         />
         <Cell
           icon={<BriefcaseIcon />}
-          label="Сфера деятельности"
-          value={master?.sphere || 'не указано'}
-          onClick={() => setEditor({ field: 'sphere', title: 'Сфера деятельности', value: master?.sphere || '', placeholder: 'Например: барбер, мастер маникюра' })}
+          label={t('profile.fields.sphere')}
+          value={master?.sphere}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'sphere', title: t('profile.fields.sphere'), value: master?.sphere || '', placeholder: t('profile.placeholders.sphere') })}
         />
         <Cell
           icon={<PhoneIcon />}
-          label="Контакты"
-          value={master?.contacts || 'не указано'}
-          onClick={() => setEditor({ field: 'contacts', title: 'Контакты', value: master?.contacts || '', placeholder: 'Телефон, Telegram, WhatsApp' })}
+          label={t('profile.fields.contacts')}
+          value={master?.contacts}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'contacts', title: t('profile.fields.contacts'), value: master?.contacts || '', placeholder: t('profile.placeholders.contacts') })}
         />
         <Cell
           icon={<LinkIcon />}
-          label="Соцсети"
-          value={master?.socials || 'не указано'}
-          onClick={() => setEditor({ field: 'socials', title: 'Соцсети', value: master?.socials || '', placeholder: '@username или ссылка' })}
+          label={t('profile.fields.socials')}
+          value={master?.socials}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'socials', title: t('profile.fields.socials'), value: master?.socials || '', placeholder: t('profile.placeholders.socials') })}
         />
         <Cell
           icon={<ClockIcon />}
-          label="График работы"
-          value={master?.work_hours || 'не указано'}
-          onClick={() => setEditor({ field: 'work_hours', title: 'График работы', value: master?.work_hours || '', placeholder: 'Пн-Пт 10:00-20:00' })}
+          label={t('profile.fields.workHours')}
+          value={master?.work_hours}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'work_hours', title: t('profile.fields.workHours'), value: master?.work_hours || '', placeholder: t('profile.placeholders.workHours') })}
         />
       </div>
 
-      <SectionTitle>Формат работы</SectionTitle>
+      <SectionTitle>{t('profile.sections.workMode')}</SectionTitle>
       <div className="enterprise-cell-group">
         <Cell
           icon={<HomeIcon />}
-          label="Я работаю"
+          label={t('profile.fields.iWork')}
           value={workModeLabel}
+          fallbackValue={t('common.notSpecified')}
           onClick={() => setPicker('work_mode')}
         />
         <Cell
           icon={<MapPinIcon />}
-          label="Мой адрес по умолчанию"
-          value={master?.work_address_default || 'не указан'}
+          label={t('profile.fields.defaultAddress')}
+          value={master?.work_address_default}
+          fallbackValue={t('common.notSpecifiedMale')}
           onClick={() => setEditor({
             field: 'work_address_default',
-            title: 'Мой адрес по умолчанию',
+            title: t('profile.fields.defaultAddress'),
             value: master?.work_address_default || '',
-            placeholder: 'Адрес дома / кабинета / салона',
+            placeholder: t('profile.placeholders.defaultAddress'),
             multiline: true,
           })}
         />
       </div>
 
-      <SectionTitle>Регион</SectionTitle>
+      <SectionTitle>{t('profile.sections.region')}</SectionTitle>
       <div className="enterprise-cell-group">
         <Cell
           icon={<GlobeIcon />}
-          label="Часовой пояс"
+          label={t('profile.fields.timezone')}
           value={tzLabel}
+          fallbackValue={t('common.dash')}
           onClick={() => setPicker('timezone')}
         />
         <Cell
           icon={<DollarIcon />}
-          label="Валюта"
+          label={t('profile.fields.currency')}
           value={curLabel}
+          fallbackValue={t('common.dash')}
           onClick={() => setPicker('currency')}
         />
       </div>
 
-      <SectionTitle>Инвайт</SectionTitle>
+      <SectionTitle>{t('profile.sections.preferences')}</SectionTitle>
+      <div className="enterprise-cell-group">
+        <Cell
+          icon={<LanguageIcon />}
+          label={t('profile.fields.language')}
+          value={langLabel}
+          fallbackValue={t('common.dash')}
+          onClick={() => setPicker('language')}
+        />
+      </div>
+
+      <SectionTitle>{t('profile.sections.invite')}</SectionTitle>
       <div className="enterprise-profile-invite">
-        <div className="enterprise-profile-invite-link">{inviteData?.invite_link || '—'}</div>
+        <div className="enterprise-profile-invite-link">{inviteData?.invite_link || t('common.dash')}</div>
         <button
           className="enterprise-profile-copy-btn"
           onClick={handleCopyInvite}
           disabled={!inviteData?.invite_link}
         >
-          Копировать ссылку
+          {t('common.copyLink')}
         </button>
       </div>
 
       {picker === 'work_mode' && (
         <PickerSheet
-          title="Я работаю"
-          options={WORK_MODES}
+          title={t('profile.fields.iWork')}
+          options={workModeOptions}
           value={master?.work_mode || 'travel'}
           onChange={(mode) => profileMutation.mutate({ work_mode: mode })}
           onClose={() => setPicker(null)}
@@ -442,8 +484,8 @@ export default function Profile() {
 
       {picker === 'timezone' && (
         <PickerSheet
-          title="Часовой пояс"
-          options={TIMEZONES}
+          title={t('profile.fields.timezone')}
+          options={timezoneOptions}
           value={master?.timezone}
           onChange={(tz) => tzMutation.mutate(tz)}
           onClose={() => setPicker(null)}
@@ -453,12 +495,26 @@ export default function Profile() {
 
       {picker === 'currency' && (
         <PickerSheet
-          title="Валюта"
-          options={CURRENCIES}
+          title={t('profile.fields.currency')}
+          options={currencyOptions}
           value={master?.currency}
           onChange={(cur) => curMutation.mutate(cur)}
           onClose={() => setPicker(null)}
           loading={curMutation.isPending}
+        />
+      )}
+
+      {picker === 'language' && (
+        <PickerSheet
+          title={t('profile.language.pickerTitle')}
+          options={languageOptions}
+          value={lang}
+          onChange={(nextLang) => {
+            setLang(nextLang);
+            showSuccess(t('profile.toasts.languageSaved'));
+          }}
+          onClose={() => setPicker(null)}
+          loading={false}
         />
       )}
 

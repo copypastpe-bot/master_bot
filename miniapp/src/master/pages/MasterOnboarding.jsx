@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { registerMaster, createMasterClient, createMasterOrder, updateMasterProfile } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -48,20 +49,19 @@ const NICHES = [
 
 // ─── Date/Time helpers ───────────────────────────────────────────────────────
 
-const DATE_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-
-function formatDateDisplay(iso) {
-  if (!iso) return 'Выберите дату';
+function formatDateDisplay(iso, locale, tr) {
+  if (!iso) return tr('Выберите дату', 'Pick date');
   const [y, m, d] = iso.split('-').map(Number);
-  return `${d} ${DATE_MONTHS[m - 1]} ${y}`;
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function DatePickerField({ label, value, onChange }) {
+  const { tr, locale } = useI18n();
   return (
     <div className="onb-field-group onb-field-flex">
       {label && <label className="onb-label">{label}</label>}
       <div className="onb-picker-wrap">
-        <div className="onb-input onb-picker-display">{formatDateDisplay(value)}</div>
+        <div className="onb-input onb-picker-display">{formatDateDisplay(value, locale, tr)}</div>
         <input
           type="date"
           value={value}
@@ -101,6 +101,7 @@ function tomorrowDate() {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MasterOnboarding({ onRegistered, referralCode = null }) {
+  const { tr } = useI18n();
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -155,7 +156,7 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
       if (err?.response?.status === 409) {
         setStep(3);
       } else {
-        const msg = err?.response?.data?.detail || 'Ошибка регистрации. Попробуйте ещё раз.';
+        const msg = err?.response?.data?.detail || tr('Ошибка регистрации. Попробуйте ещё раз.', 'Registration failed. Please try again.');
         setError(msg);
       }
     } finally {
@@ -178,7 +179,7 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
       setClientAdded(true);
       setStep(4);
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Не удалось добавить клиента.');
+      setError(err?.response?.data?.detail || tr('Не удалось добавить клиента.', 'Failed to add client.'));
     } finally {
       setLoading(false);
     }
@@ -201,11 +202,11 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
   useEffect(() => {
     if (step !== 4 || !WebApp?.MainButton) return;
     const handleStart = () => { WebApp.MainButton.hide(); onRegistered(); };
-    WebApp.MainButton.setText('Начать работу');
+    WebApp.MainButton.setText(tr('Начать работу', 'Start working'));
     WebApp.MainButton.show();
     WebApp.MainButton.onClick(handleStart);
     return () => { WebApp.MainButton.offClick(handleStart); WebApp.MainButton.hide(); };
-  }, [step, onRegistered]);
+  }, [step, onRegistered, tr]);
 
   const step2Ready = selectedNiches.length > 0 &&
     (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
@@ -227,14 +228,14 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
       {/* ── Step 1: Name ─────────────────────────────── */}
       {step === 1 && (
         <section className="onb-card">
-          <h1 className="onb-title">Как тебя зовут?</h1>
-          <p className="onb-subtitle">Будем обращаться по имени</p>
+          <h1 className="onb-title">{tr('Как тебя зовут?', 'What is your name?')}</h1>
+          <p className="onb-subtitle">{tr('Будем обращаться по имени', 'We will address you by name')}</p>
 
           <div className="onb-field-group">
-            <label className="onb-label">Имя</label>
+            <label className="onb-label">{tr('Имя', 'Name')}</label>
             <input
               className="onb-input"
-              placeholder="Например: Анна"
+              placeholder={tr('Например: Анна', 'For example: Anna')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
@@ -246,7 +247,7 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             type="button"
             onClick={() => setStep(2)}
           >
-            Продолжить
+            {tr('Продолжить', 'Continue')}
           </button>
         </section>
       )}
@@ -256,10 +257,10 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
         <section className="onb-card">
           <button className="onb-back-btn" type="button" onClick={() => { setError(''); setStep(1); }}>
             <ChevronLeftIcon />
-            <span>Назад</span>
+            <span>{tr('Назад', 'Back')}</span>
           </button>
-          <h1 className="onb-title">Чем занимаешься?</h1>
-          <p className="onb-subtitle">Выбери до 3 направлений</p>
+          <h1 className="onb-title">{tr('Чем занимаешься?', 'What do you do?')}</h1>
+          <p className="onb-subtitle">{tr('Выбери до 3 направлений', 'Select up to 3 niches')}</p>
 
           <div className="onb-chip-grid">
             {NICHES.map((niche) => {
@@ -273,7 +274,22 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
                   onClick={() => toggleNiche(niche)}
                   className={`onb-chip${isSelected ? ' is-selected' : ''}`}
                 >
-                  {niche}
+                  {tr(
+                    niche,
+                    niche === 'Клининг' ? 'Cleaning'
+                      : niche === 'Химчистка мебели и ковров' ? 'Furniture and carpet cleaning'
+                      : niche === 'Парикмахер и барбер' ? 'Hairdresser and barber'
+                      : niche === 'Маникюр и бьюти-услуги' ? 'Manicure and beauty services'
+                      : niche === 'Груминг и животные' ? 'Grooming and pets'
+                      : niche === 'Массаж' ? 'Massage'
+                      : niche === 'Ремонт бытовой техники' ? 'Appliance repair'
+                      : niche === 'Мастер на час, мелкий ремонт' ? 'Handyman, minor repairs'
+                      : niche === 'Репетитор' ? 'Tutor'
+                      : niche === 'Фотограф и видеограф' ? 'Photographer and videographer'
+                      : niche === 'Психолог' ? 'Psychologist'
+                      : niche === 'Садовник' ? 'Gardener'
+                      : 'Other'
+                  )}
                 </button>
               );
           })}
@@ -281,10 +297,10 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
 
           {selectedNiches.includes('Другое') && (
             <div className="onb-field-group">
-              <label className="onb-label">Своя ниша</label>
+              <label className="onb-label">{tr('Своя ниша', 'Your niche')}</label>
               <input
                 className="onb-input"
-                placeholder="Напишите вашу нишу"
+                placeholder={tr('Напишите вашу нишу', 'Write your niche')}
                 value={customNiche}
                 onChange={(e) => setCustomNiche(e.target.value)}
                 autoFocus
@@ -300,7 +316,7 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             type="button"
             onClick={doRegister}
           >
-            {loading ? 'Сохраняем...' : 'Продолжить'}
+            {loading ? tr('Сохраняем...', 'Saving...') : tr('Продолжить', 'Continue')}
           </button>
         </section>
       )}
@@ -310,14 +326,14 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
         <section className="onb-card">
           <button className="onb-back-btn" type="button" onClick={() => { setError(''); setStep(2); }}>
             <ChevronLeftIcon />
-            <span>Назад</span>
+            <span>{tr('Назад', 'Back')}</span>
           </button>
-          <h1 className="onb-title">Добавим первого клиента?</h1>
-          <p className="onb-subtitle">Создай свою первую запись сейчас или позже</p>
+          <h1 className="onb-title">{tr('Добавим первого клиента?', 'Add your first client?')}</h1>
+          <p className="onb-subtitle">{tr('Создай свою первую запись сейчас или позже', 'Create your first booking now or later')}</p>
 
           {[
-            { label: 'Имя клиента', type: 'text', value: clientName, set: setClientName, placeholder: 'Например: Мария' },
-            { label: 'Телефон', type: 'tel', value: clientPhone, set: setClientPhone, placeholder: '+7 999 123 45 67' },
+            { label: tr('Имя клиента', 'Client name'), type: 'text', value: clientName, set: setClientName, placeholder: tr('Например: Мария', 'For example: Maria') },
+            { label: tr('Телефон', 'Phone'), type: 'tel', value: clientPhone, set: setClientPhone, placeholder: '+7 999 123 45 67' },
           ].map(({ label, type, value, set, placeholder }) => (
             <div key={label} className="onb-field-group">
               <label className="onb-label">{label}</label>
@@ -327,12 +343,12 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
 
           <div className="onb-row">
             <DatePickerField
-              label="Дата записи"
+              label={tr('Дата записи', 'Booking date')}
               value={clientDate}
               onChange={(e) => setClientDate(e.target.value)}
             />
             <TimePickerField
-              label="Время"
+              label={tr('Время', 'Time')}
               value={clientTime}
               onChange={(e) => setClientTime(e.target.value)}
             />
@@ -346,10 +362,10 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             type="button"
             onClick={handleAddClient}
           >
-            {loading ? 'Сохраняем...' : 'Добавить и продолжить'}
+            {loading ? tr('Сохраняем...', 'Saving...') : tr('Добавить и продолжить', 'Add and continue')}
           </button>
           <button className="onb-btn-secondary" disabled={loading} type="button" onClick={handleSkipClient}>
-            Пропустить
+            {tr('Пропустить', 'Skip')}
           </button>
         </section>
       )}
@@ -361,17 +377,17 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             <CheckIcon />
           </div>
           <div className="onb-final-title">
-              Всё готово, {name}!
+              {tr('Всё готово', 'All set')}, {name}!
           </div>
           <div className="onb-final-subtitle">
             {clientAdded
-              ? 'Остались вопросы? Пиши нам @pastushenko12'
-              : 'Добавь первого клиента — это займёт 30 секунд'}
+              ? tr('Остались вопросы? Пиши нам @pastushenko12', 'Any questions? Message us @pastushenko12')
+              : tr('Добавь первого клиента — это займёт 30 секунд', 'Add your first client - it takes 30 seconds')}
           </div>
 
           {!WebApp?.MainButton && (
             <button className="onb-btn-primary" type="button" onClick={onRegistered}>
-              Начать работу
+              {tr('Начать работу', 'Start working')}
             </button>
           )}
         </section>

@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n';
 const WebApp = window.Telegram?.WebApp;
 
 const HomeIcon = () => (
@@ -31,13 +32,14 @@ const GiftIcon = () => (
 );
 
 const tabs = [
-  { id: 'home', label: 'Главная', Icon: HomeIcon },
-  { id: 'contact', label: 'Связаться', Icon: MailIcon },
-  { id: 'bonuses', label: 'Бонусы', Icon: StarIcon },
-  { id: 'promos', label: 'Акции', Icon: GiftIcon },
+  { id: 'home', key: 'nav.client.home', Icon: HomeIcon },
+  { id: 'contact', key: 'nav.client.contact', Icon: MailIcon },
+  { id: 'bonuses', key: 'nav.client.bonuses', Icon: StarIcon },
+  { id: 'promos', key: 'nav.client.promos', Icon: GiftIcon },
 ];
 
 export default function BottomNav({ active, onNavigate = () => {} }) {
+  const { t } = useI18n();
   const handleTab = (id) => {
     if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
       WebApp.HapticFeedback.impactOccurred('light');
@@ -57,7 +59,7 @@ export default function BottomNav({ active, onNavigate = () => {} }) {
       zIndex: 100,
       paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
-      {tabs.map(({ id, label, Icon }) => {
+      {tabs.map(({ id, key, Icon }) => {
         const isActive = active === id;
         return (
           <button
@@ -80,7 +82,7 @@ export default function BottomNav({ active, onNavigate = () => {} }) {
             }}
           >
             <Icon />
-            <span>{label}</span>
+            <span>{t(key)}</span>
           </button>
         );
       })}

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { deactivateMasterPromo } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic(type = 'light') {
@@ -13,10 +14,10 @@ function hapticNotify(type = 'success') {
   }
 }
 
-function fmtDate(str) {
+function fmtDate(str, locale) {
   if (!str) return '—';
   try {
-    return new Date(str + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(str + 'T00:00:00').toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
   } catch { return str; }
 }
 
@@ -26,6 +27,7 @@ function isActive(promo) {
 }
 
 export default function PromoCard({ promo, onBack }) {
+  const { tr, locale } = useI18n();
   const qc = useQueryClient();
   const active = isActive(promo);
 
@@ -43,16 +45,16 @@ export default function PromoCard({ promo, onBack }) {
     haptic('medium');
     if (typeof WebApp?.showPopup === 'function') {
       WebApp.showPopup({
-        title: 'Завершить акцию?',
-        message: 'Акция станет недоступна для клиентов.',
+        title: tr('Завершить акцию?', 'Finish promo?'),
+        message: tr('Акция станет недоступна для клиентов.', 'Promo will become unavailable for clients.'),
         buttons: [
-          { id: 'cancel', type: 'cancel', text: 'Отмена' },
-          { id: 'confirm', type: 'destructive', text: 'Завершить' },
+          { id: 'cancel', type: 'cancel', text: tr('Отмена', 'Cancel') },
+          { id: 'confirm', type: 'destructive', text: tr('Завершить', 'Finish') },
         ],
       }, (buttonId) => {
         if (buttonId === 'confirm') mutation.mutate();
       });
-    } else if (window.confirm('Завершить акцию? Она станет недоступна для клиентов.')) {
+    } else if (window.confirm(tr('Завершить акцию? Она станет недоступна для клиентов.', 'Finish promo? It will become unavailable for clients.'))) {
       mutation.mutate();
     }
   };
@@ -67,7 +69,7 @@ export default function PromoCard({ promo, onBack }) {
           background: active ? '#4caf5022' : 'var(--tg-secondary-bg)',
           padding: '4px 10px', borderRadius: 8,
         }}>
-          {active ? 'Активна' : 'Завершена'}
+          {active ? tr('Активна', 'Active') : tr('Завершена', 'Finished')}
         </span>
       </div>
 
@@ -82,19 +84,19 @@ export default function PromoCard({ promo, onBack }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-            <span style={{ color: 'var(--tg-hint)' }}>Период</span>
+            <span style={{ color: 'var(--tg-hint)' }}>{tr('Период', 'Period')}</span>
             <span style={{ color: 'var(--tg-text)', fontWeight: 500 }}>
-              {fmtDate(promo.active_from)} — {fmtDate(promo.active_to)}
+              {fmtDate(promo.active_from, locale)} — {fmtDate(promo.active_to, locale)}
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-            <span style={{ color: 'var(--tg-hint)' }}>Уведомлено клиентов</span>
+            <span style={{ color: 'var(--tg-hint)' }}>{tr('Уведомлено клиентов', 'Notified clients')}</span>
             <span style={{ color: 'var(--tg-text)', fontWeight: 500 }}>{promo.sent_count || 0}</span>
           </div>
           {promo.created_at && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-              <span style={{ color: 'var(--tg-hint)' }}>Создана</span>
-              <span style={{ color: 'var(--tg-text)' }}>{fmtDate(promo.created_at)}</span>
+              <span style={{ color: 'var(--tg-hint)' }}>{tr('Создана', 'Created')}</span>
+              <span style={{ color: 'var(--tg-text)' }}>{fmtDate(promo.created_at, locale)}</span>
             </div>
           )}
         </div>
@@ -115,7 +117,7 @@ export default function PromoCard({ promo, onBack }) {
               opacity: mutation.isPending ? 0.7 : 1,
             }}
           >
-            {mutation.isPending ? 'Завершаем...' : 'Завершить акцию'}
+            {mutation.isPending ? tr('Завершаем...', 'Finishing...') : tr('Завершить акцию', 'Finish promo')}
           </button>
         </div>
       )}

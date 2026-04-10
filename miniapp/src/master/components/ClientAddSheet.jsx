@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { createMasterClient, restoreArchivedClient } from '../../api/client';
+import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -30,6 +31,7 @@ function FieldLabel({ children }) {
 }
 
 export default function ClientAddSheet({ onSuccess, onClose }) {
+  const { tr } = useI18n();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -64,13 +66,13 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
         if (data?.archived === true) {
           setArchivedClient({ client_id: data.client_id, name: data.name });
         } else {
-          setFieldError('Клиент с таким номером уже есть');
+          setFieldError(tr('Клиент с таким номером уже есть', 'A client with this phone already exists'));
         }
       } else if (err?.response?.status === 422) {
-        const msg = typeof data === 'string' ? data : (data?.detail || 'Проверьте данные');
-        setFieldError(typeof msg === 'string' ? msg : 'Проверьте данные');
+        const msg = typeof data === 'string' ? data : (data?.detail || tr('Проверьте данные', 'Check your input'));
+        setFieldError(typeof msg === 'string' ? msg : tr('Проверьте данные', 'Check your input'));
       } else {
-        setFieldError('Не удалось добавить клиента');
+        setFieldError(tr('Не удалось добавить клиента', 'Failed to add client'));
       }
     } finally {
       setLoading(false);
@@ -88,7 +90,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
       }
       onSuccess(client);
     } catch {
-      setFieldError('Не удалось разархивировать');
+      setFieldError(tr('Не удалось разархивировать', 'Failed to restore client'));
       setArchivedClient(null);
     } finally {
       setLoading(false);
@@ -114,11 +116,11 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
           /* ── Archived conflict view ── */
           <>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 12 }}>
-              Клиент уже есть
+              {tr('Клиент уже есть', 'Client already exists')}
             </div>
             <div style={{ fontSize: 14, color: 'var(--tg-hint)', marginBottom: 20 }}>
-              Клиент <strong style={{ color: 'var(--tg-text)' }}>{archivedClient.name}</strong> с
-              таким номером находится в архиве. Разархивировать?
+              {tr('Клиент', 'Client')} <strong style={{ color: 'var(--tg-text)' }}>{archivedClient.name}</strong>{' '}
+              {tr('с таким номером находится в архиве. Разархивировать?', 'with this phone is archived. Restore?')}
             </div>
             {fieldError && (
               <div style={{ color: '#e53935', fontSize: 13, marginBottom: 12 }}>{fieldError}</div>
@@ -131,7 +133,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
                   background: 'none', color: 'var(--tg-text)', fontSize: 15, cursor: 'pointer',
                 }}
               >
-                Отмена
+                {tr('Отмена', 'Cancel')}
               </button>
               <button
                 onClick={handleRestore}
@@ -142,7 +144,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
                   color: 'var(--tg-button-text)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {loading ? 'Загрузка...' : 'Разархивировать'}
+                {loading ? tr('Загрузка...', 'Loading...') : tr('Разархивировать', 'Restore')}
               </button>
             </div>
           </>
@@ -150,22 +152,22 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
           /* ── Add client form ── */
           <>
             <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--tg-text)', marginBottom: 16 }}>
-              Новый клиент
+              {tr('Новый клиент', 'New client')}
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <FieldLabel>Имя *</FieldLabel>
+              <FieldLabel>{tr('Имя *', 'Name *')}</FieldLabel>
               <input
                 type="text"
                 value={name}
                 onChange={e => { setName(e.target.value); setFieldError(''); }}
-                placeholder="Иван Петров"
+                placeholder={tr('Иван Петров', 'John Doe')}
                 style={inputStyle}
               />
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <FieldLabel>Телефон *</FieldLabel>
+              <FieldLabel>{tr('Телефон *', 'Phone *')}</FieldLabel>
               <input
                 type="tel"
                 value={phone}
@@ -176,7 +178,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <FieldLabel>Дата рождения (необязательно)</FieldLabel>
+              <FieldLabel>{tr('Дата рождения (необязательно)', 'Birthday (optional)')}</FieldLabel>
               <input
                 type="date"
                 ref={birthdayRef}
@@ -184,7 +186,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
                 style={inputStyle}
               />
               <div style={{ fontSize: 11, color: 'var(--tg-hint)', marginTop: 3 }}>
-                Для бонуса на день рождения
+                {tr('Для бонуса на день рождения', 'Used for birthday bonus')}
               </div>
             </div>
 
@@ -202,7 +204,7 @@ export default function ClientAddSheet({ onSuccess, onClose }) {
                 cursor: canSubmit && !loading ? 'pointer' : 'default',
               }}
             >
-              {loading ? 'Загрузка...' : 'Добавить клиента'}
+              {loading ? tr('Загрузка...', 'Loading...') : tr('Добавить клиента', 'Add client')}
             </button>
           </>
         )}
