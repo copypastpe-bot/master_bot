@@ -17,6 +17,17 @@ from src.config import CLIENT_BOT_USERNAME
 router = APIRouter(tags=["master"])
 
 
+def _legacy_contacts(master: Master) -> str | None:
+    return master.contacts or master.phone
+
+
+def _legacy_socials(master: Master) -> str | None:
+    if master.socials:
+        return master.socials
+    parts = [p for p in [master.telegram, master.instagram, master.website] if p]
+    return " · ".join(parts) if parts else None
+
+
 @router.get("/master/me")
 async def get_master_me(
     master: Master = Depends(get_current_master)
@@ -28,8 +39,14 @@ async def get_master_me(
     return {
         "id": master.id,
         "name": master.name,
-        "phone": master.contacts,
+        "phone": master.phone or master.contacts,
+        "telegram": master.telegram,
+        "instagram": master.instagram,
+        "website": master.website,
+        "contact_address": master.contact_address,
         "sphere": master.sphere,
+        "contacts": _legacy_contacts(master),
+        "socials": _legacy_socials(master),
         "work_hours": master.work_hours,
         "work_mode": master.work_mode,
         "work_address_default": master.work_address_default,

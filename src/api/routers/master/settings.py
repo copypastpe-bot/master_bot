@@ -138,6 +138,11 @@ def _normalize_website(raw: str) -> Optional[str]:
         return None
     return candidate
 
+
+def _compose_legacy_socials(telegram: Optional[str], instagram: Optional[str], website: Optional[str]) -> Optional[str]:
+    parts = [p for p in [telegram, instagram, website] if p]
+    return " · ".join(parts) if parts else None
+
 class ProfileUpdateBody(BaseModel):
     name: Optional[str] = None
     sphere: Optional[str] = None
@@ -256,6 +261,21 @@ async def update_master_profile(
     for key in nullable_text_fields:
         if key in kwargs and isinstance(kwargs[key], str):
             kwargs[key] = kwargs[key].strip() or None
+    structured_fields = {"phone", "telegram", "instagram", "website", "contact_address"}
+    structured_touched = any(field in payload for field in structured_fields)
+
+    if structured_touched:
+        next_phone = kwargs["phone"] if "phone" in kwargs else master.phone
+        next_telegram = kwargs["telegram"] if "telegram" in kwargs else master.telegram
+        next_instagram = kwargs["instagram"] if "instagram" in kwargs else master.instagram
+        next_website = kwargs["website"] if "website" in kwargs else master.website
+
+        # Keep legacy fields in sync for older bot/UI readers.
+        if "contacts" not in payload:
+            kwargs["contacts"] = next_phone
+        if "socials" not in payload:
+            kwargs["socials"] = _compose_legacy_socials(next_telegram, next_instagram, next_website)
+
     if kwargs:
         await update_master(master.id, **kwargs)
     return {"ok": True}

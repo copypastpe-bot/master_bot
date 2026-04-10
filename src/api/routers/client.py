@@ -8,6 +8,17 @@ from src.models import Client, Master, MasterClient
 router = APIRouter(tags=["client"])
 
 
+def _legacy_contacts(master: Master) -> str | None:
+    return master.contacts or master.phone
+
+
+def _legacy_socials(master: Master) -> str | None:
+    if master.socials:
+        return master.socials
+    parts = [p for p in [master.telegram, master.instagram, master.website] if p]
+    return " · ".join(parts) if parts else None
+
+
 @router.get("/me")
 async def get_me(
     data: tuple[Client, Master, MasterClient] = Depends(get_current_client)
@@ -25,8 +36,13 @@ async def get_me(
             "id": master.id,
             "name": master.name,
             "sphere": master.sphere,
-            "contacts": master.contacts,
-            "socials": master.socials,
+            "phone": master.phone or master.contacts,
+            "telegram": master.telegram,
+            "instagram": master.instagram,
+            "website": master.website,
+            "contact_address": master.contact_address,
+            "contacts": _legacy_contacts(master),
+            "socials": _legacy_socials(master),
             "work_hours": master.work_hours,
         },
         "bonus_balance": master_client.bonus_balance,
