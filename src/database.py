@@ -31,7 +31,8 @@ MIGRATIONS_DIR = Path(__file__).parent.parent / "migrations"
 # =============================================================================
 
 ALLOWED_MASTER_FIELDS = frozenset({
-    "name", "sphere", "socials", "contacts", "work_hours", "invite_token",
+    "name", "sphere", "phone", "telegram", "instagram", "website", "contact_address",
+    "socials", "contacts", "work_hours", "invite_token",
     "work_mode", "work_address_default",
     "bonus_enabled", "bonus_rate", "bonus_max_spend", "bonus_birthday",
     "gc_connected", "gc_credentials",
@@ -131,6 +132,11 @@ def _parse_master_row(row) -> Master:
         tg_id=row["tg_id"],
         name=row["name"],
         sphere=row["sphere"],
+        phone=row["phone"] if "phone" in row.keys() else None,
+        telegram=row["telegram"] if "telegram" in row.keys() else None,
+        instagram=row["instagram"] if "instagram" in row.keys() else None,
+        website=row["website"] if "website" in row.keys() else None,
+        contact_address=row["contact_address"] if "contact_address" in row.keys() else None,
         socials=row["socials"],
         contacts=row["contacts"],
         work_hours=row["work_hours"],

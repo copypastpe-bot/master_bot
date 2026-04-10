@@ -13,6 +13,11 @@ class Master:
     name: str
     invite_token: str
     sphere: Optional[str] = None
+    phone: Optional[str] = None
+    telegram: Optional[str] = None
+    instagram: Optional[str] = None
+    website: Optional[str] = None
+    contact_address: Optional[str] = None
     socials: Optional[str] = None
     contacts: Optional[str] = None
     work_hours: Optional[str] = None
