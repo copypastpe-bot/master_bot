@@ -15,13 +15,51 @@ function haptic(type = 'light') {
     WebApp.HapticFeedback.impactOccurred(type);
   }
 }
+
 function hapticNotify(type = 'success') {
   if (typeof WebApp?.HapticFeedback?.notificationOccurred === 'function') {
     WebApp.HapticFeedback.notificationOccurred(type);
   }
 }
 
-// Bottom sheet for create / edit
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': 'true',
+};
+
+const ToolIcon = () => (
+  <svg {...iconProps}>
+    <path d="m14.7 6.3 3 3" />
+    <path d="m12.2 8.8 3 3" />
+    <path d="M3 21a2 2 0 0 1 0-3l9.2-9.2a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L6 21a2 2 0 0 1-3 0Z" />
+    <path d="m18.5 2.5 3 3a2.1 2.1 0 0 1 0 3l-2 2-6-6 2-2a2.1 2.1 0 0 1 3 0Z" />
+  </svg>
+);
+
+const PlusIcon = () => (
+  <svg {...iconProps}>
+    <path d="M12 5v14" />
+    <path d="M5 12h14" />
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg {...iconProps} width={14} height={14}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+function SectionTitle({ children }) {
+  return <div className="enterprise-section-title">{children}</div>;
+}
+
 function ServiceSheet({ initial, onClose, onSave, onArchive, loading }) {
   const isNew = !initial;
   const [name, setName] = useState(initial?.name || '');
@@ -29,105 +67,82 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading }) {
   const [description, setDescription] = useState(initial?.description || '');
 
   const handleSave = () => {
-    const p = parseInt(price, 10);
-    if (!name.trim() || !p || p <= 0) {
+    const parsedPrice = parseInt(price, 10);
+    if (!name.trim() || !parsedPrice || parsedPrice <= 0) {
       hapticNotify('error');
       return;
     }
     haptic('medium');
-    onSave({ name: name.trim(), price: p, description: description.trim() || null });
+    onSave({
+      name: name.trim(),
+      price: parsedPrice,
+      description: description.trim() || null,
+    });
   };
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }} />
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'var(--tg-section-bg)',
-        borderRadius: '16px 16px 0 0',
-        padding: '20px 16px',
-        paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
-        zIndex: 201,
-        animation: 'slideUp 0.2s ease',
-      }}>
-        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
-          {isNew ? '+ Новая услуга' : 'Редактировать услугу'}
-        </div>
+      <div className="enterprise-sheet-backdrop" onClick={onClose} />
+      <div className="enterprise-sheet enterprise-services-sheet">
+        <div className="enterprise-sheet-handle" />
+        <div className="enterprise-sheet-title">{isNew ? 'Новая услуга' : 'Редактировать услугу'}</div>
 
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginBottom: 4 }}>Название *</div>
+        <label className="enterprise-services-sheet-label">Название</label>
         <input
           value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Уборка квартиры"
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Например: ремонт измельчителя"
           autoFocus
-          style={inputStyle}
+          className="enterprise-sheet-input"
         />
 
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>Цена, ₽ *</div>
+        <label className="enterprise-services-sheet-label">Цена, ₽</label>
         <input
           type="number"
           value={price}
-          onChange={e => setPrice(e.target.value)}
+          onChange={(e) => setPrice(e.target.value)}
           placeholder="3000"
-          style={inputStyle}
+          className="enterprise-sheet-input"
         />
 
-        <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 12, marginBottom: 4 }}>Описание</div>
-        <input
+        <label className="enterprise-services-sheet-label">Описание</label>
+        <textarea
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="Необязательно"
-          style={inputStyle}
+          rows={3}
+          className="enterprise-sheet-input"
         />
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <div className="enterprise-sheet-actions">
           {!isNew && (
             <button
-              onClick={() => { haptic(); onArchive(); }}
-              disabled={loading}
-              style={{
-                padding: '12px', borderRadius: 10, flex: 1,
-                border: '1px solid var(--tg-destructive, #e53935)',
-                background: 'none',
-                color: 'var(--tg-destructive, #e53935)',
-                fontSize: 14, cursor: 'pointer',
+              type="button"
+              className="enterprise-sheet-btn destructive"
+              onClick={() => {
+                haptic();
+                onArchive();
               }}
+              disabled={loading}
             >
               В архив
             </button>
           )}
-          <button
-            onClick={onClose}
-            style={{
-              padding: '12px', borderRadius: 10, flex: 1,
-              border: '1px solid var(--tg-secondary-bg)',
-              background: 'none', color: 'var(--tg-text)', fontSize: 14, cursor: 'pointer',
-            }}
-          >
+          <button type="button" className="enterprise-sheet-btn secondary" onClick={onClose}>
             Отмена
           </button>
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            style={{
-              padding: '12px', borderRadius: 10, flex: 2,
-              background: 'var(--tg-accent)', color: '#fff',
-              fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer',
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? '...' : 'Сохранить'}
+          <button type="button" className="enterprise-sheet-btn primary" onClick={handleSave} disabled={loading}>
+            {loading ? 'Сохраняем...' : 'Сохранить'}
           </button>
         </div>
       </div>
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
     </>
   );
 }
 
 export default function Services() {
-  const [sheet, setSheet] = useState(null); // null | { service: obj | null }
-  const [tab, setTab] = useState('active'); // active | archived
+  const [sheet, setSheet] = useState(null);
+  const [tab, setTab] = useState('active');
   const [successMsg, setSuccessMsg] = useState('');
 
   const qc = useQueryClient();
@@ -140,38 +155,57 @@ export default function Services() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['master-services-all'] });
 
-  const showSuccess = (msg = 'Готово ✓') => {
+  const showSuccess = (msg = 'Готово') => {
     hapticNotify('success');
     setSuccessMsg(msg);
-    setTimeout(() => setSuccessMsg(''), 2000);
+    setTimeout(() => setSuccessMsg(''), 1600);
   };
 
   const createMutation = useMutation({
     mutationFn: createMasterService,
-    onSuccess: () => { invalidate(); setSheet(null); showSuccess('Услуга добавлена ✓'); },
+    onSuccess: () => {
+      invalidate();
+      setSheet(null);
+      showSuccess('Услуга добавлена');
+    },
     onError: () => hapticNotify('error'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => updateMasterService(id, data),
-    onSuccess: () => { invalidate(); setSheet(null); showSuccess('Сохранено ✓'); },
+    mutationFn: ({ id, data: nextData }) => updateMasterService(id, nextData),
+    onSuccess: () => {
+      invalidate();
+      setSheet(null);
+      showSuccess('Сохранено');
+    },
     onError: () => hapticNotify('error'),
   });
 
   const archiveMutation = useMutation({
     mutationFn: archiveMasterService,
-    onSuccess: () => { invalidate(); setSheet(null); showSuccess('Услуга архивирована'); },
+    onSuccess: () => {
+      invalidate();
+      setSheet(null);
+      showSuccess('Услуга архивирована');
+    },
     onError: () => hapticNotify('error'),
   });
 
   const restoreMutation = useMutation({
     mutationFn: restoreMasterService,
-    onSuccess: () => { invalidate(); showSuccess('Услуга восстановлена ✓'); },
+    onSuccess: () => {
+      invalidate();
+      showSuccess('Услуга восстановлена');
+    },
     onError: () => hapticNotify('error'),
   });
 
   if (isLoading) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Загрузка...</div>;
+    return (
+      <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+        Загрузка...
+      </div>
+    );
   }
 
   const active = data?.active || [];
@@ -188,140 +222,94 @@ export default function Services() {
   const mutationLoading = createMutation.isPending || updateMutation.isPending || archiveMutation.isPending;
 
   return (
-    <div style={{ padding: '12px 12px 88px', maxWidth: 760, margin: '0 auto' }}>
-      {successMsg && (
-        <div style={{
-          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--tg-accent)', color: '#fff',
-          padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-          zIndex: 300, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}>
-          {successMsg}
-        </div>
-      )}
+    <div className="enterprise-services-page">
+      {successMsg && <div className="enterprise-profile-toast">{successMsg}</div>}
 
-      {/* Tabs */}
-      <div style={panelStyle}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          <button
-            onClick={() => { haptic(); setTab('active'); }}
-            style={{
-              ...tabBtnStyle,
-              background: tab === 'active' ? 'var(--tg-button)' : 'transparent',
-              color: tab === 'active' ? 'var(--tg-button-text)' : 'var(--tg-hint)',
-            }}
-          >
-            Активные ({active.length})
-          </button>
-          <button
-            onClick={() => { haptic(); setTab('archived'); }}
-            style={{
-              ...tabBtnStyle,
-              background: tab === 'archived' ? 'var(--tg-button)' : 'transparent',
-              color: tab === 'archived' ? 'var(--tg-button-text)' : 'var(--tg-hint)',
-            }}
-          >
-            Архив ({archived.length})
-          </button>
-        </div>
-      </div>
-
-      {/* Add button */}
-      <div style={{ ...panelStyle, padding: 12, marginTop: 10 }}>
+      <SectionTitle>Режим отображения</SectionTitle>
+      <div className="enterprise-services-tabs">
         <button
-          onClick={() => { haptic(); setSheet({ service: null }); }}
-          style={{
-            width: '100%', padding: '13px', borderRadius: 12,
-            background: 'var(--tg-accent)', color: '#fff',
-            fontSize: 15, fontWeight: 600, border: 'none', cursor: 'pointer',
+          type="button"
+          className={`enterprise-services-tab${tab === 'active' ? ' is-active' : ''}`}
+          onClick={() => {
+            haptic();
+            setTab('active');
           }}
         >
-          + Добавить услугу
+          Активные ({active.length})
+        </button>
+        <button
+          type="button"
+          className={`enterprise-services-tab${tab === 'archived' ? ' is-active' : ''}`}
+          onClick={() => {
+            haptic();
+            setTab('archived');
+          }}
+        >
+          Архив ({archived.length})
         </button>
       </div>
 
-      {/* List */}
-      <div style={{ ...panelStyle, marginTop: 10, overflow: 'hidden', padding: 0 }}>
+      <SectionTitle>Управление</SectionTitle>
+      <div className="enterprise-services-add-wrap">
+        <button
+          type="button"
+          className="enterprise-services-add-btn"
+          onClick={() => {
+            haptic();
+            setSheet({ service: null });
+          }}
+        >
+          <PlusIcon />
+          <span>Добавить услугу</span>
+        </button>
+      </div>
+
+      <SectionTitle>{tab === 'active' ? 'Активные услуги' : 'Архив услуг'}</SectionTitle>
+      <div className="enterprise-cell-group">
         {tab === 'active' && active.length === 0 && (
-          <div style={{ padding: '26px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-            Нет активных услуг
-          </div>
+          <div className="enterprise-services-empty">Нет активных услуг</div>
         )}
 
-        {tab === 'active' && active.map((s, idx) => (
-          <div
-            key={s.id}
-            onClick={() => { haptic(); setSheet({ service: s }); }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '14px 14px',
-              borderBottom: idx < active.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
-              cursor: 'pointer',
-              gap: 12,
+        {tab === 'active' && active.map((service, idx) => (
+          <button
+            key={service.id}
+            type="button"
+            className={`enterprise-cell is-interactive enterprise-services-cell${idx === active.length - 1 ? ' is-last' : ''}`}
+            onClick={() => {
+              haptic();
+              setSheet({ service });
             }}
           >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.name}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.description || 'Без описания'}
-              </div>
-            </div>
-            <div style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: 'var(--tg-button)',
-              background: 'rgba(51,144,236,0.12)',
-              borderRadius: 999,
-              padding: '4px 10px',
-              flexShrink: 0,
-            }}>
-              {(s.price || 0).toLocaleString()} ₽
-            </div>
-            <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
-          </div>
+            <span className="enterprise-cell-icon"><ToolIcon /></span>
+            <span className="enterprise-cell-label enterprise-services-label">
+              <span className="enterprise-services-name">{service.name}</span>
+              <span className="enterprise-services-desc">{service.description || 'Без описания'}</span>
+            </span>
+            <span className="enterprise-cell-value">{(service.price || 0).toLocaleString('ru-RU')} ₽</span>
+            <span className="enterprise-cell-chevron"><ChevronIcon /></span>
+          </button>
         ))}
 
         {tab === 'archived' && archived.length === 0 && (
-          <div style={{ padding: '26px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
-            Архив пуст
-          </div>
+          <div className="enterprise-services-empty">Архив пуст</div>
         )}
 
-        {tab === 'archived' && archived.map((s, idx) => (
-          <div
-            key={s.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '14px 14px',
-              borderBottom: idx < archived.length - 1 ? '1px solid var(--tg-secondary-bg)' : 'none',
-              gap: 12,
-              opacity: 0.72,
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.name}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 3 }}>
-                {(s.price || 0).toLocaleString()} ₽
+        {tab === 'archived' && archived.map((service, idx) => (
+          <div className={`enterprise-services-archived-row${idx === archived.length - 1 ? ' is-last' : ''}`} key={service.id}>
+            <div className="enterprise-services-archived-main">
+              <span className="enterprise-cell-icon"><ToolIcon /></span>
+              <div className="enterprise-services-label">
+                <div className="enterprise-services-name">{service.name}</div>
+                <div className="enterprise-services-desc">{(service.price || 0).toLocaleString('ru-RU')} ₽</div>
               </div>
             </div>
             <button
-              onClick={() => { haptic(); restoreMutation.mutate(s.id); }}
+              type="button"
+              className="enterprise-services-restore-btn"
               disabled={restoreMutation.isPending}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 10,
-                border: '1px solid var(--tg-accent)',
-                background: 'none',
-                color: 'var(--tg-accent)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
+              onClick={() => {
+                haptic();
+                restoreMutation.mutate(service.id);
               }}
             >
               Восстановить
@@ -330,7 +318,6 @@ export default function Services() {
         ))}
       </div>
 
-      {/* Sheet */}
       {sheet !== null && (
         <ServiceSheet
           initial={sheet.service}
@@ -343,32 +330,3 @@ export default function Services() {
     </div>
   );
 }
-
-const panelStyle = {
-  background: 'var(--tg-section-bg)',
-  border: '1px solid var(--tg-enterprise-border)',
-  borderRadius: 16,
-  boxShadow: 'var(--tg-enterprise-shadow)',
-  padding: 6,
-};
-
-const tabBtnStyle = {
-  border: 'none',
-  borderRadius: 12,
-  padding: '10px 8px',
-  fontSize: 13,
-  fontWeight: 700,
-  cursor: 'pointer',
-  transition: 'background 0.15s, color 0.15s',
-  minWidth: 0,
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-};
-
-const inputStyle = {
-  width: '100%', padding: '10px 12px', borderRadius: 10,
-  border: '1px solid var(--tg-secondary-bg)',
-  background: 'var(--tg-bg)', color: 'var(--tg-text)',
-  fontSize: 15, boxSizing: 'border-box', display: 'block',
-};

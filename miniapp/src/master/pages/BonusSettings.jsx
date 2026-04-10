@@ -9,122 +9,146 @@ function haptic(type = 'light') {
     WebApp.HapticFeedback.impactOccurred(type);
   }
 }
+
 function hapticNotify(type = 'success') {
   if (typeof WebApp?.HapticFeedback?.notificationOccurred === 'function') {
     WebApp.HapticFeedback.notificationOccurred(type);
   }
 }
 
-// iOS-style toggle
-function Toggle({ checked, onChange }) {
+const iconProps = {
+  width: 18,
+  height: 18,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.9,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  'aria-hidden': 'true',
+};
+
+const GiftIcon = () => (
+  <svg {...iconProps}>
+    <path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8" />
+    <path d="M2 7h20v5H2z" />
+    <path d="M12 22V7" />
+    <path d="M12 7h-2a3 3 0 1 1 0-6c3 0 3 6 3 6Z" />
+    <path d="M12 7h2a3 3 0 1 0 0-6c-3 0-3 6-3 6Z" />
+  </svg>
+);
+
+const PercentIcon = () => (
+  <svg {...iconProps}>
+    <path d="M19 5 5 19" />
+    <circle cx="7" cy="7" r="2" />
+    <circle cx="17" cy="17" r="2" />
+  </svg>
+);
+
+const MessageIcon = () => (
+  <svg {...iconProps}>
+    <path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8A8.5 8.5 0 0 1 12.5 20H4l1.9-3.8A8.5 8.5 0 1 1 21 11.5Z" />
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg {...iconProps} width={14} height={14}>
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
+function SectionTitle({ children }) {
+  return <div className="enterprise-section-title">{children}</div>;
+}
+
+function Toggle({ checked, onChange, disabled }) {
   return (
-    <div
-      onClick={() => { haptic(); onChange(!checked); }}
-      style={{
-        width: 50, height: 28, borderRadius: 14,
-        background: checked ? 'var(--tg-accent)' : 'var(--tg-secondary-bg)',
-        position: 'relative', cursor: 'pointer', flexShrink: 0,
-        transition: 'background 0.2s',
+    <button
+      type="button"
+      disabled={disabled}
+      className={`enterprise-bonus-toggle${checked ? ' is-on' : ''}`}
+      onClick={() => {
+        if (disabled) return;
+        haptic();
+        onChange(!checked);
       }}
     >
-      <div style={{
-        position: 'absolute',
-        top: 3, left: checked ? 24 : 3,
-        width: 22, height: 22, borderRadius: '50%',
-        background: '#fff',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-        transition: 'left 0.2s',
-      }} />
-    </div>
+      <span className="enterprise-bonus-toggle-knob" />
+    </button>
   );
 }
 
-// Inline-editable number row
-function NumRow({ label, value, hint, unit, onChange, disabled }) {
+function NumRow({ label, value, hint, unit, onChange, disabled, isLast = false }) {
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(String(value ?? ''));
+  const [draft, setDraft] = useState(String(value ?? ''));
 
   useEffect(() => {
-    setVal(String(value ?? ''));
+    setDraft(String(value ?? ''));
   }, [value]);
 
   const handleSave = () => {
-    const n = parseFloat(val);
-    if (!isNaN(n) && n >= 0) {
-      onChange(n);
+    const normalized = String(draft || '').trim().replace(',', '.');
+    const parsed = Number(normalized);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      onChange(parsed);
     }
     setEditing(false);
   };
 
   return (
-    <div style={{
-      padding: '12px 16px',
-      background: 'var(--tg-section-bg)',
-      borderBottom: '1px solid var(--tg-secondary-bg)',
-      opacity: disabled ? 0.4 : 1,
-      pointerEvents: disabled ? 'none' : 'auto',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: hint ? 6 : 0 }}>
-        <span style={{ fontSize: 15, color: 'var(--tg-text)' }}>{label}</span>
+    <div className={`enterprise-bonus-row${disabled ? ' is-disabled' : ''}${isLast ? ' is-last' : ''}`}>
+      <div className="enterprise-bonus-row-head">
+        <span className="enterprise-bonus-row-label">{label}</span>
         {editing ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="enterprise-bonus-row-edit-wrap">
             <input
               type="number"
-              value={val}
-              onChange={e => setVal(e.target.value)}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
               autoFocus
-              style={{
-                width: 70, padding: '4px 8px', borderRadius: 6,
-                border: '1px solid var(--tg-accent)',
-                background: 'var(--tg-bg)', color: 'var(--tg-text)',
-                fontSize: 15, textAlign: 'right',
-              }}
+              className="enterprise-bonus-row-input"
               onBlur={handleSave}
-              onKeyDown={e => e.key === 'Enter' && handleSave()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+              }}
             />
-            {unit && <span style={{ fontSize: 14, color: 'var(--tg-hint)' }}>{unit}</span>}
+            {unit && <span className="enterprise-bonus-row-unit">{unit}</span>}
           </div>
         ) : (
-          <span
-            onClick={() => { if (!disabled) { haptic(); setEditing(true); } }}
-            style={{
-              fontSize: 15, fontWeight: 500, color: 'var(--tg-accent)', cursor: 'pointer',
-              padding: '4px 8px', borderRadius: 6, background: 'var(--tg-accent)22',
+          <button
+            type="button"
+            disabled={disabled}
+            className="enterprise-bonus-row-value"
+            onClick={() => {
+              if (disabled) return;
+              haptic();
+              setEditing(true);
             }}
           >
-            {value ?? 0}{unit}
-          </span>
+            {value ?? 0}{unit || ''}
+          </button>
         )}
       </div>
-      {hint && <div style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{hint}</div>}
+      {hint && <div className="enterprise-bonus-row-hint">{hint}</div>}
     </div>
   );
 }
 
-function LinkRow({ label, hint, onClick }) {
+function MessageCell({ label, value, onClick, isLast = false }) {
   return (
     <button
-      onClick={onClick}
-      style={{
-        width: '100%',
-        padding: '12px 16px',
-        background: 'var(--tg-section-bg)',
-        border: 'none',
-        borderBottom: '1px solid var(--tg-secondary-bg)',
-        color: 'var(--tg-text)',
-        textAlign: 'left',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 10,
+      type="button"
+      className={`enterprise-cell is-interactive${isLast ? ' is-last' : ''}`}
+      onClick={() => {
+        haptic();
+        onClick();
       }}
     >
-      <span>
-        <span style={{ display: 'block', fontSize: 15 }}>{label}</span>
-        {hint && <span style={{ display: 'block', fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>{hint}</span>}
-      </span>
-      <span style={{ color: 'var(--tg-hint)', fontSize: 18 }}>›</span>
+      <span className="enterprise-cell-icon"><MessageIcon /></span>
+      <span className="enterprise-cell-label">{label}</span>
+      <span className="enterprise-cell-value">{value}</span>
+      <span className="enterprise-cell-chevron"><ChevronIcon /></span>
     </button>
   );
 }
@@ -144,15 +168,15 @@ export default function BonusSettings({ onNavigate }) {
     if (data && !localSettings) {
       setLocalSettings(data);
     }
-  }, [data]);
+  }, [data, localSettings]);
 
   const mutation = useMutation({
     mutationFn: updateMasterBonusSettings,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['master-bonus-settings'] });
       hapticNotify('success');
-      setSuccessMsg('Сохранено ✓');
-      setTimeout(() => setSuccessMsg(''), 2000);
+      setSuccessMsg('Сохранено');
+      setTimeout(() => setSuccessMsg(''), 1600);
     },
     onError: () => hapticNotify('error'),
   });
@@ -164,7 +188,11 @@ export default function BonusSettings({ onNavigate }) {
   };
 
   if (isLoading || !localSettings) {
-    return <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>Загрузка...</div>;
+    return (
+      <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
+        Загрузка...
+      </div>
+    );
   }
 
   const disabled = !localSettings.bonus_enabled;
@@ -172,50 +200,40 @@ export default function BonusSettings({ onNavigate }) {
   const hasBirthdayTemplate = Boolean((localSettings.birthday_message || '').trim() || localSettings.birthday_photo_url);
 
   return (
-    <div style={{ paddingBottom: 80 }}>
-      {successMsg && (
-        <div style={{
-          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
-          background: 'var(--tg-accent)', color: '#fff',
-          padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 500,
-          zIndex: 300, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-        }}>
-          {successMsg}
-        </div>
-      )}
+    <div className="enterprise-bonus-page">
+      {successMsg && <div className="enterprise-profile-toast">{successMsg}</div>}
 
-      {/* Main toggle */}
-      <div style={{ marginTop: 16 }}>
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 16px',
-            background: 'var(--tg-section-bg)',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--tg-text)' }}>Бонусная программа</div>
-            <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 2 }}>
-              {localSettings.bonus_enabled ? 'Включена' : 'Выключена'}
+      <SectionTitle>Бонусная программа</SectionTitle>
+      <div className="enterprise-cell-group">
+        <div className="enterprise-bonus-switch-row">
+          <div className="enterprise-bonus-switch-left">
+            <span className="enterprise-cell-icon"><GiftIcon /></span>
+            <div>
+              <div className="enterprise-bonus-switch-title">Бонусная программа</div>
+              <div className="enterprise-bonus-switch-subtitle">
+                {localSettings.bonus_enabled ? 'Включена' : 'Выключена'}
+              </div>
             </div>
           </div>
           <Toggle
             checked={localSettings.bonus_enabled}
             onChange={(v) => update('bonus_enabled', v)}
+            disabled={mutation.isPending}
           />
         </div>
       </div>
 
-      {/* Parameters */}
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Параметры
+      <SectionTitle>Параметры</SectionTitle>
+      <div className="enterprise-cell-group">
+        <div className="enterprise-bonus-param-head">
+          <span className="enterprise-cell-icon"><PercentIcon /></span>
+          <span>Начисления и списания</span>
         </div>
         <NumRow
           label="Процент начисления"
           value={localSettings.bonus_rate}
           unit="%"
-          hint={`Клиент получит ${localSettings.bonus_rate}% от суммы каждого заказа`}
+          hint={`Клиент получит ${localSettings.bonus_rate}% от суммы заказа`}
           onChange={(v) => update('bonus_rate', v)}
           disabled={disabled}
         />
@@ -231,7 +249,7 @@ export default function BonusSettings({ onNavigate }) {
           label="Приветственный бонус"
           value={localSettings.bonus_welcome}
           unit=" ₽"
-          hint={localSettings.bonus_welcome > 0 ? `Клиент получит ${localSettings.bonus_welcome} ₽ при первом визите` : '0 = выключено'}
+          hint={localSettings.bonus_welcome > 0 ? `При первом визите: ${localSettings.bonus_welcome} ₽` : '0 = выключено'}
           onChange={(v) => update('bonus_welcome', v)}
           disabled={disabled}
         />
@@ -239,31 +257,25 @@ export default function BonusSettings({ onNavigate }) {
           label="Бонус на день рождения"
           value={localSettings.bonus_birthday}
           unit=" ₽"
-          hint={localSettings.bonus_birthday > 0 ? `Клиент получит ${localSettings.bonus_birthday} ₽ в день рождения` : '0 = выключено'}
+          hint={localSettings.bonus_birthday > 0 ? `В день рождения: ${localSettings.bonus_birthday} ₽` : '0 = выключено'}
           onChange={(v) => update('bonus_birthday', v)}
           disabled={disabled}
+          isLast
         />
       </div>
 
-      <div style={{ marginTop: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
-          Сообщения
-        </div>
-        <LinkRow
-          label="Настроить приветствие"
-          hint={hasWelcomeTemplate ? 'Кастомизировано' : 'Используется стандартный текст'}
-          onClick={() => {
-            haptic();
-            if (onNavigate) onNavigate('bonus_message', { kind: 'welcome' });
-          }}
+      <SectionTitle>Сообщения</SectionTitle>
+      <div className="enterprise-cell-group">
+        <MessageCell
+          label="Приветствие"
+          value={hasWelcomeTemplate ? 'Кастомизировано' : 'Стандартный текст'}
+          onClick={() => onNavigate?.('bonus_message', { kind: 'welcome' })}
         />
-        <LinkRow
-          label="Настроить поздравление"
-          hint={hasBirthdayTemplate ? 'Кастомизировано' : 'Используется стандартный текст'}
-          onClick={() => {
-            haptic();
-            if (onNavigate) onNavigate('bonus_message', { kind: 'birthday' });
-          }}
+        <MessageCell
+          label="Поздравление"
+          value={hasBirthdayTemplate ? 'Кастомизировано' : 'Стандартный текст'}
+          onClick={() => onNavigate?.('bonus_message', { kind: 'birthday' })}
+          isLast
         />
       </div>
     </div>

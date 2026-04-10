@@ -35,13 +35,18 @@ def set_master_bot(bot) -> None:
     _master_bot = bot
 
 ALLOWED_TIMEZONES = {
+    "Europe/London", "Europe/Lisbon", "Europe/Madrid", "Europe/Paris",
+    "Europe/Berlin", "Europe/Rome", "Europe/Amsterdam", "Europe/Brussels",
+    "Europe/Vienna", "Europe/Prague", "Europe/Warsaw", "Europe/Belgrade",
+    "Europe/Athens", "Europe/Bucharest", "Europe/Helsinki", "Europe/Riga",
+    "Europe/Vilnius", "Europe/Tallinn", "Asia/Jerusalem",
     "Europe/Moscow", "Europe/Kaliningrad", "Asia/Yekaterinburg",
     "Asia/Novosibirsk", "Asia/Krasnoyarsk", "Asia/Irkutsk",
     "Asia/Vladivostok", "Asia/Kamchatka", "Europe/Minsk",
     "Asia/Almaty", "Europe/Kiev", "Europe/Istanbul",
 }
 
-ALLOWED_CURRENCIES = {"RUB", "UAH", "BYN", "KZT", "USD", "EUR", "TRY", "GEL", "UZS"}
+ALLOWED_CURRENCIES = {"RUB", "EUR", "ILS", "UAH", "BYN", "KZT", "USD", "TRY", "GEL", "UZS"}
 
 BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
 MAX_BONUS_MEDIA_BYTES = 10 * 1024 * 1024
