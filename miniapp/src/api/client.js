@@ -99,7 +99,17 @@ export const linkToMaster = (token) => api.post('/api/client/link', { invite_tok
 export const getAuthRole = () => api.get('/api/auth/role').then(r => r.data);
 
 // Master
-export const getMasterMe = () => api.get('/api/master/me').then(r => r.data);
+export const getMasterMe = () => api.get('/api/master/me').then((r) => {
+  const data = r.data || {};
+  const phone = data.phone || data.contacts || '';
+  const socials = data.socials || [data.telegram, data.instagram, data.website].filter(Boolean).join(' · ');
+  return {
+    ...data,
+    phone,
+    contacts: data.contacts ?? phone,
+    socials,
+  };
+});
 export const getMasterDashboard = () => api.get('/api/master/dashboard').then(r => r.data);
 export const getMasterOrders = (date) =>
   api.get(`/api/master/orders?date=${date}`).then(r => r.data);
@@ -159,8 +169,13 @@ export const masterClientBonus = (id, amount, comment) =>
   api.post(`/api/master/clients/${id}/bonus`, { amount, comment }).then(r => r.data);
 
 // V2 — Profile / Settings
-export const updateMasterProfile = (data) =>
-  api.put('/api/master/profile', data).then(r => r.data);
+export const updateMasterProfile = (data) => {
+  const payload = { ...data };
+  if (Object.prototype.hasOwnProperty.call(payload, 'contacts') && !Object.prototype.hasOwnProperty.call(payload, 'phone')) {
+    payload.phone = payload.contacts;
+  }
+  return api.put('/api/master/profile', payload).then(r => r.data);
+};
 export const updateMasterTimezone = (timezone) =>
   api.put('/api/master/timezone', { timezone }).then(r => r.data);
 export const updateMasterCurrency = (currency) =>

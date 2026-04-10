@@ -350,6 +350,7 @@ export default function Profile() {
   const curLabel = currencyOptions.find((item) => item.value === master?.currency)?.label || master?.currency || t('common.dash');
   const workModeLabel = workModeOptions.find((item) => item.value === master?.work_mode)?.label || t('profile.workModes.travel');
   const langLabel = languageOptions.find((item) => item.value === lang)?.label || t('profile.language.ru');
+  const contactsValue = master?.phone || master?.contacts;
 
   return (
     <div className="enterprise-profile-page">
@@ -386,9 +387,9 @@ export default function Profile() {
         <Cell
           icon={<PhoneIcon />}
           label={t('profile.fields.contacts')}
-          value={master?.contacts}
+          value={contactsValue}
           fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'contacts', title: t('profile.fields.contacts'), value: master?.contacts || '', placeholder: t('profile.placeholders.contacts') })}
+          onClick={() => setEditor({ field: 'phone', title: t('profile.fields.contacts'), value: contactsValue || '', placeholder: t('profile.placeholders.contacts') })}
         />
         <Cell
           icon={<LinkIcon />}
