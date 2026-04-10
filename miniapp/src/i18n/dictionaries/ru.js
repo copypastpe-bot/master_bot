@@ -144,6 +144,7 @@ const ru = {
     },
     sections: {
       profile: 'Профиль',
+      contacts: 'Контакты',
       workMode: 'Формат работы',
       region: 'Регион',
       invite: 'Инвайт',
@@ -152,6 +153,11 @@ const ru = {
     fields: {
       name: 'Имя',
       sphere: 'Сфера деятельности',
+      phone: 'Телефон',
+      telegram: 'Telegram',
+      instagram: 'Instagram',
+      website: 'Сайт',
+      contactAddress: 'Адрес',
       contacts: 'Контакты',
       socials: 'Соцсети',
       workHours: 'График работы',
@@ -164,6 +170,11 @@ const ru = {
     placeholders: {
       name: 'Введите имя',
       sphere: 'Например: барбер, мастер маникюра',
+      phone: '+7 999 123-45-67',
+      telegram: '@username или t.me/username',
+      instagram: '@username или instagram.com/username',
+      website: 'example.com',
+      contactAddress: 'Адрес для связи (необязательно)',
       contacts: 'Телефон, Telegram, WhatsApp',
       socials: '@username или ссылка',
       workHours: 'Пн-Пт 10:00-20:00',

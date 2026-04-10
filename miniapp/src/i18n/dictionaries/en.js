@@ -144,6 +144,7 @@ const en = {
     },
     sections: {
       profile: 'Profile',
+      contacts: 'Contacts',
       workMode: 'Work mode',
       region: 'Region',
       invite: 'Invite',
@@ -152,6 +153,11 @@ const en = {
     fields: {
       name: 'Name',
       sphere: 'Business area',
+      phone: 'Phone',
+      telegram: 'Telegram',
+      instagram: 'Instagram',
+      website: 'Website',
+      contactAddress: 'Address',
       contacts: 'Contacts',
       socials: 'Social links',
       workHours: 'Work hours',
@@ -164,6 +170,11 @@ const en = {
     placeholders: {
       name: 'Enter name',
       sphere: 'For example: barber, nail technician',
+      phone: '+1 555 123 45 67',
+      telegram: '@username or t.me/username',
+      instagram: '@username or instagram.com/username',
+      website: 'example.com',
+      contactAddress: 'Contact address (optional)',
       contacts: 'Phone, Telegram, WhatsApp',
       socials: '@username or URL',
       workHours: 'Mon-Fri 10:00-20:00',

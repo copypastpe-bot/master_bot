@@ -350,7 +350,8 @@ export default function Profile() {
   const curLabel = currencyOptions.find((item) => item.value === master?.currency)?.label || master?.currency || t('common.dash');
   const workModeLabel = workModeOptions.find((item) => item.value === master?.work_mode)?.label || t('profile.workModes.travel');
   const langLabel = languageOptions.find((item) => item.value === lang)?.label || t('profile.language.ru');
-  const contactsValue = master?.phone || master?.contacts;
+  const phoneValue = master?.phone || master?.contacts;
+  const isHomeWorkMode = (master?.work_mode || 'travel') === 'home';
 
   return (
     <div className="enterprise-profile-page">
@@ -384,26 +385,50 @@ export default function Profile() {
           fallbackValue={t('common.notSpecified')}
           onClick={() => setEditor({ field: 'sphere', title: t('profile.fields.sphere'), value: master?.sphere || '', placeholder: t('profile.placeholders.sphere') })}
         />
+      </div>
+
+      <SectionTitle>{t('profile.sections.contacts')}</SectionTitle>
+      <div className="enterprise-cell-group">
         <Cell
           icon={<PhoneIcon />}
-          label={t('profile.fields.contacts')}
-          value={contactsValue}
+          label={t('profile.fields.phone')}
+          value={phoneValue}
           fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'phone', title: t('profile.fields.contacts'), value: contactsValue || '', placeholder: t('profile.placeholders.contacts') })}
+          onClick={() => setEditor({ field: 'phone', title: t('profile.fields.phone'), value: phoneValue || '', placeholder: t('profile.placeholders.phone') })}
         />
         <Cell
           icon={<LinkIcon />}
-          label={t('profile.fields.socials')}
-          value={master?.socials}
+          label={t('profile.fields.telegram')}
+          value={master?.telegram}
           fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'socials', title: t('profile.fields.socials'), value: master?.socials || '', placeholder: t('profile.placeholders.socials') })}
+          onClick={() => setEditor({ field: 'telegram', title: t('profile.fields.telegram'), value: master?.telegram || '', placeholder: t('profile.placeholders.telegram') })}
         />
         <Cell
-          icon={<ClockIcon />}
-          label={t('profile.fields.workHours')}
-          value={master?.work_hours}
+          icon={<LinkIcon />}
+          label={t('profile.fields.instagram')}
+          value={master?.instagram}
           fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'work_hours', title: t('profile.fields.workHours'), value: master?.work_hours || '', placeholder: t('profile.placeholders.workHours') })}
+          onClick={() => setEditor({ field: 'instagram', title: t('profile.fields.instagram'), value: master?.instagram || '', placeholder: t('profile.placeholders.instagram') })}
+        />
+        <Cell
+          icon={<LinkIcon />}
+          label={t('profile.fields.website')}
+          value={master?.website}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'website', title: t('profile.fields.website'), value: master?.website || '', placeholder: t('profile.placeholders.website') })}
+        />
+        <Cell
+          icon={<MapPinIcon />}
+          label={t('profile.fields.contactAddress')}
+          value={master?.contact_address}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({
+            field: 'contact_address',
+            title: t('profile.fields.contactAddress'),
+            value: master?.contact_address || '',
+            placeholder: t('profile.placeholders.contactAddress'),
+            multiline: true,
+          })}
         />
       </div>
 
@@ -417,6 +442,14 @@ export default function Profile() {
           onClick={() => setPicker('work_mode')}
         />
         <Cell
+          icon={<ClockIcon />}
+          label={t('profile.fields.workHours')}
+          value={master?.work_hours}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({ field: 'work_hours', title: t('profile.fields.workHours'), value: master?.work_hours || '', placeholder: t('profile.placeholders.workHours') })}
+        />
+        {isHomeWorkMode && (
+          <Cell
           icon={<MapPinIcon />}
           label={t('profile.fields.defaultAddress')}
           value={master?.work_address_default}
@@ -429,6 +462,7 @@ export default function Profile() {
             multiline: true,
           })}
         />
+        )}
       </div>
 
       <SectionTitle>{t('profile.sections.region')}</SectionTitle>
