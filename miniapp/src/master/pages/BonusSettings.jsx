@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMasterBonusSettings, updateMasterBonusSettings } from '../../api/client';
+import { getMasterBonusSettings, getMasterMe, updateMasterBonusSettings } from '../../api/client';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -60,6 +60,22 @@ const ChevronIcon = () => (
 
 function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
+}
+
+function getCurrencySymbol(code) {
+  const map = {
+    RUB: '₽',
+    EUR: '€',
+    ILS: '₪',
+    USD: '$',
+    UAH: '₴',
+    BYN: 'Br',
+    KZT: '₸',
+    TRY: '₺',
+    GEL: '₾',
+    UZS: 'сум',
+  };
+  return map[code] || code || '₽';
 }
 
 function Toggle({ checked, onChange, disabled }) {
@@ -163,6 +179,11 @@ export default function BonusSettings({ onNavigate }) {
     queryFn: getMasterBonusSettings,
     staleTime: 30_000,
   });
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (data && !localSettings) {
@@ -196,6 +217,8 @@ export default function BonusSettings({ onNavigate }) {
   }
 
   const disabled = !localSettings.bonus_enabled;
+  const currencySymbol = getCurrencySymbol(masterData?.currency);
+  const currencyUnit = ` ${currencySymbol}`;
   const hasWelcomeTemplate = Boolean((localSettings.welcome_message || '').trim() || localSettings.welcome_photo_url);
   const hasBirthdayTemplate = Boolean((localSettings.birthday_message || '').trim() || localSettings.birthday_photo_url);
 
@@ -248,16 +271,16 @@ export default function BonusSettings({ onNavigate }) {
         <NumRow
           label="Приветственный бонус"
           value={localSettings.bonus_welcome}
-          unit=" ₽"
-          hint={localSettings.bonus_welcome > 0 ? `При первом визите: ${localSettings.bonus_welcome} ₽` : '0 = выключено'}
+          unit={currencyUnit}
+          hint={localSettings.bonus_welcome > 0 ? `При первом визите: ${localSettings.bonus_welcome}${currencyUnit}` : '0 = выключено'}
           onChange={(v) => update('bonus_welcome', v)}
           disabled={disabled}
         />
         <NumRow
           label="Бонус на день рождения"
           value={localSettings.bonus_birthday}
-          unit=" ₽"
-          hint={localSettings.bonus_birthday > 0 ? `В день рождения: ${localSettings.bonus_birthday} ₽` : '0 = выключено'}
+          unit={currencyUnit}
+          hint={localSettings.bonus_birthday > 0 ? `В день рождения: ${localSettings.bonus_birthday}${currencyUnit}` : '0 = выключено'}
           onChange={(v) => update('bonus_birthday', v)}
           disabled={disabled}
           isLast

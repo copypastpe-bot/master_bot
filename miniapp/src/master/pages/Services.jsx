@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  getMasterMe,
   getMasterServicesAll,
   createMasterService,
   updateMasterService,
@@ -60,7 +61,27 @@ function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
 }
 
-function ServiceSheet({ initial, onClose, onSave, onArchive, loading }) {
+function getCurrencySymbol(code) {
+  const map = {
+    RUB: '₽',
+    EUR: '€',
+    ILS: '₪',
+    USD: '$',
+    UAH: '₴',
+    BYN: 'Br',
+    KZT: '₸',
+    TRY: '₺',
+    GEL: '₾',
+    UZS: 'сум',
+  };
+  return map[code] || code || '₽';
+}
+
+function formatPrice(value, currencySymbol) {
+  return `${(value || 0).toLocaleString('ru-RU')} ${currencySymbol}`;
+}
+
+function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySymbol }) {
   const isNew = !initial;
   const [name, setName] = useState(initial?.name || '');
   const [price, setPrice] = useState(String(initial?.price || ''));
@@ -96,12 +117,12 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading }) {
           className="enterprise-sheet-input"
         />
 
-        <label className="enterprise-services-sheet-label">Цена, ₽</label>
+        <label className="enterprise-services-sheet-label">Цена, {currencySymbol}</label>
         <input
           type="number"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="3000"
+          placeholder={`3000 ${currencySymbol}`}
           className="enterprise-sheet-input"
         />
 
@@ -151,6 +172,11 @@ export default function Services() {
     queryKey: ['master-services-all'],
     queryFn: getMasterServicesAll,
     staleTime: 30_000,
+  });
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 60_000,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['master-services-all'] });
@@ -210,6 +236,7 @@ export default function Services() {
 
   const active = data?.active || [];
   const archived = data?.archived || [];
+  const currencySymbol = getCurrencySymbol(masterData?.currency);
 
   const handleSave = (serviceData) => {
     if (sheet?.service) {
@@ -285,7 +312,7 @@ export default function Services() {
               <span className="enterprise-services-name">{service.name}</span>
               <span className="enterprise-services-desc">{service.description || 'Без описания'}</span>
             </span>
-            <span className="enterprise-cell-value">{(service.price || 0).toLocaleString('ru-RU')} ₽</span>
+            <span className="enterprise-cell-value">{formatPrice(service.price, currencySymbol)}</span>
             <span className="enterprise-cell-chevron"><ChevronIcon /></span>
           </button>
         ))}
@@ -300,7 +327,7 @@ export default function Services() {
               <span className="enterprise-cell-icon"><ToolIcon /></span>
               <div className="enterprise-services-label">
                 <div className="enterprise-services-name">{service.name}</div>
-                <div className="enterprise-services-desc">{(service.price || 0).toLocaleString('ru-RU')} ₽</div>
+                <div className="enterprise-services-desc">{formatPrice(service.price, currencySymbol)}</div>
               </div>
             </div>
             <button
@@ -325,6 +352,7 @@ export default function Services() {
           onSave={handleSave}
           onArchive={() => sheet.service && archiveMutation.mutate(sheet.service.id)}
           loading={mutationLoading}
+          currencySymbol={currencySymbol}
         />
       )}
     </div>

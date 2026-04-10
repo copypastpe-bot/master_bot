@@ -430,6 +430,8 @@ body.typeui-enterprise-body .enterprise-bonus-switch-subtitle {
 body.typeui-enterprise-body .enterprise-bonus-toggle {
   width: 50px;
   height: 30px;
+  min-height: 30px;
+  padding: 0;
   border: 1px solid var(--tg-enterprise-border);
   border-radius: 999px;
   background: var(--tg-secondary-bg);
