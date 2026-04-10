@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { registerMaster, createMasterClient, createMasterOrder, updateMasterProfile } from '../../api/client';
+import { registerMaster, updateMasterProfile } from '../../api/client';
 import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
@@ -47,57 +47,6 @@ const NICHES = [
   'Другое',
 ];
 
-// ─── Date/Time helpers ───────────────────────────────────────────────────────
-
-function formatDateDisplay(iso, locale, tr) {
-  if (!iso) return tr('Выберите дату', 'Pick date');
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function DatePickerField({ label, value, onChange }) {
-  const { tr, locale } = useI18n();
-  return (
-    <div className="onb-field-group onb-field-flex">
-      {label && <label className="onb-label">{label}</label>}
-      <div className="onb-picker-wrap">
-        <div className="onb-input onb-picker-display">{formatDateDisplay(value, locale, tr)}</div>
-        <input
-          type="date"
-          value={value}
-          onChange={onChange}
-          className="onb-native-picker"
-        />
-      </div>
-    </div>
-  );
-}
-
-function TimePickerField({ label, value, onChange }) {
-  return (
-    <div className="onb-field-group onb-field-flex">
-      {label && <label className="onb-label">{label}</label>}
-      <div className="onb-picker-wrap">
-        <div className="onb-input onb-picker-display">{value || '00:00'}</div>
-        <input
-          type="time"
-          value={value}
-          onChange={onChange}
-          className="onb-native-picker"
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Utils ───────────────────────────────────────────────────────────────────
-
-function tomorrowDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MasterOnboarding({ onRegistered, referralCode = null }) {
@@ -111,12 +60,16 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
   const [selectedNiches, setSelectedNiches] = useState([]);
   const [customNiche, setCustomNiche] = useState('');
 
-  // Step 3
-  const [clientName, setClientName] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [clientDate, setClientDate] = useState(tomorrowDate());
-  const [clientTime, setClientTime] = useState('10:00');
-  const [clientAdded, setClientAdded] = useState(false);
+  // Step 3 — profile setup
+  const [phone, setPhone] = useState('');
+  const [telegram, setTelegram] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [website, setWebsite] = useState('');
+  const [contactAddress, setContactAddress] = useState('');
+  const [workMode, setWorkMode] = useState('travel');
+  const [workHours, setWorkHours] = useState('');
+  const [workAddressDefault, setWorkAddressDefault] = useState('');
+  const [profileSaved, setProfileSaved] = useState(false);
 
   // Shared
   const [loading, setLoading] = useState(false);
@@ -164,38 +117,35 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
     }
   };
 
-  // ── Step 3 → add first client
-  const handleAddClient = async () => {
+  // ── Step 3 → save profile setup
+  const handleSaveProfile = async () => {
     setLoading(true);
     setError('');
     try {
-      const client = await createMasterClient({ name: clientName.trim(), phone: clientPhone.trim() });
-      await createMasterOrder({
-        client_id: client.id,
-        scheduled_date: clientDate,
-        scheduled_time: clientTime,
-        services: [],
+      await updateMasterProfile({
+        phone: phone.trim(),
+        telegram: telegram.trim(),
+        instagram: instagram.trim(),
+        website: website.trim(),
+        contact_address: contactAddress.trim(),
+        work_mode: workMode,
+        work_hours: workHours.trim(),
+        work_address_default: workMode === 'home' ? workAddressDefault.trim() : '',
       });
-      setClientAdded(true);
+      setProfileSaved(true);
       setStep(4);
     } catch (err) {
-      setError(err?.response?.data?.detail || tr('Не удалось добавить клиента.', 'Failed to add client.'));
+      const raw = err?.response?.data?.detail;
+      const msg = typeof raw === 'string' ? raw : tr('Не удалось сохранить профиль.', 'Failed to save profile.');
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSkipClient = async () => {
-    setLoading(true);
-    try {
-      await updateMasterProfile({ onboarding_skipped_first_client: true });
-    } catch (_) {
-      // non-critical
-    } finally {
-      setLoading(false);
-      setClientAdded(false);
-      setStep(4);
-    }
+  const handleSkipProfileSetup = () => {
+    setProfileSaved(false);
+    setStep(4);
   };
 
   // ── Final screen → Telegram MainButton
@@ -210,7 +160,7 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
 
   const step2Ready = selectedNiches.length > 0 &&
     (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
-  const step3Ready = clientName.trim() && clientPhone.trim() && clientDate && clientTime;
+  const step3Ready = workMode !== 'home' || Boolean(workAddressDefault.trim());
   const progressStep = step === 4 ? 3 : step;
 
   return (
@@ -321,19 +271,23 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
         </section>
       )}
 
-      {/* ── Step 3: First Client ───────────────────────── */}
+      {/* ── Step 3: Profile Setup ───────────────────────── */}
       {step === 3 && (
         <section className="onb-card">
           <button className="onb-back-btn" type="button" onClick={() => { setError(''); setStep(2); }}>
             <ChevronLeftIcon />
             <span>{tr('Назад', 'Back')}</span>
           </button>
-          <h1 className="onb-title">{tr('Добавим первого клиента?', 'Add your first client?')}</h1>
-          <p className="onb-subtitle">{tr('Создай свою первую запись сейчас или позже', 'Create your first booking now or later')}</p>
+          <h1 className="onb-title">{tr('Заполним профиль', "Let's set up your profile")}</h1>
+          <p className="onb-subtitle">{tr('Клиенты увидят ваши контакты и формат работы', 'Clients will see your contacts and work mode')}</p>
 
           {[
-            { label: tr('Имя клиента', 'Client name'), type: 'text', value: clientName, set: setClientName, placeholder: tr('Например: Мария', 'For example: Maria') },
-            { label: tr('Телефон', 'Phone'), type: 'tel', value: clientPhone, set: setClientPhone, placeholder: '+7 999 123 45 67' },
+            { label: tr('Телефон', 'Phone'), type: 'tel', value: phone, set: setPhone, placeholder: '+7 999 123 45 67' },
+            { label: 'Telegram', type: 'text', value: telegram, set: setTelegram, placeholder: '@username или t.me/username' },
+            { label: 'Instagram', type: 'text', value: instagram, set: setInstagram, placeholder: '@username или instagram.com/username' },
+            { label: tr('Сайт', 'Website'), type: 'text', value: website, set: setWebsite, placeholder: 'example.com' },
+            { label: tr('Адрес для связи (опционально)', 'Contact address (optional)'), type: 'text', value: contactAddress, set: setContactAddress, placeholder: tr('Например: Белград, центр', 'For example: Belgrade, city center') },
+            { label: tr('График работы', 'Work hours'), type: 'text', value: workHours, set: setWorkHours, placeholder: tr('Пн–Пт 10:00–20:00', 'Mon-Fri 10:00-20:00') },
           ].map(({ label, type, value, set, placeholder }) => (
             <div key={label} className="onb-field-group">
               <label className="onb-label">{label}</label>
@@ -341,18 +295,40 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             </div>
           ))}
 
-          <div className="onb-row">
-            <DatePickerField
-              label={tr('Дата записи', 'Booking date')}
-              value={clientDate}
-              onChange={(e) => setClientDate(e.target.value)}
-            />
-            <TimePickerField
-              label={tr('Время', 'Time')}
-              value={clientTime}
-              onChange={(e) => setClientTime(e.target.value)}
-            />
+          <div className="onb-field-group">
+            <label className="onb-label">{tr('Где вы работаете', 'Where do you work')}</label>
+            <div className="onb-chip-grid">
+              <button
+                type="button"
+                className={`onb-chip${workMode === 'home' ? ' is-selected' : ''}`}
+                onClick={() => setWorkMode('home')}
+                disabled={loading}
+              >
+                {tr('Дома / в салоне', 'At home / in salon')}
+              </button>
+              <button
+                type="button"
+                className={`onb-chip${workMode === 'travel' ? ' is-selected' : ''}`}
+                onClick={() => setWorkMode('travel')}
+                disabled={loading}
+              >
+                {tr('У клиента', 'On-site')}
+              </button>
+            </div>
           </div>
+
+          {workMode === 'home' && (
+            <div className="onb-field-group">
+              <label className="onb-label">{tr('Адрес места работы', 'Workplace address')}</label>
+              <input
+                className="onb-input"
+                type="text"
+                placeholder={tr('Введите адрес', 'Enter address')}
+                value={workAddressDefault}
+                onChange={(e) => setWorkAddressDefault(e.target.value)}
+              />
+            </div>
+          )}
 
           {error && <div className="onb-error">{error}</div>}
 
@@ -360,12 +336,12 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             className="onb-btn-primary"
             disabled={!step3Ready || loading}
             type="button"
-            onClick={handleAddClient}
+            onClick={handleSaveProfile}
           >
-            {loading ? tr('Сохраняем...', 'Saving...') : tr('Добавить и продолжить', 'Add and continue')}
+            {loading ? tr('Сохраняем...', 'Saving...') : tr('Сохранить и продолжить', 'Save and continue')}
           </button>
-          <button className="onb-btn-secondary" disabled={loading} type="button" onClick={handleSkipClient}>
-            {tr('Пропустить', 'Skip')}
+          <button className="onb-btn-secondary" disabled={loading} type="button" onClick={handleSkipProfileSetup}>
+            {tr('Пропустить пока', 'Skip for now')}
           </button>
         </section>
       )}
@@ -380,9 +356,9 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
               {tr('Всё готово', 'All set')}, {name}!
           </div>
           <div className="onb-final-subtitle">
-            {clientAdded
-              ? tr('Остались вопросы? Пиши нам @pastushenko12', 'Any questions? Message us @pastushenko12')
-              : tr('Добавь первого клиента — это займёт 30 секунд', 'Add your first client - it takes 30 seconds')}
+            {profileSaved
+              ? tr('Профиль можно менять в разделе «Ещё → Профиль мастера»', 'You can edit your profile in “More → Master profile”')
+              : tr('Заполнить профиль можно позже в разделе «Ещё → Профиль мастера»', 'You can fill out your profile later in “More → Master profile”')}
           </div>
 
           {!WebApp?.MainButton && (
