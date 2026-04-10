@@ -67,7 +67,6 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
   const [website, setWebsite] = useState('');
   const [contactAddress, setContactAddress] = useState('');
   const [workMode, setWorkMode] = useState('travel');
-  const [workHours, setWorkHours] = useState('');
   const [workAddressDefault, setWorkAddressDefault] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -129,7 +128,6 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
         website: website.trim(),
         contact_address: contactAddress.trim(),
         work_mode: workMode,
-        work_hours: workHours.trim(),
         work_address_default: workMode === 'home' ? workAddressDefault.trim() : '',
       });
       setProfileSaved(true);
@@ -287,7 +285,6 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
             { label: 'Instagram', type: 'text', value: instagram, set: setInstagram, placeholder: '@username или instagram.com/username' },
             { label: tr('Сайт', 'Website'), type: 'text', value: website, set: setWebsite, placeholder: 'example.com' },
             { label: tr('Адрес для связи (опционально)', 'Contact address (optional)'), type: 'text', value: contactAddress, set: setContactAddress, placeholder: tr('Например: Белград, центр', 'For example: Belgrade, city center') },
-            { label: tr('График работы', 'Work hours'), type: 'text', value: workHours, set: setWorkHours, placeholder: tr('Пн–Пт 10:00–20:00', 'Mon-Fri 10:00-20:00') },
           ].map(({ label, type, value, set, placeholder }) => (
             <div key={label} className="onb-field-group">
               <label className="onb-label">{label}</label>

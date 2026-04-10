@@ -101,13 +101,6 @@ const LinkIcon = () => (
   </svg>
 );
 
-const ClockIcon = () => (
-  <svg {...iconProps}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M12 7v6l4 2" />
-  </svg>
-);
-
 const HomeIcon = () => (
   <svg {...iconProps}>
     <path d="M3 10.5 12 3l9 7.5" />
@@ -440,13 +433,6 @@ export default function Profile() {
           value={workModeLabel}
           fallbackValue={t('common.notSpecified')}
           onClick={() => setPicker('work_mode')}
-        />
-        <Cell
-          icon={<ClockIcon />}
-          label={t('profile.fields.workHours')}
-          value={master?.work_hours}
-          fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'work_hours', title: t('profile.fields.workHours'), value: master?.work_hours || '', placeholder: t('profile.placeholders.workHours') })}
         />
         {isHomeWorkMode && (
           <Cell
