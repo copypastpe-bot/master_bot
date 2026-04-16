@@ -12,17 +12,17 @@ confidence: high
 
 ## Current State
 
-The project is in final testing and pilot rollout. RU access path for Mini App is now configured through `ru.app.crmfit.ru` + `ru.api.crmfit.ru` on the RU server, with CORS fixed on NL nginx for both `app.crmfit.ru` and `ru.app.crmfit.ru`. Bot containers on NL were restarted with `MINIAPP_URL=https://ru.app.crmfit.ru?v=3`.
+The project is in final testing and pilot rollout. NL production (`app.crmfit.ru`) is currently confirmed working from both Serbia and Russian user IPs in nginx access logs. RU proxy route (`ru.app.crmfit.ru` + `ru.api.crmfit.ru`) remains a separate test contour with unstable behavior on some networks.
 
 ## Active Focus
 
-Validate stable Mini App opening from Russian networks and continue pilot testing with 5 real users without destabilizing bot/API/payment flows.
+Continue pilot testing on `app.crmfit.ru` and monitor real-user accessibility from Russian mobile networks without destabilizing bot/API/payment flows.
 
 ## Known Risks
 
-- RU route depends on two-server chain (RU proxy -> NL API), so nginx/CORS regressions can break browser requests quickly.
-- DNS behavior for `ru.*` should be periodically checked from multiple networks, not only from VPS.
-- Future agents must keep deploy changes small and verify both `app` and `ru.app` preflight responses.
+- RU proxy route depends on a two-server chain (RU proxy -> NL API), so edge/network-level filtering can break access before requests reach nginx.
+- Some user-facing blocks can occur outside application logs (provider/WAF/routing layers), so diagnostics must include access-log presence checks by source IP and timestamp.
+- Future agents must keep deploy changes small and verify both browser page load and API calls from real device sessions.
 
 ## Source Of Truth
 

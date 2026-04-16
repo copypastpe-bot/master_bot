@@ -32,6 +32,38 @@ scope: Initialized standardized agent-facing project files for future sessions.
 - `TODO.md`
 
 ---
+### 2026-04-16 17:22 - Day wrap-up after RU accessibility diagnostics
+
+status: completed
+actor: codex
+scope: Performed read-only production log diagnostics for RU/Serbia availability reports and aligned session handoff files.
+
+#### Changes
+
+- Collected nginx access/error log evidence from NL and RU servers without applying config changes.
+- Correlated user-reported IP (`78.30.134.93`) with successful `app.crmfit.ru` page + API requests in NL access logs.
+- Confirmed absence of matching request traces on RU proxy logs during the same diagnostic window.
+- Updated `AGENT_STATE.md` to reflect current operating path and risks.
+
+#### Verified
+
+- `app.crmfit.ru` handled repeated requests from RU user IP with `200/204` responses.
+- No critical runtime errors were observed in NL nginx error log during test window.
+- RU-side logs did not capture the reported blocked-flow requests.
+
+#### Next Steps
+
+- Keep active testing on `app.crmfit.ru` as primary user path.
+- Continue collecting exact timestamps and source IPs for any failed sessions to isolate network-layer drops.
+
+#### References
+
+- `AGENT_STATE.md`
+- `SESSION_LOG.md`
+- `/var/log/nginx/access.log` (NL, runtime)
+- `/var/log/nginx/error.log` (NL/RU, runtime)
+
+---
 ### 2026-04-16 11:58 - RU Mini App route repaired and switched in production
 
 status: completed
