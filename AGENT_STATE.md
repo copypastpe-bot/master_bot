@@ -1,8 +1,8 @@
 # AGENT_STATE
 
 project: master-bot
-last_updated: 2026-04-13
-updated_by: agent1
+last_updated: 2026-04-16
+updated_by: codex
 status: active
 confidence: high
 
@@ -12,17 +12,17 @@ confidence: high
 
 ## Current State
 
-The project is in final testing and debugging. The main operational surface is the Mini App home screen with upcoming orders and dashboard data. The repository contains a dual-bot Python application (`master_bot` and `client_bot`), API server code under `src/api/`, SQL migrations, and a front-end Mini App under `miniapp/`. Registration onboarding for masters, English language support, additional timezones, and currencies were recently added.
+The project is in final testing and pilot rollout. RU access path for Mini App is now configured through `ru.app.crmfit.ru` + `ru.api.crmfit.ru` on the RU server, with CORS fixed on NL nginx for both `app.crmfit.ru` and `ru.app.crmfit.ru`. Bot containers on NL were restarted with `MINIAPP_URL=https://ru.app.crmfit.ru?v=3`.
 
 ## Active Focus
 
-Find 5 real users and validate the system in day-to-day usage without destabilizing the existing bot, API, payment, or Mini App flows.
+Validate stable Mini App opening from Russian networks and continue pilot testing with 5 real users without destabilizing bot/API/payment flows.
 
 ## Known Risks
 
-- No active blocker is currently known, but small bugs may still surface during final testing.
-- Production details and deployment specifics should still be re-checked in `CLAUDE.md` and architecture docs before environment-sensitive work.
-- Future agents must work in narrow scope, in small changes, and avoid touching unrelated files.
+- RU route depends on two-server chain (RU proxy -> NL API), so nginx/CORS regressions can break browser requests quickly.
+- DNS behavior for `ru.*` should be periodically checked from multiple networks, not only from VPS.
+- Future agents must keep deploy changes small and verify both `app` and `ru.app` preflight responses.
 
 ## Source Of Truth
 

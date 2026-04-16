@@ -32,6 +32,39 @@ scope: Initialized standardized agent-facing project files for future sessions.
 - `TODO.md`
 
 ---
+### 2026-04-16 11:58 - RU Mini App route repaired and switched in production
+
+status: completed
+actor: codex
+scope: Restored working RU access path for Mini App by redeploying RU frontend, fixing CORS at NL nginx, and switching production `MINIAPP_URL` to RU domain.
+
+#### Changes
+
+- Rebuilt Mini App in RU mode (`--mode ru`) and deployed static files to RU server `/var/www/ru.app.crmfit.ru/`.
+- Updated NL nginx config (`nginx/miniapp.conf`) to allow dynamic CORS for both `https://app.crmfit.ru` and `https://ru.app.crmfit.ru`.
+- Applied updated nginx config on NL host and reloaded nginx.
+- Updated `/opt/master_bot/.env` on NL host: `MINIAPP_URL=https://ru.app.crmfit.ru?v=3`.
+- Rebuilt and restarted `master_bot` and `client_bot` containers on NL host.
+
+#### Verified
+
+- `https://ru.app.crmfit.ru` returns `200`.
+- `https://ru.api.crmfit.ru/health` returns `{"status":"ok"}`.
+- Preflight for `Origin: https://ru.app.crmfit.ru` returns `204` with `Access-Control-Allow-Origin: https://ru.app.crmfit.ru`.
+- Container env confirms `MINIAPP_URL=https://ru.app.crmfit.ru?v=3` for both bots.
+
+#### Next Steps
+
+- Check Mini App open flow from real RU mobile networks inside Telegram.
+- If needed, move from proxy chain to full RU API hosting as a separate stabilization task.
+
+#### References
+
+- `nginx/miniapp.conf`
+- `miniapp/.env.ru`
+- `docs/plans/2026-04-09-ru-proxy.md`
+
+---
 ### 2026-04-13 12:59 - Replaced bootstrap notes with user-confirmed project state
 
 status: completed
