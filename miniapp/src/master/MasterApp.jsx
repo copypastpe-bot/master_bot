@@ -21,6 +21,7 @@ import Reports from './pages/Reports';
 import Requests from './pages/Requests';
 import Subscription from './pages/Subscription';
 import { useI18n } from '../i18n';
+import AppHeader from './components/AppHeader';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -110,12 +111,35 @@ export default function MasterApp() {
   // ---------------------------------------------------------------------------
   const current = navStack[navStack.length - 1];
 
+  const titleMap = {
+    order:         t('masterApp.titles.order'),
+    create_order:  t('masterApp.titles.createOrder'),
+    clients:       t('masterApp.titles.clients'),
+    client:        t('masterApp.titles.client'),
+    profile:       t('masterApp.titles.profile'),
+    bonus:         t('masterApp.titles.bonus'),
+    bonus_message: current?.kind === 'birthday'
+                     ? t('masterApp.titles.bonusBirthday')
+                     : t('masterApp.titles.bonusWelcome'),
+    services:      t('masterApp.titles.services'),
+    promos:        t('masterApp.titles.promos'),
+    promo_new:     t('masterApp.titles.promoNew'),
+    promo:         t('masterApp.titles.promo'),
+    reports:       t('masterApp.titles.reports'),
+    requests:      t('masterApp.titles.requests'),
+    subscription:  t('masterApp.titles.subscription'),
+    broadcast:     t('masterApp.titles.broadcast'),
+  };
+
+  const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : 'Master_bot';
+
   if (current) {
     const { type, id, ...rest } = current;
 
     if (type === 'order') {
       return (
         <div className="master-shell">
+          <AppHeader title={currentTitle} />
           <OrderDetail
             orderId={id}
             onBack={handleBack}
@@ -129,6 +153,7 @@ export default function MasterApp() {
     if (type === 'create_order') {
       return (
         <div className="master-shell">
+          <AppHeader title={currentTitle} />
           <OrderCreate params={current} onBack={handleBack} onCreated={handleOrderCreated} />
         </div>
       );
@@ -137,7 +162,7 @@ export default function MasterApp() {
     if (type === 'clients') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.clients')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <ClientsList onNavigate={(t, p) => push(t, p)} />
         </div>
       );
@@ -146,7 +171,7 @@ export default function MasterApp() {
     if (type === 'client') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.client')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <ClientCard
             clientId={id}
             onBack={handleBack}
@@ -159,7 +184,7 @@ export default function MasterApp() {
     if (type === 'profile') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.profile')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <Profile />
         </div>
       );
@@ -168,19 +193,16 @@ export default function MasterApp() {
     if (type === 'bonus') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.bonus')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <BonusSettings onNavigate={(t, p) => push(t, p)} />
         </div>
       );
     }
 
     if (type === 'bonus_message') {
-      const title = current.kind === 'birthday'
-        ? t('masterApp.titles.bonusBirthday')
-        : t('masterApp.titles.bonusWelcome');
       return (
         <div className="master-shell">
-          <PageHeader title={title} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <BonusMessageEditor kind={current.kind || 'welcome'} />
         </div>
       );
@@ -189,7 +211,7 @@ export default function MasterApp() {
     if (type === 'services') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.services')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <Services />
         </div>
       );
@@ -198,7 +220,7 @@ export default function MasterApp() {
     if (type === 'promos') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.promos')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <PromosList onNavigate={(t, p) => push(t, p)} />
         </div>
       );
@@ -207,7 +229,7 @@ export default function MasterApp() {
     if (type === 'promo_new') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.promoNew')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <PromoCreate onBack={handleBack} onCreated={() => { handleBack(); }} />
         </div>
       );
@@ -221,7 +243,7 @@ export default function MasterApp() {
       if (!promo) {
         return (
           <div className="master-shell">
-            <PageHeader title={t('masterApp.titles.promo')} onBack={handleBack} />
+            <AppHeader title={currentTitle} />
             <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
               {t('masterApp.promoNotFound')}
             </div>
@@ -230,7 +252,7 @@ export default function MasterApp() {
       }
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.promo')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <PromoCard promo={promo} onBack={handleBack} />
         </div>
       );
@@ -239,7 +261,7 @@ export default function MasterApp() {
     if (type === 'reports') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.reports')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <Reports initialPeriod={current.period || 'month'} />
         </div>
       );
@@ -248,6 +270,7 @@ export default function MasterApp() {
     if (type === 'requests') {
       return (
         <div className="master-shell">
+          <AppHeader title={currentTitle} />
           <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />
         </div>
       );
@@ -256,7 +279,7 @@ export default function MasterApp() {
     if (type === 'subscription') {
       return (
         <div className="master-shell">
-          <PageHeader title={t('masterApp.titles.subscription')} onBack={handleBack} />
+          <AppHeader title={currentTitle} />
           <Subscription />
         </div>
       );
@@ -265,6 +288,7 @@ export default function MasterApp() {
     if (type === 'broadcast') {
       return (
         <div className="master-shell">
+          <AppHeader title={currentTitle} />
           <Broadcast />
         </div>
       );
@@ -273,6 +297,7 @@ export default function MasterApp() {
     // Fallback
     return (
       <div className="master-shell" style={{ padding: '24px 16px', textAlign: 'center' }}>
+        <AppHeader title={currentTitle} />
         <p style={{ color: 'var(--tg-hint)', marginTop: 48 }}>{t('masterApp.inDevelopment')}</p>
       </div>
     );
@@ -298,30 +323,9 @@ export default function MasterApp() {
 
   return (
     <div className="master-shell">
+      <AppHeader title={currentTitle} />
       {renderTab()}
       <MasterNav active={tab} onNavigate={switchTab} requestsBadge={requestsBadge} />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Simple page header with back button (shown when WebApp BackButton unavailable)
-// ---------------------------------------------------------------------------
-function PageHeader({ title, onBack }) {
-  const hasBackButton = typeof WebApp?.BackButton?.show === 'function';
-  if (hasBackButton) {
-    // Telegram BackButton handles navigation — show just the title
-    return (
-      <div className="master-page-header">
-        {title}
-      </div>
-    );
-  }
-  // Fallback: show manual back button
-  return (
-    <div className="master-page-header master-page-header-back">
-      <button className="master-page-back-btn" onClick={onBack}>‹</button>
-      <div className="master-page-header-title">{title}</div>
     </div>
   );
 }
