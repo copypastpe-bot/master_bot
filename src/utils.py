@@ -97,6 +97,28 @@ def render_bonus_message(
     return text
 
 
+DEFAULT_FEEDBACK_MESSAGE = (
+    "Спасибо, что обратились к {master_name}!\n"
+    "Как прошёл визит? Оцените от 1 до 5:"
+)
+
+DEFAULT_FEEDBACK_REPLY_5 = "Спасибо за высокую оценку! Будем рады видеть вас снова 🙏"
+
+
+def render_feedback_message(template: Optional[str], default: str, master_name: str, services: str) -> str:
+    """Render feedback message template with variable substitution."""
+    text = template if template else default
+    replacements = {
+        "{master_name}": str(master_name),
+        "{мастер}": str(master_name),
+        "{service}": str(services),
+        "{услуга}": str(services),
+    }
+    for key, value in replacements.items():
+        text = text.replace(key, value)
+    return text
+
+
 # Часовые пояса для выбора
 TIMEZONES = [
     ("Europe/Kaliningrad", "Калининград", "UTC+2"),

@@ -40,6 +40,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "birthday_message", "birthday_photo_id", "home_message_id", "currency",
     "onboarding_skipped_first_client", "onboarding_banner_shown",
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
+    "feedback_delay_hours", "feedback_message", "feedback_reply_5", "review_buttons",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -60,6 +61,7 @@ ALLOWED_ORDER_FIELDS = frozenset({
     "address", "scheduled_at", "status", "payment_type", "amount_total",
     "bonus_accrued", "bonus_spent", "cancel_reason", "gc_event_id", "done_at", "note",
     "reminder_24h_sent", "reminder_1h_sent", "client_confirmed",
+    "feedback_sent", "rating",
 })
 
 ALLOWED_NOTIFICATION_FIELDS = frozenset({
@@ -164,6 +166,10 @@ def _parse_master_row(row) -> Master:
         referral_code=row["referral_code"] if "referral_code" in row.keys() else None,
         referred_by=row["referred_by"] if "referred_by" in row.keys() else None,
         reminder_sent_at=_parse_db_datetime(row["reminder_sent_at"]) if "reminder_sent_at" in row.keys() else None,
+        feedback_delay_hours=row["feedback_delay_hours"] if "feedback_delay_hours" in row.keys() and row["feedback_delay_hours"] is not None else 3,
+        feedback_message=row["feedback_message"] if "feedback_message" in row.keys() else None,
+        feedback_reply_5=row["feedback_reply_5"] if "feedback_reply_5" in row.keys() else None,
+        review_buttons=row["review_buttons"] if "review_buttons" in row.keys() else None,
         created_at=_parse_db_datetime(row["created_at"]),
     )
 
@@ -1497,6 +1503,32 @@ async def get_order_by_id(order_id: int, master_id: int) -> Optional[dict]:
         await conn.close()
 
 
+async def get_order_by_id_for_feedback(order_id: int) -> Optional[dict]:
+    """Get order details needed for post-order feedback handling."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.id as order_id,
+                c.name as client_name,
+                m.tg_id as master_tg_id,
+                m.feedback_reply_5,
+                m.review_buttons,
+                m.name as master_name
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            JOIN masters m ON o.master_id = m.id
+            WHERE o.id = ?
+            """,
+            (order_id,),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
 async def get_active_dates(master_id: int, year: int, month: int) -> list[date]:
     """Get dates with orders for a given month."""
     conn = await get_connection()
@@ -2281,6 +2313,43 @@ async def get_orders_for_reminder_1h() -> list[dict]:
         await conn.close()
 
 
+async def get_orders_for_feedback() -> list[dict]:
+    """Get completed orders that need a feedback request."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.id as order_id,
+                o.done_at,
+                c.tg_id as client_tg_id,
+                c.name as client_name,
+                m.id as master_id,
+                m.tg_id as master_tg_id,
+                m.name as master_name,
+                COALESCE(m.feedback_delay_hours, 3) as feedback_delay_hours,
+                m.feedback_message,
+                m.feedback_reply_5,
+                m.review_buttons,
+                GROUP_CONCAT(oi.name, ', ') as services
+            FROM orders o
+            JOIN clients c ON o.client_id = c.id
+            JOIN masters m ON o.master_id = m.id
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.status = 'done'
+              AND o.feedback_sent = 0
+              AND c.tg_id IS NOT NULL
+              AND o.done_at IS NOT NULL
+              AND (julianday('now') - julianday(o.done_at)) * 24 >= COALESCE(m.feedback_delay_hours, 3)
+            GROUP BY o.id
+            """
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
 async def get_clients_with_birthday_today() -> list[dict]:
     """Get clients with birthday today who should receive bonus.
 
@@ -2368,6 +2437,32 @@ async def mark_reminder_sent(order_id: int, reminder_type: str) -> None:
         await conn.execute(
             f"UPDATE orders SET {field} = 1 WHERE id = ?",
             (order_id,)
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def mark_feedback_sent(order_id: int) -> None:
+    """Mark that post-order feedback request was sent."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET feedback_sent = 1 WHERE id = ?",
+            (order_id,),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def save_order_rating(order_id: int, rating: int) -> None:
+    """Save client rating (1-5) for a completed order."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "UPDATE orders SET rating = ? WHERE id = ?",
+            (rating, order_id),
         )
         await conn.commit()
     finally:

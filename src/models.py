@@ -44,6 +44,10 @@ class Master:
     referral_code: Optional[str] = None
     referred_by: Optional[int] = None
     reminder_sent_at: Optional[datetime] = None
+    feedback_delay_hours: int = 3
+    feedback_message: Optional[str] = None
+    feedback_reply_5: Optional[str] = None
+    review_buttons: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -107,6 +111,8 @@ class Order:
     gc_event_id: Optional[str] = None
     created_at: Optional[datetime] = None
     done_at: Optional[datetime] = None
+    feedback_sent: bool = False
+    rating: Optional[int] = None
 
 
 @dataclass
