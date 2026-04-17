@@ -23,7 +23,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
 from typing import Callable, Dict, Any, Awaitable
 
-from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL, MINIAPP_URL
+from src.config import CLIENT_BOT_TOKEN, MASTER_BOT_TOKEN, LOG_LEVEL, CLIENT_MINIAPP_URL
 from src.states import (
     ClientRegistration, ClientDeletion, OrderRequestFSM, QuestionFSM, MediaFSM,
     ClientRescheduleOrder, ClientCancelOrder,
@@ -2318,7 +2318,7 @@ async def main() -> None:
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(
             text="📱 Открыть",
-            web_app=WebAppInfo(url=MINIAPP_URL)
+            web_app=WebAppInfo(url=CLIENT_MINIAPP_URL)
         )
     )
 

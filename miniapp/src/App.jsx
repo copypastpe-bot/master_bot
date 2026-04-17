@@ -85,18 +85,37 @@ function extractReferralCode(startParamRaw) {
   return null;
 }
 
+function getForcedRole() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const app = (params.get('app') || params.get('role') || '').trim().toLowerCase();
+    if (app === 'client' || app === 'master') return app;
+  } catch {
+    // ignore invalid location state
+  }
+  return null;
+}
+
 export default function App() {
   const { t } = useI18n();
   const [role, setRole] = useState(null); // null = loading
   const [masters, setMasters] = useState(null); // null = not yet loaded
   const [activeMasterId, setActiveMasterIdState] = useState(null);
   const referralCode = extractReferralCode(WebApp?.initDataUnsafe?.start_param);
+  const forcedRole = getForcedRole();
 
   useEffect(() => {
     getAuthRole()
-      .then(data => setRole(data.role))
-      .catch(() => setRole('unknown'));
-  }, []);
+      .then((data) => {
+        const resolvedRole = data?.role || 'unknown';
+        if (resolvedRole === 'unknown' && forcedRole) {
+          setRole(forcedRole);
+          return;
+        }
+        setRole(resolvedRole);
+      })
+      .catch(() => setRole(forcedRole || 'unknown'));
+  }, [forcedRole]);
 
   useEffect(() => {
     if (role !== 'client') return;
@@ -179,6 +198,18 @@ export default function App() {
         activeMasterId={activeMasterId}
         onMasterChange={handleMasterChange}
       />
+    );
+  }
+
+  if (forcedRole === 'client') {
+    return (
+      <div style={{ padding: '24px 16px', textAlign: 'center', marginTop: 60 }}>
+        <p style={{ fontSize: 40, marginBottom: 16 }}>📱</p>
+        <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t('app.noMasters.title')}</p>
+        <p style={{ color: 'var(--tg-hint)', fontSize: 14, lineHeight: 1.5 }}>
+          {t('app.noMasters.subtitle')}
+        </p>
+      </div>
     );
   }
 

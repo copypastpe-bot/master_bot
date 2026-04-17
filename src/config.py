@@ -1,6 +1,7 @@
 """Configuration module - loads environment variables from .env file."""
 
 import os
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -25,7 +26,19 @@ OAUTH_SERVER_PORT: int = int(os.getenv("OAUTH_SERVER_PORT", "8090"))
 
 # Mini App API
 API_PORT: int = int(os.getenv("API_PORT", "8081"))
+def _append_query_param(url: str, key: str, value: str) -> str:
+    """Return URL with an extra query parameter, preserving existing params."""
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query[key] = value
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
 MINIAPP_URL: str = os.getenv("MINIAPP_URL", "https://app.crmfit.ru")
+CLIENT_MINIAPP_URL: str = os.getenv(
+    "CLIENT_MINIAPP_URL",
+    _append_query_param(MINIAPP_URL, "app", "client"),
+)
 
 # Environment (development / production)
 APP_ENV: str = os.getenv("APP_ENV", "production")

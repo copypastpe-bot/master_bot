@@ -6,7 +6,7 @@ from typing import Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 
 from src.utils import TIMEZONES, CURRENCIES
-from src.config import MINIAPP_URL
+from src.config import MINIAPP_URL, CLIENT_MINIAPP_URL
 
 MONTHS_RU = [
     "", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -716,7 +716,7 @@ def home_client_kb(multi_master: bool = False) -> InlineKeyboardMarkup:
         [
             InlineKeyboardButton(
                 text="📱 Открыть приложение",
-                web_app=WebAppInfo(url=MINIAPP_URL)
+                web_app=WebAppInfo(url=CLIENT_MINIAPP_URL)
             )
         ],
     ]
