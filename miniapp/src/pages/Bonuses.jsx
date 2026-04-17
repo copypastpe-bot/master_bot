@@ -6,28 +6,42 @@ import ErrorScreen from '../components/ErrorScreen';
 import { useI18n } from '../i18n';
 
 const BONUS_ICONS = {
-  accrual:  { icon: '+', color: '#4caf50' },
-  spend:    { icon: '−', color: '#f44336' },
+  accrual: { icon: '+', color: '#4caf50' },
+  spend: { icon: '−', color: '#f44336' },
   birthday: { icon: '★', color: '#ffd700' },
-  manual:   { icon: '✎', color: '#2196f3' },
-  promo:    { icon: '◆', color: '#9c27b0' },
+  manual: { icon: '✎', color: '#2196f3' },
+  promo: { icon: '◆', color: '#9c27b0' },
 };
 
 const STATUS_ICONS = {
-  done:      { icon: '✅' },
+  done: { icon: '✅' },
   cancelled: { icon: '❌' },
-  new:       { icon: '📅' },
+  new: { icon: '📅' },
   confirmed: { icon: '📅' },
-  moved:     { icon: '🔄' },
+  moved: { icon: '🔄' },
 };
 
-export default function Bonuses({ onNavigate }) {
+function RefreshButton({ title, onClick }) {
+  return (
+    <button className="client-home-refresh-btn" onClick={onClick} title={title} aria-label={title}>
+      ↻
+    </button>
+  );
+}
+
+export default function Bonuses() {
   const { t, locale } = useI18n();
   const [tab, setTab] = useState('bonuses');
   const qc = useQueryClient();
 
-  const { data: bonuses, isLoading: bLoading, error: bError, refetch: refetchB } = useQuery({ queryKey: ['bonuses'], queryFn: getBonuses });
-  const { data: orders = [], isLoading: oLoading, error: oError, refetch: refetchO } = useQuery({ queryKey: ['orders'], queryFn: getOrders });
+  const { data: bonuses, isLoading: bLoading, error: bError, refetch: refetchB } = useQuery({
+    queryKey: ['bonuses'],
+    queryFn: getBonuses,
+  });
+  const { data: orders = [], isLoading: oLoading, error: oError, refetch: refetchO } = useQuery({
+    queryKey: ['orders'],
+    queryFn: getOrders,
+  });
 
   if (bError) return <ErrorScreen message={bError.message} onRetry={refetchB} />;
   if (oError) return <ErrorScreen message={oError.message} onRetry={refetchO} />;
@@ -35,123 +49,140 @@ export default function Bonuses({ onNavigate }) {
   const log = bonuses?.log || [];
 
   return (
-    <div style={{ padding: '16px 16px 0' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2>{t('bonuses.title')}</h2>
-        <button
-          onClick={() => qc.invalidateQueries()}
-          style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', cursor: 'pointer', fontSize: 20 }}
-        >↻</button>
-      </div>
+    <div className="client-page client-bonuses-page">
+      <header className="client-page-header client-bonuses-header">
+        <div>
+          <h1 className="client-page-title">{t('bonuses.title')}</h1>
+          <p className="client-page-subtitle">{t('bonuses.balance')}</p>
+        </div>
+        <RefreshButton title={t('common.refresh')} onClick={() => qc.invalidateQueries()} />
+      </header>
 
-      {/* Tab switcher */}
-      <div style={{
-        display: 'flex', background: 'var(--tg-surface)',
-        borderRadius: 12, padding: 3, marginBottom: 20,
-      }}>
-        {[['bonuses', t('bonuses.tabs.bonuses')], ['history', t('bonuses.tabs.history')]].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            style={{
-              flex: 1, padding: '9px', border: 'none', borderRadius: 10,
-              background: tab === id ? 'var(--tg-button)' : 'transparent',
-              color: tab === id ? 'var(--tg-button-text)' : 'var(--tg-hint)',
-              cursor: 'pointer', fontSize: 14, fontWeight: tab === id ? 600 : 400,
-              transition: 'all 0.15s',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <section className="client-contact-content client-bonuses-content">
+        <div className="client-card client-bonuses-tabs">
+          {[
+            ['bonuses', t('bonuses.tabs.bonuses')],
+            ['history', t('bonuses.tabs.history')],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`client-bonuses-tab${tab === id ? ' is-active' : ''}`}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* Bonuses tab */}
-      {tab === 'bonuses' && (
-        <>
-          <div style={{
-            background: 'var(--tg-surface)',
-            borderRadius: 20, padding: '20px', marginBottom: 20, textAlign: 'center',
-          }}>
-            <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>{t('bonuses.balance')}</p>
-            {bLoading
-              ? <Skeleton width={120} height={44} style={{ margin: '0 auto' }} />
-              : <p style={{ fontSize: 44, fontWeight: 800, color: 'var(--tg-accent)' }}>
-                  {bonuses?.balance ?? 0} ₽
-                </p>
-            }
-          </div>
+        {tab === 'bonuses' && (
+          <>
+            <section className="client-card client-bonuses-balance-card">
+              <p className="client-home-kicker">{t('bonuses.balance')}</p>
+              {bLoading ? (
+                <Skeleton width={140} height={52} style={{ margin: '8px auto 0' }} />
+              ) : (
+                <p className="client-bonuses-balance-value">{bonuses?.balance ?? 0} ₽</p>
+              )}
+            </section>
 
-          {bLoading
-            ? [...Array(3)].map((_, i) => <Skeleton key={i} height={50} style={{ marginBottom: 8 }} />)
-            : log.length === 0
-              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>{t('bonuses.noOperations')}</p>
-              : log.map((op, i) => {
+            <p className="client-section-title">{t('home.recentOperations')}</p>
+            {bLoading ? (
+              <div className="client-card client-bonuses-list-card">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} height={54} style={{ marginBottom: i < 2 ? 10 : 0 }} />
+                ))}
+              </div>
+            ) : log.length === 0 ? (
+              <div className="client-card client-bonuses-empty-card">
+                <p className="client-home-empty-title">{t('bonuses.noOperations')}</p>
+              </div>
+            ) : (
+              <section className="client-card client-bonuses-list-card">
+                {log.map((op, i) => {
                   const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
                   const sign = op.amount > 0 ? '+' : '';
                   return (
-                    <div key={op.id ?? i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '12px 0',
-                      borderBottom: i < log.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{
-                          color, fontSize: 18, width: 30, height: 30,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: color + '20', borderRadius: '50%', flexShrink: 0,
-                        }}>{icon}</span>
+                    <div
+                      key={op.id ?? i}
+                      className={`client-bonuses-row${i < log.length - 1 ? ' has-border' : ''}`}
+                    >
+                      <div className="client-bonuses-row-meta">
+                        <span className="client-bonuses-row-icon" style={{ color, backgroundColor: `${color}20` }}>
+                          {icon}
+                        </span>
                         <div>
-                          <p style={{ fontSize: 14 }}>{op.comment || op.type}</p>
-                          <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>
+                          <p className="client-bonuses-row-title">{op.comment || op.type}</p>
+                          <p className="client-bonuses-row-subtitle">
                             {op.created_at
-                              ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
+                              ? new Date(op.created_at).toLocaleDateString(locale, {
+                                  day: 'numeric',
+                                  month: 'long',
+                                })
                               : ''}
                           </p>
                         </div>
                       </div>
-                      <span style={{ color, fontWeight: 700, flexShrink: 0 }}>{sign}{op.amount} ₽</span>
+                      <span className="client-bonuses-row-amount" style={{ color }}>
+                        {sign}
+                        {op.amount} ₽
+                      </span>
                     </div>
                   );
-                })
-          }
-        </>
-      )}
+                })}
+              </section>
+            )}
+          </>
+        )}
 
-      {/* History tab */}
-      {tab === 'history' && (
-        <>
-          {oLoading
-            ? [...Array(3)].map((_, i) => <Skeleton key={i} height={60} style={{ marginBottom: 8 }} />)
-            : orders.length === 0
-              ? <p style={{ color: 'var(--tg-hint)', textAlign: 'center', padding: '24px 0' }}>{t('bonuses.noOrders')}</p>
-              : orders.map((order, i) => {
+        {tab === 'history' && (
+          <>
+            <p className="client-section-title">{t('bonuses.tabs.history')}</p>
+            {oLoading ? (
+              <div className="client-card client-bonuses-list-card">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} height={62} style={{ marginBottom: i < 2 ? 10 : 0 }} />
+                ))}
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="client-card client-bonuses-empty-card">
+                <p className="client-home-empty-title">{t('bonuses.noOrders')}</p>
+              </div>
+            ) : (
+              <section className="client-card client-bonuses-list-card">
+                {orders.map((order, i) => {
                   const { icon } = STATUS_ICONS[order.status] || { icon: '•' };
                   return (
-                    <div key={order.id} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '12px 0',
-                      borderBottom: i < orders.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                    }}>
-                      <div>
-                        <p style={{ fontSize: 14, fontWeight: 500 }}>
-                          {order.scheduled_at
-                            ? new Date(order.scheduled_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
-                            : t('common.dash')}
-                          {'  '}{order.services || t('bonuses.serviceDefault')}
-                        </p>
-                        {order.amount_total != null && (
-                          <p style={{ fontSize: 13, color: 'var(--tg-hint)' }}>{order.amount_total} ₽</p>
-                        )}
+                    <div
+                      key={order.id}
+                      className={`client-bonuses-row${i < orders.length - 1 ? ' has-border' : ''}`}
+                    >
+                      <div className="client-bonuses-row-meta">
+                        <span className="client-bonuses-row-icon is-order">{icon}</span>
+                        <div>
+                          <p className="client-bonuses-row-title">
+                            {order.scheduled_at
+                              ? new Date(order.scheduled_at).toLocaleDateString(locale, {
+                                  day: 'numeric',
+                                  month: 'short',
+                                })
+                              : t('common.dash')}
+                            {' · '}
+                            {order.services || t('bonuses.serviceDefault')}
+                          </p>
+                          {order.amount_total != null && (
+                            <p className="client-bonuses-row-subtitle">{order.amount_total} ₽</p>
+                          )}
+                        </div>
                       </div>
-                      <span style={{ fontSize: 18 }}>{icon}</span>
                     </div>
                   );
-                })
-          }
-        </>
-      )}
+                })}
+              </section>
+            )}
+          </>
+        )}
+      </section>
     </div>
   );
 }

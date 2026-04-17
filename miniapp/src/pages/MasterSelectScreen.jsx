@@ -2,70 +2,62 @@ import { useI18n } from '../i18n';
 
 export default function MasterSelectScreen({ masters, onSelect }) {
   const { t, locale } = useI18n();
+
   return (
-    <div style={{ padding: '16px 16px 24px' }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{t('masterSelect.title')}</h2>
-      <p style={{ color: 'var(--tg-hint)', fontSize: 14, marginBottom: 20 }}>
-        {t('masterSelect.subtitle')}
-      </p>
-      {masters.map((m) => {
-        const initial = (m.master_name || '?')[0].toUpperCase();
-        const lastDate = m.last_visit
-          ? new Date(m.last_visit).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })
-          : null;
-        return (
-          <div
-            key={m.master_id}
-            onClick={() => onSelect(m.master_id)}
-            style={{
-              background: 'var(--tg-surface)',
-              borderRadius: 16,
-              padding: '16px',
-              marginBottom: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              cursor: 'pointer',
-            }}
-          >
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'var(--tg-button)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'var(--tg-button-text)', fontWeight: 700, fontSize: 20,
-              flexShrink: 0,
-            }}>
-              {initial}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontWeight: 600, fontSize: 16 }}>{m.master_name}</p>
-              {m.sphere && (
-                <span style={{
-                  display: 'inline-block', marginTop: 4,
-                  background: 'rgba(79,156,249,0.15)', color: 'var(--tg-accent)',
-                  borderRadius: 20, padding: '2px 8px', fontSize: 12,
-                }}>
-                  {m.sphere}
+    <div className="client-page client-master-select-page">
+      <header className="client-page-header client-master-select-header">
+        <div>
+          <h1 className="client-page-title">{t('masterSelect.title')}</h1>
+          <p className="client-page-subtitle">{t('masterSelect.subtitle')}</p>
+        </div>
+      </header>
+
+      <section className="client-contact-content client-master-select-content">
+        <div className="client-master-select-list">
+          {masters.map((m) => {
+            const initial = (m.master_name || '?')[0].toUpperCase();
+            const lastDate = m.last_visit
+              ? new Date(m.last_visit).toLocaleDateString(locale, {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })
+              : null;
+
+            return (
+              <button
+                key={m.master_id}
+                type="button"
+                className="client-card client-master-select-card"
+                onClick={() => onSelect(m.master_id)}
+              >
+                <span className="client-master-select-avatar">{initial}</span>
+
+                <span className="client-master-select-copy">
+                  <span className="client-master-select-name">{m.master_name}</span>
+
+                  {m.sphere && (
+                    <span className="client-pill client-master-select-pill">{m.sphere}</span>
+                  )}
+
+                  <span className="client-master-select-meta">
+                    <span>{t('masterSelect.bonus', { amount: m.bonus_balance ?? 0 })}</span>
+                    <span>{t('masterSelect.visits', { count: m.order_count ?? 0 })}</span>
+                  </span>
+
+                  {lastDate && (
+                    <span className="client-master-select-last">
+                      {t('masterSelect.lastVisit', { date: lastDate })}
+                    </span>
+                  )}
                 </span>
-              )}
-              <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
-                <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                  {t('masterSelect.bonus', { amount: m.bonus_balance ?? 0 })}
-                </span>
-                <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                  {t('masterSelect.visits', { count: m.order_count ?? 0 })}
-                </span>
-              </div>
-              {lastDate && (
-                <p style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
-                  {t('masterSelect.lastVisit', { date: lastDate })}
-                </p>
-              )}
-            </div>
-            <span style={{ color: 'var(--tg-hint)', fontSize: 20 }}>›</span>
-          </div>
-        );
-      })}
+
+                <span className="client-master-select-chevron">›</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }
