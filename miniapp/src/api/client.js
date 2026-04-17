@@ -204,6 +204,12 @@ export const uploadMasterBonusPhoto = (bonusType, file) => {
 export const deleteMasterBonusPhoto = (bonusType) =>
   api.delete(`/api/master/bonus-settings/${bonusType}/photo`).then(r => r.data);
 
+// V2 — Feedback settings
+export const getMasterFeedbackSettings = () =>
+  api.get('/api/master/settings/feedback').then(r => r.data);
+export const updateMasterFeedbackSettings = (data) =>
+  api.put('/api/master/settings/feedback', data).then(r => r.data);
+
 // V2 — Services (full CRUD — backward compat: getMasterServices still works)
 export const getMasterServicesAll = () =>
   api.get('/api/master/services').then(r => r.data);

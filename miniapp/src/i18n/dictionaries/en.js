@@ -69,6 +69,7 @@ const en = {
       client: 'Client',
       profile: 'Master profile',
       bonus: 'Bonus program',
+      feedbackSettings: 'Feedback request',
       bonusWelcome: 'Welcome message',
       bonusBirthday: 'Birthday message',
       services: 'Services catalog',
@@ -117,6 +118,7 @@ const en = {
       promos: 'Promos',
       profile: 'Master profile',
       bonus: 'Bonus program',
+      feedbackSettings: 'Feedback request',
       services: 'Services catalog',
       googleCalendar: 'Google Calendar',
       support: 'Contact support',
@@ -274,6 +276,33 @@ const en = {
       customized: 'Customized',
       default: 'Default text',
     },
+  },
+
+  feedbackSettings: {
+    loading: 'Loading...',
+    toastSaved: 'Saved',
+    errorSave: 'Failed to save',
+    sections: {
+      delay: 'Delay',
+      message: 'Message to client',
+      reply5: 'Reply for rating 5',
+      buttons: 'Review link buttons',
+    },
+    fields: {
+      delay: 'Ask for feedback after hours (1-72)',
+      message: 'Request text (variables: {master_name}, {service})',
+      reply5: 'Reply text',
+      buttonLabel: 'Button label {index}',
+      buttonUrl: 'URL',
+    },
+    placeholders: {
+      message: 'Thank you for choosing {master_name}! How was your visit?',
+      reply5: 'Thanks for the high rating! We will be happy to see you again 🙏',
+      buttonLabel: 'Google Maps',
+      buttonUrl: 'https://...',
+    },
+    addButton: '+ Add button',
+    removeButton: 'Remove button',
   },
 
   services: {

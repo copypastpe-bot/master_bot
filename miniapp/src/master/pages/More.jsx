@@ -362,6 +362,7 @@ export default function More({ onNavigate }) {
       <div className="enterprise-cell-group">
         <Cell icon={<UserIcon />} label={t('more.cells.profile')} onClick={() => onNavigate('profile')} />
         <Cell icon={<GiftIcon />} label={t('more.cells.bonus')} onClick={() => onNavigate('bonus')} />
+        <Cell icon={<MessageIcon />} label={t('more.cells.feedbackSettings')} onClick={() => onNavigate('feedback_settings')} />
         <Cell icon={<ToolIcon />} label={t('more.cells.services')} onClick={() => onNavigate('services')} />
         <Cell
           icon={<CalendarIcon />}

@@ -69,6 +69,7 @@ const ru = {
       client: 'Клиент',
       profile: 'Профиль мастера',
       bonus: 'Бонусная программа',
+      feedbackSettings: 'Запрос отзыва',
       bonusWelcome: 'Приветствие',
       bonusBirthday: 'Поздравление с ДР',
       services: 'Справочник услуг',
@@ -117,6 +118,7 @@ const ru = {
       promos: 'Акции',
       profile: 'Профиль мастера',
       bonus: 'Бонусная программа',
+      feedbackSettings: 'Запрос отзыва',
       services: 'Справочник услуг',
       googleCalendar: 'Google Calendar',
       support: 'Написать в поддержку',
@@ -274,6 +276,33 @@ const ru = {
       customized: 'Кастомизировано',
       default: 'Стандартный текст',
     },
+  },
+
+  feedbackSettings: {
+    loading: 'Загрузка...',
+    toastSaved: 'Сохранено',
+    errorSave: 'Не удалось сохранить',
+    sections: {
+      delay: 'Задержка',
+      message: 'Сообщение клиенту',
+      reply5: 'Ответ при оценке 5',
+      buttons: 'Кнопки-ссылки на отзывы',
+    },
+    fields: {
+      delay: 'Через сколько часов спрашивать (1-72)',
+      message: 'Текст запроса (переменные: {master_name}, {service})',
+      reply5: 'Текст ответа',
+      buttonLabel: 'Название кнопки {index}',
+      buttonUrl: 'Ссылка',
+    },
+    placeholders: {
+      message: 'Спасибо, что обратились к {master_name}! Как прошёл визит?',
+      reply5: 'Спасибо за высокую оценку! Будем рады снова 🙏',
+      buttonLabel: 'Яндекс Карты',
+      buttonUrl: 'https://...',
+    },
+    addButton: '+ Добавить кнопку',
+    removeButton: 'Удалить кнопку',
   },
 
   services: {

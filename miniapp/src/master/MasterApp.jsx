@@ -12,6 +12,7 @@ import ClientsList from './pages/ClientsList';
 import ClientCard from './pages/ClientCard';
 import Profile from './pages/Profile';
 import BonusSettings from './pages/BonusSettings';
+import FeedbackSettings from './pages/FeedbackSettings';
 import BonusMessageEditor from './pages/BonusMessageEditor';
 import Services from './pages/Services';
 import PromosList from './pages/PromosList';
@@ -118,6 +119,7 @@ export default function MasterApp() {
     client:        t('masterApp.titles.client'),
     profile:       t('masterApp.titles.profile'),
     bonus:         t('masterApp.titles.bonus'),
+    feedback_settings: t('masterApp.titles.feedbackSettings'),
     bonus_message: current?.kind === 'birthday'
                      ? t('masterApp.titles.bonusBirthday')
                      : t('masterApp.titles.bonusWelcome'),
@@ -195,6 +197,15 @@ export default function MasterApp() {
         <div className="master-shell">
           <AppHeader title={currentTitle} />
           <BonusSettings onNavigate={(t, p) => push(t, p)} />
+        </div>
+      );
+    }
+
+    if (type === 'feedback_settings') {
+      return (
+        <div className="master-shell">
+          <AppHeader title={currentTitle} />
+          <FeedbackSettings />
         </div>
       );
     }
