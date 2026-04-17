@@ -8,8 +8,10 @@ Maintain `Master_bot` as a Telegram Mini App CRM for private specialists with ac
 
 ## Read Order
 
-1. `AGENT_STATE.md`
-2. recent entries in `SESSION_LOG.md`
+Infra map (canonical, token-light): /Users/evgenijpastusenko/Projects/agent1/docs/INFRA_MAP_LITE.yaml
+
+1. /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/AGENT_STATE.md
+2. recent entries in /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/SESSION_LOG.md
 3. `main.py`
 4. `PROMPT_MINIAPP_3_INTEGRATION.md`
 5. `src/master_bot.py`
@@ -31,6 +33,14 @@ Maintain `Master_bot` as a Telegram Mini App CRM for private specialists with ac
 - `nginx/miniapp.conf`
 
 ## Working Rules
+
+- Project context state is centralized in /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/AGENT_STATE.md.
+- Project session log is centralized in /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/SESSION_LOG.md.
+- Do not recreate local AGENT_STATE.md and SESSION_LOG.md in this project.
+- If required facts are missing, ask the user directly.
+- Do not enumerate speculative options by default.
+- Use detective mode only when the user explicitly asks to find a solution or process.
+
 
 - Prefer the Mini App and API as the primary master-facing flow unless code proves otherwise.
 - The main user scenario starts from the Mini App home screen with dashboard and upcoming orders.
@@ -60,8 +70,8 @@ Maintain `Master_bot` as a Telegram Mini App CRM for private specialists with ac
 Before ending the session:
 1. run `git status --short`;
 2. commit completed work in one or more small logical commits;
-3. rewrite `AGENT_STATE.md` to reflect current state;
-4. append one new entry to `SESSION_LOG.md`;
+3. rewrite /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/AGENT_STATE.md to reflect current state;
+4. append one new entry to /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/SESSION_LOG.md;
 5. keep both files short, factual, and agent-readable.
 
 ## Current Focus
