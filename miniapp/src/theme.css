@@ -67,7 +67,11 @@ body.typeui-enterprise-body {
 body.typeui-enterprise-body .master-shell {
   min-height: 100dvh;
   animation: enterprise-fade-in 220ms ease-out;
-  padding-top: var(--tg-content-safe-area-inset-top, env(safe-area-inset-top));
+  /* safeAreaInset.top = device status bar; contentSafeAreaInset.top = Telegram nav bar */
+  padding-top: calc(
+    var(--tg-safe-area-inset-top, env(safe-area-inset-top))
+    + var(--tg-content-safe-area-inset-top, 0px)
+  );
   position: relative;
 }
 
@@ -76,10 +80,8 @@ body.typeui-enterprise-body .app-header-title {
   top: var(--tg-safe-area-inset-top, env(safe-area-inset-top));
   left: 0;
   right: 0;
-  height: calc(
-    var(--tg-content-safe-area-inset-top, env(safe-area-inset-top))
-    - var(--tg-safe-area-inset-top, env(safe-area-inset-top))
-  );
+  /* height = Telegram nav bar only (without device status bar) */
+  height: var(--tg-content-safe-area-inset-top, 44px);
   display: flex;
   align-items: center;
   justify-content: center;

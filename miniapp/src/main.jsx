@@ -17,23 +17,21 @@ if (typeof WebApp?.requestFullscreen === 'function') {
   WebApp.requestFullscreen();
 }
 
-// Apply safe area CSS variables from JS API (Telegram doesn't set --tg-content-safe-area-inset-* automatically)
+// Apply safe area CSS variables from JS API.
+// Only set when value > 0 to avoid overriding CSS env() fallbacks with 0px.
 const applyInsets = () => {
   const root = document.documentElement;
-  const safe = WebApp?.safeAreaInset;
-  const content = WebApp?.contentSafeAreaInset;
-  if (safe) {
-    root.style.setProperty('--tg-safe-area-inset-top', `${safe.top ?? 0}px`);
-    root.style.setProperty('--tg-safe-area-inset-bottom', `${safe.bottom ?? 0}px`);
-  }
-  if (content) {
-    root.style.setProperty('--tg-content-safe-area-inset-top', `${content.top ?? 0}px`);
-    root.style.setProperty('--tg-content-safe-area-inset-bottom', `${content.bottom ?? 0}px`);
-  }
+  const safeTop = WebApp?.safeAreaInset?.top ?? 0;
+  const contentTop = WebApp?.contentSafeAreaInset?.top ?? 0;
+  const safeBottom = WebApp?.safeAreaInset?.bottom ?? 0;
+  if (safeTop > 0) root.style.setProperty('--tg-safe-area-inset-top', `${safeTop}px`);
+  if (contentTop > 0) root.style.setProperty('--tg-content-safe-area-inset-top', `${contentTop}px`);
+  if (safeBottom > 0) root.style.setProperty('--tg-safe-area-inset-bottom', `${safeBottom}px`);
 };
 applyInsets();
 WebApp?.onEvent?.('safeAreaChanged', applyInsets);
 WebApp?.onEvent?.('contentSafeAreaChanged', applyInsets);
+WebApp?.onEvent?.('fullscreen_changed', applyInsets);
 
 const queryClient = new QueryClient({
   defaultOptions: {
