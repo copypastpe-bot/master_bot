@@ -67,6 +67,27 @@ body.typeui-enterprise-body {
 body.typeui-enterprise-body .master-shell {
   min-height: 100dvh;
   animation: enterprise-fade-in 220ms ease-out;
+  padding-top: var(--tg-content-safe-area-inset-top, env(safe-area-inset-top));
+  position: relative;
+}
+
+body.typeui-enterprise-body .app-header-title {
+  position: absolute;
+  top: var(--tg-safe-area-inset-top, env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  height: calc(
+    var(--tg-content-safe-area-inset-top, env(safe-area-inset-top))
+    - var(--tg-safe-area-inset-top, env(safe-area-inset-top))
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tg-text);
 }
 
 body.typeui-enterprise-body .master-page-header {
@@ -916,6 +937,12 @@ body.typeui-enterprise-body .onb-input::placeholder {
 body.typeui-enterprise-body .onb-input:focus {
   border-color: var(--tg-accent);
   background: var(--tg-section-bg);
+}
+
+body.typeui-enterprise-body .onb-select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 }
 
 body.typeui-enterprise-body .onb-picker-wrap {
