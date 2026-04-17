@@ -78,7 +78,7 @@ body.typeui-client-body {
   --tg-destructive: var(--tg-theme-destructive-text-color, #e85d75);
   --radius-card: 20px;
   --radius-btn: 14px;
-  --client-shell-padding: 12px;
+  --client-shell-padding: 16px;
   --client-border: rgba(255, 255, 255, 0.08);
   --client-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
   background: var(--tg-bg);
@@ -536,7 +536,7 @@ body.typeui-client-body .client-contact-back-btn {
 }
 
 body.typeui-client-body .client-contact-content {
-  padding: 0 12px 128px;
+  padding: 0 0 128px;
 }
 
 body.typeui-client-body .client-contact-root-list {
@@ -1022,7 +1022,6 @@ body.typeui-client-body .client-master-select-list {
 }
 
 body.typeui-client-body .client-master-select-card {
-  width: 100%;
   display: flex;
   align-items: center;
   gap: 14px;
