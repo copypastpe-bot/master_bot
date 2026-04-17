@@ -17,6 +17,23 @@ if (typeof WebApp?.requestFullscreen === 'function') {
   WebApp.requestFullscreen();
 }
 
+// Force dark theme regardless of user's Telegram settings
+{
+  const root = document.documentElement;
+  root.style.setProperty('--tg-theme-bg-color', '#0f1923');
+  root.style.setProperty('--tg-theme-secondary-bg-color', '#162030');
+  root.style.setProperty('--tg-theme-section-bg-color', '#0f1923');
+  root.style.setProperty('--tg-theme-text-color', '#ffffff');
+  root.style.setProperty('--tg-theme-hint-color', '#8b9bb4');
+  root.style.setProperty('--tg-theme-link-color', '#4f9cf9');
+  root.style.setProperty('--tg-theme-button-color', '#4f9cf9');
+  root.style.setProperty('--tg-theme-button-text-color', '#ffffff');
+  root.style.setProperty('--tg-theme-accent-text-color', '#4f9cf9');
+  root.style.setProperty('--tg-theme-destructive-text-color', '#e53935');
+  if (typeof WebApp?.setBackgroundColor === 'function') WebApp.setBackgroundColor('#0f1923');
+  if (typeof WebApp?.setHeaderColor === 'function') WebApp.setHeaderColor('#0f1923');
+}
+
 // Apply safe area CSS variables from JS API.
 // Only set when value > 0 to avoid overriding CSS env() fallbacks with 0px.
 const applyInsets = () => {
