@@ -55,18 +55,27 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
 
   const Page = clientPages[page];
 
+  const content = !activeMasterId ? (
+    <MasterSelectScreen
+      masters={masters}
+      onSelect={onMasterChange}
+    />
+  ) : (
+    <Page
+      onNavigate={setPage}
+      masters={masters}
+      activeMasterId={activeMasterId}
+      onMasterChange={onMasterChange}
+      keyboardOpen={keyboardOpen}
+    />
+  );
+
   return (
     <div className="client-shell">
       <div className="client-shell-content">
-        <Page
-          onNavigate={setPage}
-          masters={masters}
-          activeMasterId={activeMasterId}
-          onMasterChange={onMasterChange}
-          keyboardOpen={keyboardOpen}
-        />
+        {content}
       </div>
-      {!keyboardOpen && <BottomNav active={page} onNavigate={setPage} />}
+      {activeMasterId && !keyboardOpen && <BottomNav active={page} onNavigate={setPage} />}
     </div>
   );
 }
@@ -200,16 +209,6 @@ export default function App() {
             </div>
           </div>
         </div>
-      );
-    }
-
-    // 2+ masters, none selected yet → show selection screen
-    if (!activeMasterId) {
-      return (
-        <MasterSelectScreen
-          masters={masters}
-          onSelect={handleMasterChange}
-        />
       );
     }
 

@@ -143,6 +143,7 @@ body.typeui-client-body .client-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   box-shadow: var(--client-shadow);
   backdrop-filter: blur(14px);
+  width: calc(100% - (var(--client-shell-padding) * 2));
 }
 
 body.typeui-client-body .client-pill {
@@ -550,6 +551,7 @@ body.typeui-client-body .client-contact-mode-card {
   align-items: center;
   gap: 14px;
   padding: 18px;
+  min-height: 92px;
   border: 1px solid var(--client-border);
   color: var(--tg-text);
   text-align: left;
@@ -959,6 +961,7 @@ body.typeui-client-body .client-promos-list {
 
 body.typeui-client-body .client-promos-card {
   padding: 18px;
+  min-height: 148px;
 }
 
 body.typeui-client-body .client-promos-card-topline {
@@ -1024,6 +1027,7 @@ body.typeui-client-body .client-master-select-card {
   align-items: center;
   gap: 14px;
   padding: 18px;
+  min-height: 120px;
   color: var(--tg-text);
   text-align: left;
   cursor: pointer;
