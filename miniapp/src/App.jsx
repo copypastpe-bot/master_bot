@@ -21,6 +21,13 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
   const [page, setPage] = useState('home');
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
+  useEffect(() => {
+    document.body.classList.add('typeui-client-body');
+    return () => {
+      document.body.classList.remove('typeui-client-body');
+    };
+  }, []);
+
   // Telegram BackButton — show on all pages except home
   useEffect(() => {
     if (!WebApp?.BackButton) return;
@@ -49,14 +56,16 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
   const Page = clientPages[page];
 
   return (
-    <div>
-      <Page
-        onNavigate={setPage}
-        masters={masters}
-        activeMasterId={activeMasterId}
-        onMasterChange={onMasterChange}
-        keyboardOpen={keyboardOpen}
-      />
+    <div className="client-shell">
+      <div className="client-shell-content">
+        <Page
+          onNavigate={setPage}
+          masters={masters}
+          activeMasterId={activeMasterId}
+          onMasterChange={onMasterChange}
+          keyboardOpen={keyboardOpen}
+        />
+      </div>
       {!keyboardOpen && <BottomNav active={page} onNavigate={setPage} />}
     </div>
   );
@@ -65,11 +74,17 @@ function ClientApp({ masters, activeMasterId, onMasterChange }) {
 
 function RoleSkeleton() {
   return (
-    <div style={{ padding: '24px 16px' }}>
-      <Skeleton height={28} style={{ marginBottom: 12, width: '50%' }} />
-      <Skeleton height={16} style={{ marginBottom: 24, width: '35%' }} />
-      <Skeleton height={80} style={{ marginBottom: 12 }} />
-      <Skeleton height={80} />
+    <div className="client-shell">
+      <div className="client-shell-content">
+        <div className="client-page">
+          <div style={{ padding: '24px 16px' }}>
+            <Skeleton height={28} style={{ marginBottom: 12, width: '50%' }} />
+            <Skeleton height={16} style={{ marginBottom: 24, width: '35%' }} />
+            <Skeleton height={80} style={{ marginBottom: 12 }} />
+            <Skeleton height={80} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -172,12 +187,18 @@ export default function App() {
 
     if (masters.length === 0) {
       return (
-        <div style={{ padding: '24px 16px', textAlign: 'center', marginTop: 60 }}>
-          <p style={{ fontSize: 40, marginBottom: 16 }}>👋</p>
-          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t('app.noMasters.title')}</p>
-          <p style={{ color: 'var(--tg-hint)', fontSize: 14, lineHeight: 1.5 }}>
-            {t('app.noMasters.subtitle')}
-          </p>
+        <div className="client-shell">
+          <div className="client-shell-content">
+            <div className="client-page">
+              <div className="client-screen-state" style={{ marginTop: 60 }}>
+                <p style={{ fontSize: 40, marginBottom: 16 }}>👋</p>
+                <p className="client-screen-state-title">{t('app.noMasters.title')}</p>
+                <p className="client-screen-state-subtitle">
+                  {t('app.noMasters.subtitle')}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       );
     }
@@ -203,12 +224,18 @@ export default function App() {
 
   if (forcedRole === 'client') {
     return (
-      <div style={{ padding: '24px 16px', textAlign: 'center', marginTop: 60 }}>
-        <p style={{ fontSize: 40, marginBottom: 16 }}>📱</p>
-        <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t('app.noMasters.title')}</p>
-        <p style={{ color: 'var(--tg-hint)', fontSize: 14, lineHeight: 1.5 }}>
-          {t('app.noMasters.subtitle')}
-        </p>
+      <div className="client-shell">
+        <div className="client-shell-content">
+          <div className="client-page">
+            <div className="client-screen-state" style={{ marginTop: 60 }}>
+              <p style={{ fontSize: 40, marginBottom: 16 }}>📱</p>
+              <p className="client-screen-state-title">{t('app.noMasters.title')}</p>
+              <p className="client-screen-state-subtitle">
+                {t('app.noMasters.subtitle')}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -397,6 +397,7 @@ const en = {
   home: {
     welcome: 'Welcome',
     bonusBalance: 'Bonus balance',
+    upcoming: 'Upcoming booking',
     masterPrefix: 'Master: {name}',
     serviceNotSpecified: 'Service is not specified',
     recentOperations: 'Recent operations',

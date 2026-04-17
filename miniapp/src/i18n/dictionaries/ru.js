@@ -397,6 +397,7 @@ const ru = {
   home: {
     welcome: 'Добро пожаловать',
     bonusBalance: 'Бонусный баланс',
+    upcoming: 'Ближайшая запись',
     masterPrefix: 'Мастер: {name}',
     serviceNotSpecified: 'Услуга не указана',
     recentOperations: 'Последние операции',

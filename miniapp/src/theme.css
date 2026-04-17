@@ -64,6 +64,457 @@ body.typeui-enterprise-body {
   padding-bottom: 92px;
 }
 
+body.typeui-client-body {
+  --tg-bg: radial-gradient(circle at top, rgba(79, 156, 249, 0.18), transparent 36%), #0f1923;
+  --tg-secondary-bg: rgba(22, 32, 48, 0.92);
+  --tg-section-bg: rgba(15, 25, 35, 0.94);
+  --tg-surface: rgba(22, 32, 48, 0.9);
+  --tg-text: var(--tg-theme-text-color, #ffffff);
+  --tg-hint: var(--tg-theme-hint-color, #8b9bb4);
+  --tg-link: var(--tg-theme-link-color, #4f9cf9);
+  --tg-button: var(--tg-theme-button-color, #4f9cf9);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-accent: var(--tg-theme-accent-text-color, #72adff);
+  --tg-destructive: var(--tg-theme-destructive-text-color, #e85d75);
+  --radius-card: 20px;
+  --radius-btn: 14px;
+  --client-shell-padding: 12px;
+  --client-border: rgba(255, 255, 255, 0.08);
+  --client-shadow: 0 16px 40px rgba(0, 0, 0, 0.22);
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  padding-bottom: 96px;
+}
+
+body.typeui-client-body .client-shell {
+  min-height: 100dvh;
+  padding-top: calc(
+    var(--tg-safe-area-inset-top, env(safe-area-inset-top))
+    + var(--tg-content-safe-area-inset-top, 0px)
+  );
+  position: relative;
+  animation: enterprise-fade-in 220ms ease-out;
+}
+
+body.typeui-client-body .client-shell-content {
+  min-height: calc(100dvh - var(--tg-safe-area-inset-top, env(safe-area-inset-top)));
+  padding-bottom: 104px;
+}
+
+body.typeui-client-body .client-page {
+  width: 100%;
+}
+
+body.typeui-client-body .client-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px var(--client-shell-padding) 12px;
+}
+
+body.typeui-client-body .client-page-title {
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--tg-text);
+}
+
+body.typeui-client-body .client-page-subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--tg-hint);
+}
+
+body.typeui-client-body .client-section-title {
+  padding: 22px var(--client-shell-padding) 10px;
+  color: var(--tg-hint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+body.typeui-client-body .client-card {
+  margin: 0 var(--client-shell-padding);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--client-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  box-shadow: var(--client-shadow);
+  backdrop-filter: blur(14px);
+}
+
+body.typeui-client-body .client-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(114, 173, 255, 0.18);
+  background: rgba(79, 156, 249, 0.12);
+  color: var(--tg-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-screen-state {
+  padding: 48px 24px;
+  text-align: center;
+}
+
+body.typeui-client-body .client-screen-state-title {
+  font-size: 18px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--tg-text);
+}
+
+body.typeui-client-body .client-screen-state-subtitle {
+  margin-top: 8px;
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+body.typeui-client-body .client-nav {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  padding: 4px;
+  border-radius: 20px;
+  border: 1px solid var(--client-border);
+  background: rgba(18, 27, 40, 0.88);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--client-shadow);
+  z-index: 100;
+}
+
+body.typeui-client-body .client-nav-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  border: none;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--tg-hint);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease, transform 140ms ease;
+}
+
+body.typeui-client-body .client-nav-button.is-active {
+  background: rgba(79, 156, 249, 0.14);
+  color: var(--tg-accent);
+}
+
+body.typeui-client-body .client-nav-button:active {
+  transform: scale(0.97);
+}
+
+body.typeui-client-body .client-home-page {
+  padding-bottom: 16px;
+}
+
+body.typeui-client-body .client-home-header {
+  padding-top: 18px;
+}
+
+body.typeui-client-body .client-home-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+body.typeui-client-body .client-home-refresh-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--client-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--tg-hint);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+body.typeui-client-body .client-home-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--tg-button), #79b4ff);
+  color: var(--tg-button-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 10px 24px rgba(79, 156, 249, 0.24);
+}
+
+body.typeui-client-body .client-home-hero-card {
+  padding: 20px;
+}
+
+body.typeui-client-body .client-home-balance-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.typeui-client-body .client-home-kicker {
+  color: var(--tg-hint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+body.typeui-client-body .client-home-balance-value {
+  margin-top: 8px;
+  color: var(--tg-text);
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+body.typeui-client-body .client-home-balance-badge {
+  min-width: 54px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--tg-accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+body.typeui-client-body .client-home-master-row {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: default;
+}
+
+body.typeui-client-body .client-home-master-row.is-interactive {
+  cursor: pointer;
+}
+
+body.typeui-client-body .client-home-master-label {
+  color: var(--tg-hint);
+  font-size: 14px;
+}
+
+body.typeui-client-body .client-home-master-chevron {
+  color: var(--tg-hint);
+  font-size: 11px;
+}
+
+body.typeui-client-body .client-home-tags {
+  margin-top: 12px;
+}
+
+body.typeui-client-body .client-home-upcoming-card,
+body.typeui-client-body .client-home-log-card,
+body.typeui-client-body .client-home-empty-card {
+  padding: 16px;
+}
+
+body.typeui-client-body .client-home-upcoming-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+body.typeui-client-body .client-home-upcoming-date {
+  color: var(--tg-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-home-upcoming-relative {
+  color: var(--tg-hint);
+  font-size: 12px;
+}
+
+body.typeui-client-body .client-home-upcoming-title {
+  color: var(--tg-text);
+  font-size: 18px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-home-upcoming-address {
+  margin-top: 6px;
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body.typeui-client-body .client-home-empty-title {
+  color: var(--tg-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-home-empty-subtitle {
+  margin-top: 8px;
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+body.typeui-client-body .client-home-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+body.typeui-client-body .client-home-log-item.has-border {
+  border-bottom: 1px solid var(--client-border);
+}
+
+body.typeui-client-body .client-home-log-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+body.typeui-client-body .client-home-log-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+body.typeui-client-body .client-home-log-title {
+  color: var(--tg-text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+body.typeui-client-body .client-home-log-date {
+  margin-top: 3px;
+  color: var(--tg-hint);
+  font-size: 12px;
+}
+
+body.typeui-client-body .client-home-log-amount {
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+body.typeui-client-body .client-home-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(3, 8, 15, 0.64);
+  padding-top: 24px;
+}
+
+body.typeui-client-body .client-home-sheet {
+  width: 100%;
+  border-radius: 22px 22px 0 0;
+  border: 1px solid var(--client-border);
+  background: #101924;
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.28);
+  padding: 18px 16px calc(34px + env(safe-area-inset-bottom));
+}
+
+body.typeui-client-body .client-home-sheet-title {
+  color: var(--tg-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-home-sheet-list {
+  margin-top: 14px;
+}
+
+body.typeui-client-body .client-home-sheet-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border: none;
+  border-bottom: 1px solid var(--client-border);
+  background: transparent;
+  color: var(--tg-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+body.typeui-client-body .client-home-sheet-item:last-child {
+  border-bottom: none;
+}
+
+body.typeui-client-body .client-home-sheet-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tg-text);
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+body.typeui-client-body .client-home-sheet-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+body.typeui-client-body .client-home-sheet-name {
+  color: var(--tg-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+body.typeui-client-body .client-home-sheet-sphere {
+  color: var(--tg-hint);
+  font-size: 12px;
+}
+
+body.typeui-client-body .client-home-sheet-check {
+  color: var(--tg-accent);
+  font-size: 18px;
+  font-weight: 800;
+}
+
 body.typeui-enterprise-body .master-shell {
   min-height: 100dvh;
   animation: enterprise-fade-in 220ms ease-out;
@@ -1425,6 +1876,8 @@ body.typeui-enterprise-body .onb-final-subtitle {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body.typeui-client-body .client-shell,
+  body.typeui-client-body .client-nav-button,
   body.typeui-enterprise-body .master-shell,
   body.typeui-enterprise-body .master-nav-button,
   body.typeui-enterprise-body .enterprise-cell.is-interactive,

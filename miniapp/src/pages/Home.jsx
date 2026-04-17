@@ -4,7 +4,6 @@ import { getMe, getOrders, getBonuses } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import ErrorScreen from '../components/ErrorScreen';
 import { useI18n } from '../i18n';
-const WebApp = window.Telegram?.WebApp;
 
 function relativeDate(dateStr, t) {
   if (!dateStr) return '';
@@ -20,233 +19,194 @@ function relativeDate(dateStr, t) {
 function formatDate(dateStr, locale) {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleString(locale, {
-    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 const BONUS_ICONS = {
-  accrual:  { icon: '+', color: '#4caf50' },
-  spend:    { icon: '−', color: '#f44336' },
+  accrual: { icon: '+', color: '#4caf50' },
+  spend: { icon: '−', color: '#f44336' },
   birthday: { icon: '★', color: '#ffd700' },
-  manual:   { icon: '✎', color: '#2196f3' },
-  promo:    { icon: '◆', color: '#9c27b0' },
+  manual: { icon: '✎', color: '#2196f3' },
+  promo: { icon: '◆', color: '#9c27b0' },
 };
 
-export default function Home({ onNavigate, masters = [], activeMasterId, onMasterChange }) {
+function RefreshButton({ title, onClick }) {
+  return (
+    <button className="client-home-refresh-btn" onClick={onClick} title={title} aria-label={title}>
+      ↻
+    </button>
+  );
+}
+
+export default function Home({ masters = [], activeMasterId, onMasterChange }) {
   const { t, locale } = useI18n();
   const qc = useQueryClient();
   const [showMasterPicker, setShowMasterPicker] = useState(false);
 
-  const { data: me, isLoading: meLoading, error: meError, refetch: refetchMe } = useQuery({ queryKey: ['me'], queryFn: getMe });
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({ queryKey: ['orders'], queryFn: getOrders });
-  const { data: bonuses, isLoading: bonusesLoading } = useQuery({ queryKey: ['bonuses'], queryFn: getBonuses });
+  const { data: me, isLoading: meLoading, error: meError, refetch: refetchMe } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+  });
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ['orders'],
+    queryFn: getOrders,
+  });
+  const { data: bonuses, isLoading: bonusesLoading } = useQuery({
+    queryKey: ['bonuses'],
+    queryFn: getBonuses,
+  });
 
   if (meError) return <ErrorScreen message={meError.message} onRetry={refetchMe} />;
 
   const now = new Date();
   const upcoming = orders
-    .filter(o => (o.status === 'new' || o.status === 'confirmed') && new Date(o.scheduled_at) > now)
+    .filter((o) => (o.status === 'new' || o.status === 'confirmed') && new Date(o.scheduled_at) > now)
     .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
 
   const recentBonuses = bonuses?.log?.slice(0, 3) || [];
-
   const initials = me?.client?.name
-    ? me.client.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    ? me.client.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
-
+  const masterName = me?.master?.name || t('common.dash');
   const multiMaster = masters.length > 1;
 
   return (
-    <div style={{ padding: '16px 16px 0' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+    <div className="client-page client-home-page">
+      <header className="client-page-header client-home-header">
         <div>
-          <p style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{t('home.welcome')}</p>
-          {meLoading
-            ? <Skeleton width={140} height={22} style={{ marginTop: 4 }} />
-            : <h2 style={{ fontSize: 20, fontWeight: 700 }}>{me?.client?.name || t('common.dash')}</h2>
-          }
+          <p className="client-page-subtitle">{t('home.welcome')}</p>
+          {meLoading ? (
+            <Skeleton width={160} height={28} style={{ marginTop: 6 }} />
+          ) : (
+            <h1 className="client-page-title">{me?.client?.name || t('common.dash')}</h1>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => qc.invalidateQueries()}
-            style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', cursor: 'pointer', fontSize: 20 }}
-            title={t('common.refresh')}
-          >↻</button>
-          <div style={{
-            width: 42, height: 42, borderRadius: '50%',
-            background: 'var(--tg-button)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--tg-button-text)', fontWeight: 700, fontSize: 16,
-            flexShrink: 0,
-          }}>
-            {initials}
-          </div>
+
+        <div className="client-home-header-actions">
+          <RefreshButton title={t('common.refresh')} onClick={() => qc.invalidateQueries()} />
+          <div className="client-home-avatar">{initials}</div>
         </div>
-      </div>
+      </header>
 
-      {/* Balance card */}
-      <div style={{
-        background: 'var(--tg-surface)',
-        borderRadius: 20,
-        padding: '20px',
-        marginBottom: 16,
-      }}>
-        <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 4 }}>{t('home.bonusBalance')}</p>
-        {bonusesLoading
-          ? <Skeleton width={100} height={36} style={{ marginBottom: 8 }} />
-          : <p style={{ fontSize: 36, fontWeight: 800, color: 'var(--tg-accent)', lineHeight: 1.1 }}>
-              {bonuses?.balance ?? 0} ₽
-            </p>
-        }
-        {meLoading
-          ? <Skeleton width={160} height={16} style={{ marginTop: 8 }} />
-          : <>
-              {/* Clickable master name if multi-master */}
-              <div
-                onClick={multiMaster ? () => setShowMasterPicker(true) : undefined}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  marginTop: 8,
-                  cursor: multiMaster ? 'pointer' : 'default',
-                }}
-              >
-                <p style={{ color: 'var(--tg-hint)', fontSize: 13 }}>
-                  {t('home.masterPrefix', { name: me?.master?.name || t('common.dash') })}
-                </p>
-                {multiMaster && (
-                  <span style={{ color: 'var(--tg-hint)', fontSize: 11 }}>▼</span>
-                )}
-              </div>
-              {me?.master?.sphere && (
-                <span style={{
-                  display: 'inline-block', marginTop: 6,
-                  background: 'rgba(79,156,249,0.15)', color: 'var(--tg-accent)',
-                  borderRadius: 20, padding: '2px 10px', fontSize: 12
-                }}>
-                  {me.master.sphere}
-                </span>
-              )}
-            </>
-        }
-      </div>
-
-      {/* Upcoming order */}
-      {ordersLoading
-        ? <Skeleton height={80} radius={16} style={{ marginBottom: 16 }} />
-        : upcoming && (
-          <div style={{
-            background: 'var(--tg-surface)',
-            borderRadius: 16, padding: '16px',
-            marginBottom: 16,
-            borderLeft: '3px solid var(--tg-accent)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 13, color: 'var(--tg-accent)' }}>
-                📅 {formatDate(upcoming.scheduled_at, locale)}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--tg-hint)' }}>
-                {relativeDate(upcoming.scheduled_at, t)}
-              </span>
-            </div>
-            <p style={{ fontWeight: 600 }}>{upcoming.services || t('home.serviceNotSpecified')}</p>
-            {upcoming.address && (
-              <p style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 2 }}>{upcoming.address}</p>
+      <section className="client-card client-home-hero-card">
+        <div className="client-home-balance-row">
+          <div>
+            <p className="client-home-kicker">{t('home.bonusBalance')}</p>
+            {bonusesLoading ? (
+              <Skeleton width={132} height={44} style={{ marginTop: 8 }} />
+            ) : (
+              <p className="client-home-balance-value">{bonuses?.balance ?? 0} ₽</p>
             )}
           </div>
-        )
-      }
+          <div className="client-home-balance-badge">CRM</div>
+        </div>
 
-      {/* Recent bonus operations */}
-      {recentBonuses.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ color: 'var(--tg-hint)', fontSize: 13, marginBottom: 10 }}>{t('home.recentOperations')}</p>
-          {recentBonuses.map((op, i) => {
-            const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
-            const sign = op.amount > 0 ? '+' : '';
-            return (
-              <div key={op.id ?? i} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 0',
-                borderBottom: i < recentBonuses.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color, fontSize: 18, width: 20, textAlign: 'center' }}>{icon}</span>
-                  <span style={{ fontSize: 14 }}>{op.comment || op.type}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ color, fontWeight: 600 }}>{sign}{op.amount} ₽</span>
-                  <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>
-                    {op.created_at
-                      ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
-                      : ''}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+        {meLoading ? (
+          <Skeleton width={190} height={18} style={{ marginTop: 18 }} />
+        ) : (
+          <button
+            className={`client-home-master-row${multiMaster ? ' is-interactive' : ''}`}
+            onClick={multiMaster ? () => setShowMasterPicker(true) : undefined}
+            type="button"
+          >
+            <span className="client-home-master-label">{t('home.masterPrefix', { name: masterName })}</span>
+            {multiMaster && <span className="client-home-master-chevron">▼</span>}
+          </button>
+        )}
+
+        {me?.master?.sphere && (
+          <div className="client-home-tags">
+            <span className="client-pill">{me.master.sphere}</span>
+          </div>
+        )}
+      </section>
+
+      <p className="client-section-title">{t('home.upcoming')}</p>
+      {ordersLoading ? (
+        <div className="client-card client-home-upcoming-card">
+          <Skeleton height={84} radius={18} />
+        </div>
+      ) : upcoming ? (
+        <section className="client-card client-home-upcoming-card">
+          <div className="client-home-upcoming-topline">
+            <span className="client-home-upcoming-date">📅 {formatDate(upcoming.scheduled_at, locale)}</span>
+            <span className="client-home-upcoming-relative">{relativeDate(upcoming.scheduled_at, t)}</span>
+          </div>
+          <h2 className="client-home-upcoming-title">{upcoming.services || t('home.serviceNotSpecified')}</h2>
+          {upcoming.address && <p className="client-home-upcoming-address">{upcoming.address}</p>}
+        </section>
+      ) : (
+        <div className="client-card client-home-empty-card">
+          <p className="client-home-empty-title">{t('home.serviceNotSpecified')}</p>
+          <p className="client-home-empty-subtitle">{t('app.noMasters.subtitle')}</p>
         </div>
       )}
 
-      {/* Master picker bottom sheet */}
+      {recentBonuses.length > 0 && (
+        <>
+          <p className="client-section-title">{t('home.recentOperations')}</p>
+          <section className="client-card client-home-log-card">
+            {recentBonuses.map((op, i) => {
+              const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
+              const sign = op.amount > 0 ? '+' : '';
+              return (
+                <div
+                  key={op.id ?? i}
+                  className={`client-home-log-item${i < recentBonuses.length - 1 ? ' has-border' : ''}`}
+                >
+                  <div className="client-home-log-meta">
+                    <span className="client-home-log-icon" style={{ color, backgroundColor: `${color}20` }}>
+                      {icon}
+                    </span>
+                    <div>
+                      <p className="client-home-log-title">{op.comment || op.type}</p>
+                      <p className="client-home-log-date">
+                        {op.created_at
+                          ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
+                          : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="client-home-log-amount" style={{ color }}>
+                    {sign}
+                    {op.amount} ₽
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        </>
+      )}
+
       {showMasterPicker && (
-        <div
-          onClick={() => setShowMasterPicker(false)}
-          style={{
-            position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 100,
-            display: 'flex', alignItems: 'flex-end',
-          }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: 'var(--tg-bg)',
-              width: '100%',
-              borderRadius: '16px 16px 0 0',
-              padding: '20px 16px 40px',
-            }}
-          >
-            <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{t('home.switchMaster')}</p>
-            {masters.map((m, i) => (
-              <div
-                key={m.master_id}
-                onClick={() => {
-                  onMasterChange(m.master_id);
-                  qc.invalidateQueries();
-                  setShowMasterPicker(false);
-                }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 0',
-                  borderBottom: i < masters.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%',
-                  background: m.master_id === activeMasterId ? 'var(--tg-button)' : 'var(--tg-surface)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: m.master_id === activeMasterId ? 'var(--tg-button-text)' : 'var(--tg-text)',
-                  fontWeight: 700, fontSize: 15,
-                  flexShrink: 0,
-                }}>
-                  {(m.master_name || '?')[0].toUpperCase()}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: m.master_id === activeMasterId ? 700 : 400 }}>
-                    {m.master_name}
-                  </p>
-                  {m.sphere && (
-                    <p style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{m.sphere}</p>
-                  )}
-                </div>
-                {m.master_id === activeMasterId && (
-                  <span style={{ color: 'var(--tg-accent)', fontSize: 18 }}>✓</span>
-                )}
-              </div>
-            ))}
+        <div className="client-home-sheet-overlay" onClick={() => setShowMasterPicker(false)}>
+          <div className="client-home-sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="client-home-sheet-title">{t('home.switchMaster')}</p>
+            <div className="client-home-sheet-list">
+              {masters.map((m) => (
+                <button
+                  key={m.master_id}
+                  type="button"
+                  className={`client-home-sheet-item${m.master_id === activeMasterId ? ' is-active' : ''}`}
+                  onClick={() => {
+                    onMasterChange(m.master_id);
+                    qc.invalidateQueries();
+                    setShowMasterPicker(false);
+                  }}
+                >
+                  <span className="client-home-sheet-avatar">{(m.master_name || '?')[0].toUpperCase()}</span>
+                  <span className="client-home-sheet-copy">
+                    <span className="client-home-sheet-name">{m.master_name}</span>
+                    {m.sphere && <span className="client-home-sheet-sphere">{m.sphere}</span>}
+                  </span>
+                  {m.master_id === activeMasterId && <span className="client-home-sheet-check">✓</span>}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

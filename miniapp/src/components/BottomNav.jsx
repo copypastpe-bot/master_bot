@@ -48,38 +48,15 @@ export default function BottomNav({ active, onNavigate = () => {} }) {
   };
 
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      background: 'var(--tg-surface)',
-      borderTop: '1px solid rgba(255,255,255,0.06)',
-      display: 'flex',
-      zIndex: 100,
-      paddingBottom: 'env(safe-area-inset-bottom)',
-    }}>
+    <nav className="client-nav">
       {tabs.map(({ id, key, Icon }) => {
         const isActive = active === id;
         return (
           <button
             key={id}
             onClick={() => handleTab(id)}
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              padding: '10px 0',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: isActive ? 'var(--tg-accent)' : 'var(--tg-hint)',
-              fontSize: 11,
-              transition: 'color 0.15s',
-            }}
+            className={`client-nav-button${isActive ? ' is-active' : ''}`}
+            aria-current={isActive ? 'page' : undefined}
           >
             <Icon />
             <span>{t(key)}</span>
