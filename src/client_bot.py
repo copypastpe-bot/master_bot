@@ -1,12 +1,23 @@
 """Client bot - for clients to view bonuses, history, and make requests."""
 
+import json
 import logging
 from datetime import date, datetime
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, Router, F, BaseMiddleware
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove, TelegramObject, MenuButtonWebApp, WebAppInfo, BufferedInputFile
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    ReplyKeyboardRemove,
+    TelegramObject,
+    MenuButtonWebApp,
+    WebAppInfo,
+    BufferedInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest
@@ -49,6 +60,7 @@ from src.database import (
     get_client_bonus_log,
     get_active_campaigns,
     get_order_for_confirmation,
+    get_order_by_id_for_feedback,
     get_master_services_for_client,
     save_inbound_request,
     update_inbound_request_notification_id,
@@ -59,11 +71,12 @@ from src.database import (
     accrue_welcome_bonus,
     anonymize_client,
     update_client_consent,
+    save_order_rating,
 )
 from src.utils import (
     format_phone, parse_date, normalize_phone,
     render_bonus_message, DEFAULT_WELCOME_MESSAGE,
-    get_currency_symbol,
+    get_currency_symbol, render_feedback_message, DEFAULT_FEEDBACK_REPLY_5,
 )
 
 # Master bot instance for sending notifications
@@ -1039,6 +1052,97 @@ async def cb_client_delete_profile(callback: CallbackQuery, state: FSMContext) -
     )
     await edit_home_message(callback, text, delete_confirm_kb())
     await callback.answer()
+
+
+# =============================================================================
+# Post-order Feedback
+# =============================================================================
+
+@router.callback_query(lambda c: c.data and c.data.startswith("feedback:"))
+async def handle_feedback_rating(callback: CallbackQuery) -> None:
+    """Handle client rating response from post-order feedback."""
+    global master_bot
+
+    try:
+        _, order_id_raw, rating_raw = (callback.data or "").split(":")
+        order_id = int(order_id_raw)
+        rating = int(rating_raw)
+    except (ValueError, AttributeError):
+        await callback.answer()
+        return
+
+    if rating < 1 or rating > 5:
+        await callback.answer()
+        return
+
+    await save_order_rating(order_id, rating)
+
+    try:
+        if callback.message:
+            await callback.message.edit_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+
+    order = await get_order_by_id_for_feedback(order_id)
+
+    if rating == 5:
+        reply_text = render_feedback_message(
+            template=order.get("feedback_reply_5") if order else None,
+            default=DEFAULT_FEEDBACK_REPLY_5,
+            master_name=order.get("master_name") if order else "",
+            services="",
+        )
+        reply_markup = None
+
+        raw_buttons = order.get("review_buttons") if order else None
+        if raw_buttons:
+            try:
+                parsed_buttons = json.loads(raw_buttons)
+                rows = []
+                for button in parsed_buttons[:3]:
+                    label = (button or {}).get("label")
+                    url = (button or {}).get("url")
+                    if label and url:
+                        rows.append([InlineKeyboardButton(text=str(label), url=str(url))])
+                if rows:
+                    reply_markup = InlineKeyboardMarkup(inline_keyboard=rows)
+            except Exception:
+                logger.warning("Invalid review_buttons JSON for order %s", order_id)
+
+        if callback.message:
+            await callback.message.answer(reply_text, reply_markup=reply_markup)
+
+    elif rating == 4:
+        if callback.message:
+            await callback.message.answer("Расскажите, что можно улучшить? Это поможет стать лучше.")
+
+        if order and order.get("master_tg_id") and master_bot:
+            client_name = order.get("client_name") or "Клиент"
+            try:
+                await master_bot.send_message(
+                    order["master_tg_id"],
+                    f"ℹ️ {client_name} оценил визит на 4.\nЗаказ #{order_id}",
+                )
+            except Exception as e:
+                logger.warning("Failed to notify master for rating 4, order %s: %s", order_id, e)
+    else:
+        if callback.message:
+            await callback.message.answer("Мы свяжемся с вами в ближайшее время.")
+
+        if order and order.get("master_tg_id") and master_bot:
+            client_name = order.get("client_name") or "Клиент"
+            try:
+                await master_bot.send_message(
+                    order["master_tg_id"],
+                    f"⚠️ {client_name} недоволен!\n"
+                    f"Оценка: {rating} из 5\n"
+                    f"Заказ #{order_id}\n\n"
+                    "Свяжитесь с клиентом.",
+                )
+            except Exception as e:
+                logger.warning("Failed to alert master for rating %s, order %s: %s", rating, order_id, e)
+
+    await callback.answer("Спасибо за оценку!")
 
 
 # =============================================================================

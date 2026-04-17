@@ -13,13 +13,21 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from src.database import (
     get_orders_for_reminder_24h,
     get_orders_for_reminder_1h,
+    get_orders_for_feedback,
     get_clients_with_birthday_today,
     mark_reminder_sent,
+    mark_feedback_sent,
     accrue_birthday_bonus,
     get_masters_expiring_soon,
     mark_subscription_reminder_sent,
 )
-from src.utils import render_bonus_message, DEFAULT_BIRTHDAY_MESSAGE, get_currency_symbol
+from src.utils import (
+    render_bonus_message,
+    DEFAULT_BIRTHDAY_MESSAGE,
+    get_currency_symbol,
+    render_feedback_message,
+    DEFAULT_FEEDBACK_MESSAGE,
+)
 from src.config import REMINDER_DAYS_BEFORE
 
 logger = logging.getLogger(__name__)
@@ -48,6 +56,16 @@ def write_master_kb(master_tg_id: int) -> InlineKeyboardMarkup:
     """Keyboard with button to write to master for 1h reminder."""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📞 Написать мастеру", url=f"tg://user?id={master_tg_id}")]
+    ])
+
+
+def feedback_rating_kb(order_id: int) -> InlineKeyboardMarkup:
+    """Inline keyboard with rating buttons 1-5."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text=str(i), callback_data=f"feedback:{order_id}:{i}")
+            for i in range(1, 6)
+        ]
     ])
 
 
@@ -165,6 +183,39 @@ async def send_reminders_1h(client_bot: Bot) -> None:
 
     except Exception as e:
         logger.error(f"Error in send_reminders_1h: {e}")
+
+
+async def send_feedback_requests(client_bot: Bot) -> None:
+    """Send post-order feedback requests to clients."""
+    logger.info("Running feedback request task")
+    try:
+        orders = await get_orders_for_feedback()
+        logger.info("Found %s orders for feedback request", len(orders))
+
+        for order in orders:
+            try:
+                text = render_feedback_message(
+                    template=order.get("feedback_message"),
+                    default=DEFAULT_FEEDBACK_MESSAGE,
+                    master_name=order.get("master_name") or "мастера",
+                    services=order.get("services") or "—",
+                )
+                await client_bot.send_message(
+                    chat_id=order["client_tg_id"],
+                    text=text,
+                    reply_markup=feedback_rating_kb(order["order_id"]),
+                )
+                await mark_feedback_sent(order["order_id"])
+                logger.info("Sent feedback request for order %s", order["order_id"])
+            except TelegramForbiddenError:
+                logger.warning("Client %s blocked the bot, skipping", order["client_tg_id"])
+                await mark_feedback_sent(order["order_id"])
+            except TelegramBadRequest as e:
+                logger.error("Failed to send feedback request for order %s: %s", order["order_id"], e)
+            except Exception as e:
+                logger.error("Error sending feedback request for order %s: %s", order["order_id"], e)
+    except Exception as e:
+        logger.error("Error in send_feedback_requests: %s", e)
 
 
 async def send_birthday_bonuses(client_bot: Bot) -> None:
@@ -315,6 +366,15 @@ def setup_scheduler(client_bot: Bot, master_bot: Bot | None = None) -> None:
         args=[client_bot],
         id="birthday_bonus",
         replace_existing=True
+    )
+
+    scheduler.add_job(
+        send_feedback_requests,
+        "interval",
+        minutes=30,
+        args=[client_bot],
+        id="feedback_request",
+        replace_existing=True,
     )
 
     if master_bot is not None:
