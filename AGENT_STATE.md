@@ -1,36 +1,42 @@
-# AGENT_STATE
+# AGENT STATE
 
-project: master-bot
-last_updated: 2026-04-16
-updated_by: codex
-status: active
-confidence: high
+**Updated:** 2026-04-17
 
-## Purpose
+## Current Focus
 
-`Master_bot` is a Telegram Mini App CRM for private specialists: customer accounting, loyalty program, planner, reminders, and client broadcasts.
+Fullscreen mode shipped. Mini App runs in `requestFullscreen()` mode with forced dark theme.
 
-## Current State
+## Last Session Work
 
-The project is in final testing and pilot rollout. NL production (`app.crmfit.ru`) is currently confirmed working from both Serbia and Russian user IPs in nginx access logs. RU proxy route (`ru.app.crmfit.ru` + `ru.api.crmfit.ru`) remains a separate test contour with unstable behavior on some networks.
+1. Designed and implemented Telegram Mini App fullscreen mode (Bot API 8.0)
+2. Added `AppHeader` component — floating title between Telegram's "Назад / ↓" overlay buttons
+3. Removed `PageHeader` from `MasterApp.jsx`, replaced with `AppHeader title={currentTitle}`
+4. Fixed CSS safe area formula: `padding-top = safeAreaInset.top + contentSafeAreaInset.top`
+5. Applied CSS variables from JS (`safeAreaChanged`, `contentSafeAreaChanged`, `fullscreen_changed` events)
+6. Forced dark theme via `--tg-theme-*` CSS variable overrides in `main.jsx`
+7. Added onboarding lang/timezone/currency step + extracted `profileOptions.js`
+8. Added missing i18n keys: `order`, `createOrder`, `requests`, `broadcast`
 
-## Active Focus
+## Key Files Changed This Session
 
-Continue pilot testing on `app.crmfit.ru` and monitor real-user accessibility from Russian mobile networks without destabilizing bot/API/payment flows.
+- `miniapp/src/main.jsx` — fullscreen, insets, dark theme
+- `miniapp/src/theme.css` — padding-top calc, .app-header-title
+- `miniapp/src/master/MasterApp.jsx` — AppHeader integration, PageHeader removed
+- `miniapp/src/master/components/AppHeader.jsx` — new component
+- `miniapp/src/master/pages/MasterOnboarding.jsx` — lang/tz/currency step
+- `miniapp/src/master/pages/Profile.jsx` — refactored to use profileOptions
+- `miniapp/src/master/profileOptions.js` — new shared constants
+- `miniapp/src/i18n/dictionaries/ru.js` / `en.js` — added missing title keys
 
-## Known Risks
+## Known Issues / Open
 
-- RU proxy route depends on a two-server chain (RU proxy -> NL API), so edge/network-level filtering can break access before requests reach nginx.
-- Some user-facing blocks can occur outside application logs (provider/WAF/routing layers), so diagnostics must include access-log presence checks by source IP and timestamp.
-- Future agents must keep deploy changes small and verify both browser page load and API calls from real device sessions.
+- Fullscreen layout padding still unverified on real device (user testing in progress)
+- Dark theme: enterprise UI elements with hardcoded light colors may need fine-tuning
+- `docs/plans/2026-04-10-miniapp-i18n-spec.md` — untracked, spec for i18n feature
 
-## Source Of Truth
+## Production
 
-- `CLAUDE.md`
-- `main.py`
-- `src/master_bot.py`
-- `src/client_bot.py`
-- `src/api/app.py`
-- `miniapp/`
-- `PROMPT_MINIAPP_3_INTEGRATION.md`
-- `docs/plans/`
+- Mini App: https://app.crmfit.ru
+- API: https://api.crmfit.ru
+- Deploy: `bash deploy_miniapp.sh`
+- BotFather: Full Screen enabled for the bot

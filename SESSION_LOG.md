@@ -1,130 +1,22 @@
-# SESSION_LOG
-
-### 2026-04-13 12:31 - Bootstrap agent project files
-
-status: completed
-actor: agent1
-scope: Initialized standardized agent-facing project files for future sessions.
-
-#### Changes
-
-- Added `AGENT_STATE.md` as the current project snapshot.
-- Added `SESSION_LOG.md` as the session history file.
-- Rewrote `CLAUDE.md` into a shorter operational guide with explicit update rules.
-
-#### Verified
-
-- Checked the project root structure, key entrypoints, and major source directories.
-- Read the existing `CLAUDE.md` before normalizing it into the new contract.
-
-#### Next Steps
-
-- Rewrite `AGENT_STATE.md` after the next real implementation or debugging session.
-- Append a new `SESSION_LOG.md` entry whenever work ends.
-- Keep `CLAUDE.md` aligned with the actual active architecture if Mini App or bot responsibilities move.
-
-#### References
-
-- `CLAUDE.md`
-- `main.py`
-- `src/`
-- `miniapp/`
-- `TODO.md`
+# SESSION LOG
 
 ---
-### 2026-04-16 17:22 - Day wrap-up after RU accessibility diagnostics
 
-status: completed
-actor: codex
-scope: Performed read-only production log diagnostics for RU/Serbia availability reports and aligned session handoff files.
+## 2026-04-17 — Fullscreen mode + dark theme
 
-#### Changes
+**Goal:** Перевести Mini App в полноэкранный режим Telegram (Bot API 8.0).
 
-- Collected nginx access/error log evidence from NL and RU servers without applying config changes.
-- Correlated user-reported IP (`78.30.134.93`) with successful `app.crmfit.ru` page + API requests in NL access logs.
-- Confirmed absence of matching request traces on RU proxy logs during the same diagnostic window.
-- Updated `AGENT_STATE.md` to reflect current operating path and risks.
+**Done:**
+- BotFather: включён Full Screen для бота
+- `main.jsx`: `requestFullscreen()`, принудительная тёмная тема (`--tg-theme-*`), `applyInsets()` с событиями `safeAreaChanged` / `contentSafeAreaChanged` / `fullscreen_changed`
+- `theme.css`: `padding-top = safeAreaInset.top + contentSafeAreaInset.top`, новый `.app-header-title`
+- `AppHeader.jsx`: новый компонент, плавающий заголовок между кнопками Telegram
+- `MasterApp.jsx`: `titleMap` + `currentTitle`, `AppHeader` вместо `PageHeader` во всех ветках
+- i18n: добавлены ключи `order`, `createOrder`, `requests`, `broadcast`, `feedbackSettings`
+- Онбординг: шаг 0 — выбор языка, шаг 3 — таймзона/валюта; `profileOptions.js` вынесен отдельно
 
-#### Verified
+**Commits:** e28e6d5 → d73c221 (8 коммитов)
 
-- `app.crmfit.ru` handled repeated requests from RU user IP with `200/204` responses.
-- No critical runtime errors were observed in NL nginx error log during test window.
-- RU-side logs did not capture the reported blocked-flow requests.
+**Status:** задеплоено, layout верифицируется на устройстве. Тёмная тема работает.
 
-#### Next Steps
-
-- Keep active testing on `app.crmfit.ru` as primary user path.
-- Continue collecting exact timestamps and source IPs for any failed sessions to isolate network-layer drops.
-
-#### References
-
-- `AGENT_STATE.md`
-- `SESSION_LOG.md`
-- `/var/log/nginx/access.log` (NL, runtime)
-- `/var/log/nginx/error.log` (NL/RU, runtime)
-
----
-### 2026-04-16 11:58 - RU Mini App route repaired and switched in production
-
-status: completed
-actor: codex
-scope: Restored working RU access path for Mini App by redeploying RU frontend, fixing CORS at NL nginx, and switching production `MINIAPP_URL` to RU domain.
-
-#### Changes
-
-- Rebuilt Mini App in RU mode (`--mode ru`) and deployed static files to RU server `/var/www/ru.app.crmfit.ru/`.
-- Updated NL nginx config (`nginx/miniapp.conf`) to allow dynamic CORS for both `https://app.crmfit.ru` and `https://ru.app.crmfit.ru`.
-- Applied updated nginx config on NL host and reloaded nginx.
-- Updated `/opt/master_bot/.env` on NL host: `MINIAPP_URL=https://ru.app.crmfit.ru?v=3`.
-- Rebuilt and restarted `master_bot` and `client_bot` containers on NL host.
-
-#### Verified
-
-- `https://ru.app.crmfit.ru` returns `200`.
-- `https://ru.api.crmfit.ru/health` returns `{"status":"ok"}`.
-- Preflight for `Origin: https://ru.app.crmfit.ru` returns `204` with `Access-Control-Allow-Origin: https://ru.app.crmfit.ru`.
-- Container env confirms `MINIAPP_URL=https://ru.app.crmfit.ru?v=3` for both bots.
-
-#### Next Steps
-
-- Check Mini App open flow from real RU mobile networks inside Telegram.
-- If needed, move from proxy chain to full RU API hosting as a separate stabilization task.
-
-#### References
-
-- `nginx/miniapp.conf`
-- `miniapp/.env.ru`
-- `docs/plans/2026-04-09-ru-proxy.md`
-
----
-### 2026-04-13 12:59 - Replaced bootstrap notes with user-confirmed project state
-
-status: completed
-actor: agent1
-scope: Refined the project snapshot and instructions using direct user input plus repository docs.
-
-#### Changes
-
-- Updated `AGENT_STATE.md` to reflect that the project is in final testing and debugging.
-- Updated `CLAUDE.md` to emphasize the Mini App home dashboard flow, narrow-scope edits, and pilot testing focus.
-- Preserved deployment and production entrypoints in the read path.
-
-#### Verified
-
-- Cross-checked user guidance against `main.py`, `src/config.py`, deployment scripts, and Mini App integration docs.
-- Confirmed production domain and server references in repository docs.
-
-#### Next Steps
-
-- Use the next real work session to replace any remaining generic architecture notes with test findings.
-- Keep the project snapshot aligned with pilot-user feedback and bug discovery.
-
-#### References
-
-- `CLAUDE.md`
-- `AGENT_STATE.md`
-- `main.py`
-- `PROMPT_MINIAPP_3_INTEGRATION.md`
-- `deploy_miniapp.sh`
-
----
+**Open:** точная геометрия safe area на iOS требует проверки — `contentSafeAreaInset` может быть 0 на старых клиентах Telegram.
