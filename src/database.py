@@ -2328,7 +2328,7 @@ async def mark_order_confirmed_by_client(order_id: int) -> None:
     conn = await get_connection()
     try:
         await conn.execute(
-            "UPDATE orders SET client_confirmed = 1 WHERE id = ?",
+            "UPDATE orders SET client_confirmed = 1, status = 'confirmed' WHERE id = ? AND status = 'new'",
             (order_id,)
         )
         await conn.commit()
