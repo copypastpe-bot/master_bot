@@ -13,6 +13,9 @@ if (typeof WebApp?.ready === 'function') {
 if (typeof WebApp?.expand === 'function') {
   WebApp.expand();
 }
+if (typeof WebApp?.requestFullscreen === 'function') {
+  WebApp.requestFullscreen();
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
