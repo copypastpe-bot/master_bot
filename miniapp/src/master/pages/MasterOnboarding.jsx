@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
-import { registerMaster, updateMasterProfile } from '../../api/client';
+import { registerMaster, updateMasterProfile, updateMasterTimezone, updateMasterCurrency } from '../../api/client';
 import { useI18n } from '../../i18n';
+import {
+  TIMEZONES,
+  CURRENCIES,
+  LANG_OPTIONS,
+  DEFAULT_CURRENCY,
+  resolveInitialTimezone,
+} from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -50,8 +57,8 @@ const NICHES = [
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MasterOnboarding({ onRegistered, referralCode = null }) {
-  const { tr } = useI18n();
-  const [step, setStep] = useState(1);
+  const { t, tr, lang, setLang } = useI18n();
+  const [step, setStep] = useState(0);
 
   // Step 1
   const [name, setName] = useState('');
@@ -68,6 +75,8 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
   const [contactAddress, setContactAddress] = useState('');
   const [workMode, setWorkMode] = useState('travel');
   const [workAddressDefault, setWorkAddressDefault] = useState('');
+  const [timezone, setTimezone] = useState(resolveInitialTimezone);
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [profileSaved, setProfileSaved] = useState(false);
 
   // Shared
@@ -130,6 +139,8 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
         work_mode: workMode,
         work_address_default: workMode === 'home' ? workAddressDefault.trim() : '',
       });
+      await updateMasterTimezone(timezone);
+      await updateMasterCurrency(currency);
       setProfileSaved(true);
       setStep(4);
     } catch (err) {
@@ -140,6 +151,15 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
       setLoading(false);
     }
   };
+
+  const timezoneOptions = TIMEZONES.map((item) => ({
+    value: item.value,
+    label: t(`profile.timezones.${item.key}`),
+  }));
+  const currencyOptions = CURRENCIES.map((code) => ({
+    value: code,
+    label: t(`profile.currencies.${code}`),
+  }));
 
   const handleSkipProfileSetup = () => {
     setProfileSaved(false);
@@ -158,20 +178,63 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
 
   const step2Ready = selectedNiches.length > 0 &&
     (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
-  const step3Ready = workMode !== 'home' || Boolean(workAddressDefault.trim());
+  const step3Ready = Boolean(timezone) && Boolean(currency) &&
+    (workMode !== 'home' || Boolean(workAddressDefault.trim()));
   const progressStep = step === 4 ? 3 : step;
 
   return (
     <div className="master-onboarding">
       <div className="master-onboarding-shell">
-      <div className="onb-progress" aria-hidden="true">
-        {[1, 2, 3].map((n) => (
-          <div
-            key={n}
-            className={`onb-dot${progressStep >= n ? ' is-active' : ''}`}
-          />
-        ))}
-      </div>
+      {step > 0 && (
+        <div className="onb-progress" aria-hidden="true">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className={`onb-dot${progressStep >= n ? ' is-active' : ''}`}
+            />
+          ))}
+        </div>
+      )}
+
+      {step === 0 && (
+        <section className="onb-card">
+          <h1 className="onb-title">{tr('Выберите язык', 'Choose language')}</h1>
+          <p className="onb-subtitle">
+            {tr(
+              'Покажем регистрацию и Mini App на удобном языке. Позже это можно поменять в профиле.',
+              'We will show signup and the Mini App in your preferred language. You can change it later in profile.'
+            )}
+          </p>
+
+          <div className="onb-chip-grid">
+            {LANG_OPTIONS.map((code) => {
+              const isSelected = lang === code;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  className={`onb-chip${isSelected ? ' is-selected' : ''}`}
+                  onClick={() => {
+                    WebApp?.HapticFeedback?.selectionChanged?.();
+                    setLang(code);
+                    setError('');
+                  }}
+                >
+                  {t(`profile.language.${code}`)}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            className="onb-btn-primary"
+            type="button"
+            onClick={() => setStep(1)}
+          >
+            {tr('Продолжить', 'Continue')}
+          </button>
+        </section>
+      )}
 
       {/* ── Step 1: Name ─────────────────────────────── */}
       {step === 1 && (
@@ -326,6 +389,38 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
               />
             </div>
           )}
+
+          <div className="onb-field-group">
+            <label className="onb-label">{t('profile.fields.timezone')}</label>
+            <select
+              className="onb-input onb-select"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              disabled={loading}
+            >
+              {timezoneOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="onb-field-group">
+            <label className="onb-label">{t('profile.fields.currency')}</label>
+            <select
+              className="onb-input onb-select"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              disabled={loading}
+            >
+              {currencyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {error && <div className="onb-error">{error}</div>}
 

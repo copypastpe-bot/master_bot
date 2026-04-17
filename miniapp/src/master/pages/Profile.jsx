@@ -8,6 +8,7 @@ import {
   updateMasterCurrency,
 } from '../../api/client';
 import { useI18n } from '../../i18n';
+import { TIMEZONES, CURRENCIES, WORK_MODES, LANG_OPTIONS } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -22,44 +23,6 @@ function hapticNotify(type = 'success') {
     WebApp.HapticFeedback.notificationOccurred(type);
   }
 }
-
-const TIMEZONES = [
-  { value: 'Europe/London', key: 'london' },
-  { value: 'Europe/Lisbon', key: 'lisbon' },
-  { value: 'Europe/Madrid', key: 'madrid' },
-  { value: 'Europe/Paris', key: 'paris' },
-  { value: 'Europe/Berlin', key: 'berlin' },
-  { value: 'Europe/Rome', key: 'rome' },
-  { value: 'Europe/Amsterdam', key: 'amsterdam' },
-  { value: 'Europe/Brussels', key: 'brussels' },
-  { value: 'Europe/Vienna', key: 'vienna' },
-  { value: 'Europe/Prague', key: 'prague' },
-  { value: 'Europe/Warsaw', key: 'warsaw' },
-  { value: 'Europe/Belgrade', key: 'belgrade' },
-  { value: 'Europe/Athens', key: 'athens' },
-  { value: 'Europe/Bucharest', key: 'bucharest' },
-  { value: 'Europe/Helsinki', key: 'helsinki' },
-  { value: 'Europe/Riga', key: 'riga' },
-  { value: 'Europe/Vilnius', key: 'vilnius' },
-  { value: 'Europe/Tallinn', key: 'tallinn' },
-  { value: 'Asia/Jerusalem', key: 'jerusalem' },
-  { value: 'Europe/Kaliningrad', key: 'kaliningrad' },
-  { value: 'Europe/Moscow', key: 'moscow' },
-  { value: 'Europe/Minsk', key: 'minsk' },
-  { value: 'Europe/Kiev', key: 'kiev' },
-  { value: 'Europe/Istanbul', key: 'istanbul' },
-  { value: 'Asia/Yekaterinburg', key: 'yekaterinburg' },
-  { value: 'Asia/Almaty', key: 'almaty' },
-  { value: 'Asia/Novosibirsk', key: 'novosibirsk' },
-  { value: 'Asia/Krasnoyarsk', key: 'krasnoyarsk' },
-  { value: 'Asia/Irkutsk', key: 'irkutsk' },
-  { value: 'Asia/Vladivostok', key: 'vladivostok' },
-  { value: 'Asia/Kamchatka', key: 'kamchatka' },
-];
-
-const CURRENCIES = ['RUB', 'EUR', 'ILS', 'UAH', 'BYN', 'KZT', 'USD', 'TRY', 'GEL', 'UZS'];
-const WORK_MODES = ['home', 'travel'];
-const LANG_OPTIONS = ['ru', 'en'];
 
 const iconProps = {
   width: 18,
