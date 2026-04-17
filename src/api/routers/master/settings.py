@@ -1,5 +1,6 @@
 """Master settings endpoints — profile, timezone, currency, bonus settings, services."""
 
+import json
 import logging
 import re
 import secrets
@@ -450,6 +451,85 @@ async def update_bonus_settings(
     if kwargs:
         await update_master(master.id, **kwargs)
     return {"ok": True}
+
+
+class FeedbackSettingsBody(BaseModel):
+    feedback_delay_hours: int = 3
+    feedback_message: Optional[str] = None
+    feedback_reply_5: Optional[str] = None
+    review_buttons: Optional[list[dict]] = None
+
+    @field_validator("feedback_delay_hours")
+    @classmethod
+    def delay_in_range(cls, v):
+        if not (1 <= v <= 72):
+            raise ValueError("feedback_delay_hours must be between 1 and 72")
+        return v
+
+    @field_validator("review_buttons")
+    @classmethod
+    def review_buttons_valid(cls, v):
+        if v is None:
+            return v
+        if len(v) > 3:
+            raise ValueError("review_buttons: max 3 allowed")
+        for btn in v:
+            if not isinstance(btn, dict):
+                raise ValueError("review_buttons: each item must be an object")
+            label = str(btn.get("label", "")).strip()
+            url = str(btn.get("url", "")).strip()
+            if not label:
+                raise ValueError("review_buttons: label is required")
+            if not (url.startswith("http://") or url.startswith("https://")):
+                raise ValueError(f"review_buttons: invalid URL '{url}'")
+        return v
+
+
+@router.put("/master/settings/feedback")
+async def update_feedback_settings(
+    body: FeedbackSettingsBody,
+    master: Master = Depends(get_current_master),
+):
+    """Save master post-order feedback settings."""
+    review_buttons_json = (
+        json.dumps(body.review_buttons, ensure_ascii=False)
+        if body.review_buttons is not None
+        else None
+    )
+    await update_master(
+        master.id,
+        feedback_delay_hours=body.feedback_delay_hours,
+        feedback_message=(body.feedback_message or "").strip() or None,
+        feedback_reply_5=(body.feedback_reply_5 or "").strip() or None,
+        review_buttons=review_buttons_json,
+    )
+    return {"success": True}
+
+
+@router.get("/master/settings/feedback")
+async def get_feedback_settings(
+    master: Master = Depends(get_current_master),
+):
+    """Get master post-order feedback settings."""
+    current_master = await get_master_by_id(master.id)
+    if not current_master:
+        raise HTTPException(status_code=404, detail="Master not found")
+
+    review_buttons = []
+    if current_master.review_buttons:
+        try:
+            parsed = json.loads(current_master.review_buttons)
+            if isinstance(parsed, list):
+                review_buttons = parsed
+        except Exception:
+            review_buttons = []
+
+    return {
+        "feedback_delay_hours": current_master.feedback_delay_hours or 3,
+        "feedback_message": current_master.feedback_message,
+        "feedback_reply_5": current_master.feedback_reply_5,
+        "review_buttons": review_buttons,
+    }
 
 
 @router.post("/master/bonus-settings/{bonus_type}/photo")
