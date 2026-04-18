@@ -122,10 +122,10 @@ export default function FeedbackSettings() {
 
       <div className="enterprise-section-title">{t('feedbackSettings.sections.delay')}</div>
       <div className="enterprise-cell-group">
-        <div className="onb-field-group" style={{ padding: '0 16px 12px' }}>
-          <label className="onb-label">{t('feedbackSettings.fields.delay')}</label>
+        <div className="enterprise-form-field">
+          <label>{t('feedbackSettings.fields.delay')}</label>
           <input
-            className="onb-input"
+            className="enterprise-input"
             type="number"
             min={1}
             max={72}
@@ -137,15 +137,15 @@ export default function FeedbackSettings() {
 
       <div className="enterprise-section-title">{t('feedbackSettings.sections.message')}</div>
       <div className="enterprise-cell-group">
-        <div className="onb-field-group" style={{ padding: '0 16px 12px' }}>
-          <label className="onb-label">
+        <div className="enterprise-form-field">
+          <label>
             {t('feedbackSettings.fields.message', {
               master_name: '{master_name}',
               service: '{service}',
             })}
           </label>
           <textarea
-            className="enterprise-sheet-input"
+            className="enterprise-input"
             rows={3}
             placeholder={t('feedbackSettings.placeholders.message', {
               master_name: '{master_name}',
@@ -159,10 +159,10 @@ export default function FeedbackSettings() {
 
       <div className="enterprise-section-title">{t('feedbackSettings.sections.reply5')}</div>
       <div className="enterprise-cell-group">
-        <div className="onb-field-group" style={{ padding: '0 16px 12px' }}>
-          <label className="onb-label">{t('feedbackSettings.fields.reply5')}</label>
+        <div className="enterprise-form-field">
+          <label>{t('feedbackSettings.fields.reply5')}</label>
           <textarea
-            className="enterprise-sheet-input"
+            className="enterprise-input"
             rows={3}
             placeholder={t('feedbackSettings.placeholders.reply5')}
             value={reply5}
@@ -181,19 +181,19 @@ export default function FeedbackSettings() {
               borderBottom: index === buttons.length - 1 ? 'none' : '1px solid var(--tg-section-separator)',
             }}
           >
-            <div className="onb-field-group">
-              <label className="onb-label">{t('feedbackSettings.fields.buttonLabel', { index: index + 1 })}</label>
+            <div className="enterprise-form-field">
+              <label>{t('feedbackSettings.fields.buttonLabel', { index: index + 1 })}</label>
               <input
-                className="onb-input"
+                className="enterprise-input"
                 placeholder={t('feedbackSettings.placeholders.buttonLabel')}
                 value={btn.label}
                 onChange={(e) => updateButton(index, 'label', e.target.value)}
               />
             </div>
-            <div className="onb-field-group">
-              <label className="onb-label">{t('feedbackSettings.fields.buttonUrl')}</label>
+            <div className="enterprise-form-field">
+              <label>{t('feedbackSettings.fields.buttonUrl')}</label>
               <input
-                className="onb-input"
+                className="enterprise-input"
                 type="url"
                 placeholder={t('feedbackSettings.placeholders.buttonUrl')}
                 value={btn.url}
@@ -201,7 +201,7 @@ export default function FeedbackSettings() {
               />
             </div>
             {buttons.length > 1 && (
-              <button className="onb-btn-secondary" style={{ marginTop: 4 }} onClick={() => removeButton(index)}>
+              <button className="enterprise-btn-secondary" style={{ marginTop: 4 }} onClick={() => removeButton(index)}>
                 {t('feedbackSettings.removeButton')}
               </button>
             )}
@@ -210,7 +210,7 @@ export default function FeedbackSettings() {
 
         {buttons.length < 3 && (
           <div style={{ padding: '8px 16px' }}>
-            <button className="onb-btn-secondary" onClick={addButton}>
+            <button className="enterprise-btn-secondary" onClick={addButton}>
               {t('feedbackSettings.addButton')}
             </button>
           </div>
@@ -219,7 +219,7 @@ export default function FeedbackSettings() {
 
       <div style={{ padding: '16px' }}>
         <button
-          className="onb-btn-primary"
+          className="enterprise-btn-primary"
           onClick={handleSave}
           disabled={mutation.isPending}
         >
