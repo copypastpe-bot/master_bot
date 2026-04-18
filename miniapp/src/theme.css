@@ -2052,16 +2052,45 @@ body.typeui-enterprise-body .enterprise-orders-section {
   margin-bottom: 20px;
 }
 
-body.typeui-enterprise-body .enterprise-section-header {
+body.typeui-enterprise-body .enterprise-orders-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 16px;
+  margin: 0 12px 10px;
+  padding: 0 2px;
 }
 
-body.typeui-enterprise-body .enterprise-section-count {
+body.typeui-enterprise-body .enterprise-orders-title {
+  color: var(--tg-text);
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+body.typeui-enterprise-body .enterprise-orders-count {
   color: var(--tg-hint);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body.typeui-enterprise-body .enterprise-orders-card {
+  margin: 0 12px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(14px);
+  box-shadow: var(--tg-enterprise-shadow);
+  overflow: hidden;
+}
+
+body.typeui-enterprise-body .enterprise-orders-empty {
+  padding: 18px 16px;
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
 }
 
 body.typeui-enterprise-body .enterprise-actions {

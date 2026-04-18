@@ -28,23 +28,23 @@ function formatDate(d, locale) {
 function OrdersSection({ title, orders, onNavigate, emptyContent, tr }) {
   return (
     <div className="enterprise-orders-section">
-      <div className="enterprise-section-header">
-        <div className="enterprise-section-title">{title}</div>
+      <div className="enterprise-orders-header">
+        <div className="enterprise-orders-title">{title}</div>
         {orders.length > 0 && (
-          <span className="enterprise-section-count">
+          <span className="enterprise-orders-count">
             {tr(`${orders.length} зап.`, `${orders.length} bookings`)}
           </span>
         )}
       </div>
 
       {orders.length === 0 ? (
-        <div className="enterprise-cell-group">
-          <div style={{ padding: '14px 16px', color: 'var(--tg-hint)', fontSize: 14, textAlign: 'center' }}>
+        <div className="enterprise-orders-card">
+          <div className="enterprise-orders-empty">
             {emptyContent ?? tr('Свободный день! 🎉', 'Free day! 🎉')}
           </div>
         </div>
       ) : (
-        <div className="enterprise-cell-group">
+        <div className="enterprise-orders-card">
           {orders.map((order, idx) => (
             <OrderCard
               key={order.id}
