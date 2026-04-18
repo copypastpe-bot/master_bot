@@ -5,28 +5,42 @@ export default function StatCard({ icon, value, label, onClick }) {
     <div
       onClick={isClickable ? onClick : undefined}
       style={{
-        background: 'var(--tg-surface)',
+        background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025))',
         border: '1px solid var(--tg-enterprise-border)',
         boxShadow: 'var(--tg-enterprise-shadow)',
         borderRadius: 'var(--radius-card)',
-        padding: '14px 12px',
+        padding: '15px 13px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
+        gap: 6,
         minWidth: 0,
         cursor: isClickable ? 'pointer' : 'default',
         position: 'relative',
         transition: 'transform 140ms ease, box-shadow 140ms ease',
         WebkitTapHighlightColor: 'transparent',
+        backdropFilter: 'blur(14px)',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ fontSize: 20, lineHeight: 1 }}>{icon}</div>
+      <div style={{
+        width: 36,
+        height: 36,
+        borderRadius: 12,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(79, 156, 249, 0.12)',
+        color: 'var(--tg-accent)',
+        fontSize: 18,
+        lineHeight: 1,
+      }}>
+        {icon}
+      </div>
       <div style={{
         color: 'var(--tg-text)',
         fontSize: 18,
         fontWeight: 700,
         lineHeight: 1.2,
-        marginTop: 4,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
@@ -35,8 +49,8 @@ export default function StatCard({ icon, value, label, onClick }) {
       </div>
       <div style={{
         color: 'var(--tg-hint)',
-        fontSize: 11,
-        lineHeight: 1.3,
+        fontSize: 12,
+        lineHeight: 1.35,
       }}>
         {label}
       </div>

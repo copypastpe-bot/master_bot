@@ -43,21 +43,26 @@ body {
 }
 
 body.typeui-enterprise-body {
-  --tg-bg: var(--tg-theme-bg-color, #ffffff);
-  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #f2f3f5);
-  --tg-section-bg: var(--tg-theme-section-bg-color, #ffffff);
-  --tg-surface: var(--tg-section-bg);
-  --tg-text: var(--tg-theme-text-color, #1f2937);
-  --tg-hint: var(--tg-theme-hint-color, #6b7280);
-  --tg-link: var(--tg-theme-link-color, #3390ec);
-  --tg-button: var(--tg-theme-button-color, #3390ec);
+  --tg-bg:
+    radial-gradient(circle at top, rgba(89, 170, 255, 0.2), transparent 34%),
+    radial-gradient(circle at 85% 12%, rgba(59, 130, 246, 0.16), transparent 24%),
+    #0b1622;
+  --tg-secondary-bg: rgba(23, 35, 52, 0.86);
+  --tg-section-bg: rgba(12, 22, 34, 0.9);
+  --tg-surface: rgba(18, 30, 45, 0.88);
+  --tg-text: var(--tg-theme-text-color, #f6fbff);
+  --tg-hint: var(--tg-theme-hint-color, #8ca2bd);
+  --tg-link: var(--tg-theme-link-color, #6ab2ff);
+  --tg-button: var(--tg-theme-button-color, #4f9cf9);
   --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
-  --tg-accent: var(--tg-theme-accent-text-color, var(--tg-button));
-  --tg-destructive: var(--tg-theme-destructive-text-color, #e53935);
-  --radius-card: 18px;
+  --tg-accent: var(--tg-theme-accent-text-color, #7dc1ff);
+  --tg-destructive: var(--tg-theme-destructive-text-color, #ff6f87);
+  --radius-card: 20px;
   --radius-btn: 14px;
-  --tg-enterprise-border: rgba(127, 127, 127, 0.22);
-  --tg-enterprise-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  --tg-enterprise-border: rgba(255, 255, 255, 0.08);
+  --tg-enterprise-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  --tg-enterprise-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.18);
+  --tg-enterprise-highlight: rgba(255, 255, 255, 0.04);
   background: var(--tg-bg);
   color: var(--tg-text);
   font-family: 'Avenir Next', 'Segoe UI', sans-serif;
@@ -1099,23 +1104,46 @@ body.typeui-enterprise-body .master-shell {
     + var(--tg-content-safe-area-inset-top, 0px)
   );
   position: relative;
+  overflow-x: hidden;
+}
+
+body.typeui-enterprise-body .master-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(109, 188, 255, 0.12), transparent 22%),
+    radial-gradient(circle at 92% 20%, rgba(57, 131, 241, 0.12), transparent 20%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body.typeui-enterprise-body .master-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
 body.typeui-enterprise-body .app-header-title {
   position: absolute;
-  top: var(--tg-safe-area-inset-top, env(safe-area-inset-top));
-  left: 0;
-  right: 0;
-  /* height = Telegram nav bar only (without device status bar) */
-  height: var(--tg-content-safe-area-inset-top, 44px);
+  top: calc(var(--tg-safe-area-inset-top, env(safe-area-inset-top)) + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   z-index: 50;
-  font-size: 15px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 25, 37, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--tg-enterprise-shadow-soft);
+  font-size: 14px;
   font-weight: 700;
   color: var(--tg-text);
+  letter-spacing: 0.02em;
 }
 
 body.typeui-enterprise-body .master-page-header {
@@ -1159,9 +1187,9 @@ body.typeui-enterprise-body .master-nav {
   right: 12px;
   bottom: calc(8px + env(safe-area-inset-bottom));
   border: 1px solid var(--tg-enterprise-border);
-  background: var(--tg-surface);
-  backdrop-filter: blur(8px);
-  border-radius: 18px;
+  background: rgba(15, 25, 37, 0.82);
+  backdrop-filter: blur(16px);
+  border-radius: 20px;
   box-shadow: var(--tg-enterprise-shadow);
   display: flex;
   z-index: 100;
@@ -1189,7 +1217,7 @@ body.typeui-enterprise-body .master-nav-button {
 
 body.typeui-enterprise-body .master-nav-button.is-active {
   color: var(--tg-accent);
-  background: var(--tg-secondary-bg);
+  background: rgba(79, 156, 249, 0.14);
 }
 
 body.typeui-enterprise-body .master-nav-button:active {
@@ -1226,43 +1254,46 @@ body.typeui-enterprise-body .enterprise-more-page {
 body.typeui-enterprise-body .enterprise-subscription-card {
   width: calc(100% - 24px);
   margin: 14px 12px 0;
-  border: 1px solid #9ec3f2;
-  background: #e9f1ff;
-  border-radius: 16px;
-  padding: 14px 14px;
+  border: 1px solid rgba(123, 191, 255, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(123, 191, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(36, 57, 82, 0.96), rgba(18, 30, 45, 0.96));
+  border-radius: 20px;
+  padding: 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   cursor: pointer;
   text-align: left;
+  box-shadow: var(--tg-enterprise-shadow);
 }
 
 body.typeui-enterprise-body .enterprise-subscription-card-title {
-  color: #2b65b9;
+  color: var(--tg-text);
   font-size: 16px;
   font-weight: 700;
   margin-bottom: 2px;
 }
 
 body.typeui-enterprise-body .enterprise-subscription-card-subtitle {
-  color: #2f74d2;
+  color: var(--tg-accent);
   font-size: 14px;
   font-weight: 600;
 }
 
 body.typeui-enterprise-body .enterprise-subscription-card-subtitle.is-expired {
-  color: #bf4c4c;
+  color: var(--tg-destructive);
 }
 
 body.typeui-enterprise-body .enterprise-subscription-card-star {
-  color: #2f74d2;
+  color: var(--tg-accent);
   font-size: 30px;
   line-height: 1;
 }
 
 body.typeui-enterprise-body .enterprise-subscription-card-star.is-expired {
-  color: #555555;
+  color: var(--tg-hint);
 }
 
 body.typeui-enterprise-body .enterprise-section-title {
@@ -1277,8 +1308,10 @@ body.typeui-enterprise-body .enterprise-section-title {
 body.typeui-enterprise-body .enterprise-cell-group {
   margin: 0 12px;
   border: 1px solid var(--tg-enterprise-border);
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(14px);
   box-shadow: var(--tg-enterprise-shadow);
 }
 
@@ -1289,8 +1322,8 @@ body.typeui-enterprise-body .enterprise-cell {
   gap: 12px;
   padding: 14px 14px 14px 12px;
   border: none;
-  border-bottom: 1px solid var(--tg-secondary-bg);
-  background: var(--tg-section-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: transparent;
   text-align: left;
 }
 
@@ -1299,12 +1332,12 @@ body.typeui-enterprise-body .enterprise-cell:last-child {
 }
 
 body.typeui-enterprise-body .enterprise-cell-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
   border: 1px solid var(--tg-enterprise-border);
   color: var(--tg-accent);
-  background: var(--tg-secondary-bg);
+  background: rgba(79, 156, 249, 0.12);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1335,7 +1368,7 @@ body.typeui-enterprise-body .enterprise-cell.is-interactive {
 }
 
 body.typeui-enterprise-body .enterprise-cell.is-interactive:active {
-  background: var(--tg-secondary-bg);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 body.typeui-enterprise-body .enterprise-profile-page {
@@ -1350,9 +1383,9 @@ body.typeui-enterprise-body .enterprise-profile-toast {
   z-index: 130;
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(84, 174, 106, 0.4);
-  background: rgba(84, 174, 106, 0.16);
-  color: #226b39;
+  border: 1px solid rgba(103, 214, 150, 0.34);
+  background: rgba(18, 62, 44, 0.82);
+  color: #9cf2bf;
   font-size: 13px;
   font-weight: 700;
   backdrop-filter: blur(8px);
@@ -1369,6 +1402,7 @@ body.typeui-enterprise-body .enterprise-profile-hero {
     var(--tg-section-bg);
   box-shadow: var(--tg-enterprise-shadow);
   text-align: center;
+  backdrop-filter: blur(16px);
 }
 
 body.typeui-enterprise-body .enterprise-profile-avatar {
@@ -1436,6 +1470,7 @@ body.typeui-enterprise-body .enterprise-profile-copy-btn {
   font-weight: 700;
   padding: 10px 12px;
   cursor: pointer;
+  box-shadow: var(--tg-enterprise-shadow-soft);
 }
 
 body.typeui-enterprise-body .enterprise-profile-copy-btn:disabled {
@@ -1483,7 +1518,7 @@ body.typeui-enterprise-body .enterprise-bonus-toggle {
   padding: 0;
   border: 1px solid var(--tg-enterprise-border);
   border-radius: 999px;
-  background: var(--tg-secondary-bg);
+  background: rgba(255, 255, 255, 0.08);
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
@@ -1501,8 +1536,8 @@ body.typeui-enterprise-body .enterprise-bonus-toggle-knob {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(180deg, #ffffff, #d9e7f6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
   transition: transform 180ms ease;
 }
 
@@ -1553,10 +1588,10 @@ body.typeui-enterprise-body .enterprise-bonus-row-label {
 }
 
 body.typeui-enterprise-body .enterprise-bonus-row-value {
-  border: 1px solid rgba(51, 144, 236, 0.35);
+  border: 1px solid rgba(111, 188, 255, 0.22);
   border-radius: 10px;
-  background: rgba(51, 144, 236, 0.12);
-  color: #1f5ea6;
+  background: rgba(79, 156, 249, 0.14);
+  color: var(--tg-accent);
   font-size: 14px;
   font-weight: 700;
   padding: 6px 9px;
@@ -1603,7 +1638,8 @@ body.typeui-enterprise-body .enterprise-services-tabs {
   padding: 4px;
   border: 1px solid var(--tg-enterprise-border);
   border-radius: 16px;
-  background: var(--tg-section-bg);
+  background: rgba(15, 25, 37, 0.62);
+  backdrop-filter: blur(14px);
   box-shadow: var(--tg-enterprise-shadow);
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1622,7 +1658,8 @@ body.typeui-enterprise-body .enterprise-services-tab {
 }
 
 body.typeui-enterprise-body .enterprise-services-tab.is-active {
-  background: var(--tg-button);
+  background: rgba(79, 156, 249, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(123, 191, 255, 0.18);
   color: var(--tg-button-text);
 }
 
@@ -1687,7 +1724,7 @@ body.typeui-enterprise-body .enterprise-services-archived-row {
   justify-content: space-between;
   gap: 10px;
   padding: 12px;
-  border-bottom: 1px solid var(--tg-secondary-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   opacity: 0.75;
 }
 
@@ -1703,9 +1740,9 @@ body.typeui-enterprise-body .enterprise-services-archived-main {
 }
 
 body.typeui-enterprise-body .enterprise-services-restore-btn {
-  border: 1px solid var(--tg-accent);
+  border: 1px solid rgba(123, 191, 255, 0.22);
   border-radius: 10px;
-  background: transparent;
+  background: rgba(79, 156, 249, 0.08);
   color: var(--tg-accent);
   font-size: 12px;
   font-weight: 700;
@@ -1731,8 +1768,8 @@ body.typeui-enterprise-body .enterprise-sheet-backdrop {
   position: fixed;
   inset: 0;
   z-index: 140;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(3px);
+  background: rgba(5, 10, 18, 0.5);
+  backdrop-filter: blur(6px);
 }
 
 body.typeui-enterprise-body .enterprise-sheet {
@@ -1744,8 +1781,9 @@ body.typeui-enterprise-body .enterprise-sheet {
   border-radius: 20px 20px 0 0;
   border: 1px solid var(--tg-enterprise-border);
   border-bottom: none;
-  background: var(--tg-section-bg);
-  box-shadow: 0 -10px 26px rgba(0, 0, 0, 0.2);
+  background:
+    linear-gradient(180deg, rgba(24, 38, 57, 0.98), rgba(11, 20, 32, 0.98));
+  box-shadow: 0 -18px 36px rgba(0, 0, 0, 0.34);
   padding: 10px 14px calc(14px + env(safe-area-inset-bottom));
   max-height: min(74vh, 620px);
   overflow-y: auto;
@@ -1771,7 +1809,7 @@ body.typeui-enterprise-body .enterprise-sheet-option {
   width: 100%;
   border: 1px solid transparent;
   border-radius: 12px;
-  background: var(--tg-secondary-bg);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--tg-text);
   display: flex;
   align-items: center;
@@ -1786,16 +1824,16 @@ body.typeui-enterprise-body .enterprise-sheet-option {
 }
 
 body.typeui-enterprise-body .enterprise-sheet-option.is-active {
-  border-color: rgba(51, 144, 236, 0.36);
-  background: rgba(51, 144, 236, 0.14);
-  color: #1f5ea6;
+  border-color: rgba(111, 188, 255, 0.22);
+  background: rgba(79, 156, 249, 0.14);
+  color: var(--tg-accent);
 }
 
 body.typeui-enterprise-body .enterprise-sheet-input {
   width: 100%;
   border-radius: 12px;
   border: 1px solid var(--tg-enterprise-border);
-  background: var(--tg-section-bg);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--tg-text);
   padding: 12px;
   min-height: 48px;
@@ -1829,7 +1867,7 @@ body.typeui-enterprise-body .enterprise-sheet-btn {
 }
 
 body.typeui-enterprise-body .enterprise-sheet-btn.secondary {
-  background: var(--tg-secondary-bg);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--tg-text);
 }
 
@@ -1841,8 +1879,8 @@ body.typeui-enterprise-body .enterprise-sheet-btn.primary {
 
 body.typeui-enterprise-body .enterprise-sheet-btn.destructive {
   border-color: rgba(229, 57, 53, 0.45);
-  background: rgba(229, 57, 53, 0.11);
-  color: #b8322c;
+  background: rgba(255, 111, 135, 0.12);
+  color: var(--tg-destructive);
 }
 
 body.typeui-enterprise-body .enterprise-sheet-btn:disabled {
@@ -1893,7 +1931,8 @@ body.typeui-enterprise-body .onb-dot.is-active {
 body.typeui-enterprise-body .onb-card {
   border-radius: 20px;
   border: 1px solid var(--tg-enterprise-border);
-  background: var(--tg-surface);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(16px);
   box-shadow: var(--tg-enterprise-shadow);
   padding: 20px 18px 18px;
 }
@@ -1929,7 +1968,7 @@ body.typeui-enterprise-body .onb-back-btn {
 
 /* ── Dashboard page layout ── */
 body.typeui-enterprise-body .enterprise-page {
-  padding: 12px 0 100px;
+  padding: 18px 0 108px;
 }
 
 body.typeui-enterprise-body .enterprise-page-inner {
@@ -1938,15 +1977,17 @@ body.typeui-enterprise-body .enterprise-page-inner {
 
 body.typeui-enterprise-body .enterprise-page-title {
   color: var(--tg-text);
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.15;
+  font-weight: 800;
   margin: 0;
 }
 
 body.typeui-enterprise-body .enterprise-page-subtitle {
   color: var(--tg-hint);
-  font-size: 13px;
-  margin: 4px 0 0;
+  font-size: 14px;
+  margin: 6px 0 0;
+  line-height: 1.45;
 }
 
 body.typeui-enterprise-body .enterprise-stat-grid {
@@ -1958,13 +1999,15 @@ body.typeui-enterprise-body .enterprise-stat-grid {
 
 body.typeui-enterprise-body .enterprise-info-card {
   margin: 0 12px 16px;
-  background: var(--tg-secondary-bg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   border: 1px solid var(--tg-enterprise-border);
   border-radius: var(--radius-card);
   padding: 14px;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  backdrop-filter: blur(14px);
+  box-shadow: var(--tg-enterprise-shadow);
 }
 
 body.typeui-enterprise-body .enterprise-orders-section {
@@ -2001,6 +2044,7 @@ body.typeui-enterprise-body .enterprise-btn-banner-action {
   cursor: pointer;
   white-space: nowrap;
   font-family: inherit;
+  box-shadow: var(--tg-enterprise-shadow-soft);
 }
 
 body.typeui-enterprise-body .enterprise-btn-dismiss {
@@ -2015,15 +2059,16 @@ body.typeui-enterprise-body .enterprise-btn-dismiss {
 
 body.typeui-enterprise-body .enterprise-btn-outline {
   width: 100%;
-  background: var(--tg-surface);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--tg-button);
-  border: 1.5px solid var(--tg-button);
+  border: 1px solid rgba(111, 188, 255, 0.22);
   border-radius: 12px;
   padding: 14px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
+  backdrop-filter: blur(12px);
 }
 
 /* ── Enterprise form fields (replaces onb- in app pages) ── */
@@ -2045,7 +2090,7 @@ body.typeui-enterprise-body .enterprise-input {
   width: 100%;
   border-radius: 12px;
   border: 1.5px solid var(--tg-enterprise-border);
-  background: var(--tg-section-bg);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--tg-text);
   font-size: 16px;
   line-height: 1.2;
@@ -2076,6 +2121,7 @@ body.typeui-enterprise-body .enterprise-btn-primary {
   cursor: pointer;
   transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
   font-family: inherit;
+  box-shadow: var(--tg-enterprise-shadow-soft);
 }
 
 body.typeui-enterprise-body .enterprise-btn-primary:disabled {
@@ -2091,8 +2137,8 @@ body.typeui-enterprise-body .enterprise-btn-secondary {
   width: 100%;
   border-radius: 12px;
   border: 1.5px solid var(--tg-enterprise-border);
-  background: transparent;
-  color: var(--tg-hint);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--tg-text);
   font-size: 15px;
   font-weight: 600;
   padding: 12px 14px;
@@ -2129,7 +2175,7 @@ body.typeui-enterprise-body .onb-input {
   width: 100%;
   border-radius: 12px;
   border: 1.5px solid var(--tg-enterprise-border);
-  background: var(--tg-section-bg);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--tg-text);
   font-size: 16px;
   line-height: 1.2;
@@ -2185,7 +2231,7 @@ body.typeui-enterprise-body .onb-chip-grid {
 body.typeui-enterprise-body .onb-chip {
   border-radius: 999px;
   border: 1.5px solid var(--tg-enterprise-border);
-  background: var(--tg-secondary-bg);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--tg-text);
   font-size: 13px;
   font-weight: 600;
@@ -2195,8 +2241,8 @@ body.typeui-enterprise-body .onb-chip {
 }
 
 body.typeui-enterprise-body .onb-chip.is-selected {
-  border-color: var(--tg-accent);
-  background: var(--tg-accent);
+  border-color: rgba(111, 188, 255, 0.22);
+  background: rgba(79, 156, 249, 0.16);
   color: var(--tg-button-text);
 }
 
