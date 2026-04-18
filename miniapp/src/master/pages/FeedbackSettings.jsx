@@ -117,7 +117,7 @@ export default function FeedbackSettings() {
   }
 
   return (
-    <div className="enterprise-profile-page">
+    <div className="enterprise-feedback-page">
       {successMsg && <div className="enterprise-profile-toast">{successMsg}</div>}
 
       <div className="enterprise-section-title">{t('feedbackSettings.sections.delay')}</div>
@@ -176,10 +176,7 @@ export default function FeedbackSettings() {
         {buttons.map((btn, index) => (
           <div
             key={index}
-            style={{
-              padding: '8px 16px',
-              borderBottom: index === buttons.length - 1 ? 'none' : '1px solid var(--tg-section-separator)',
-            }}
+            className={`enterprise-feedback-button-block${index === buttons.length - 1 ? ' is-last' : ''}`}
           >
             <div className="enterprise-form-field">
               <label>{t('feedbackSettings.fields.buttonLabel', { index: index + 1 })}</label>
@@ -201,7 +198,7 @@ export default function FeedbackSettings() {
               />
             </div>
             {buttons.length > 1 && (
-              <button className="enterprise-btn-secondary" style={{ marginTop: 4 }} onClick={() => removeButton(index)}>
+              <button className="enterprise-btn-secondary enterprise-feedback-inline-btn" onClick={() => removeButton(index)}>
                 {t('feedbackSettings.removeButton')}
               </button>
             )}
@@ -209,7 +206,7 @@ export default function FeedbackSettings() {
         ))}
 
         {buttons.length < 3 && (
-          <div style={{ padding: '8px 16px' }}>
+          <div className="enterprise-feedback-add-wrap">
             <button className="enterprise-btn-secondary" onClick={addButton}>
               {t('feedbackSettings.addButton')}
             </button>
@@ -217,7 +214,7 @@ export default function FeedbackSettings() {
         )}
       </div>
 
-      <div style={{ padding: '16px' }}>
+      <div className="enterprise-feedback-actions">
         <button
           className="enterprise-btn-primary"
           onClick={handleSave}

@@ -1375,6 +1375,44 @@ body.typeui-enterprise-body .enterprise-profile-page {
   padding: 12px 0 calc(112px + env(safe-area-inset-bottom));
 }
 
+body.typeui-enterprise-body .enterprise-feedback-page {
+  padding: 12px 0 calc(112px + env(safe-area-inset-bottom));
+}
+
+body.typeui-enterprise-body .enterprise-feedback-page .enterprise-cell-group {
+  overflow: visible;
+}
+
+body.typeui-enterprise-body .enterprise-feedback-page .enterprise-form-field {
+  padding: 16px;
+}
+
+body.typeui-enterprise-body .enterprise-feedback-page .enterprise-form-field + .enterprise-form-field {
+  padding-top: 0;
+}
+
+body.typeui-enterprise-body .enterprise-feedback-button-block {
+  padding: 8px 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+body.typeui-enterprise-body .enterprise-feedback-button-block.is-last {
+  border-bottom: none;
+}
+
+body.typeui-enterprise-body .enterprise-feedback-inline-btn {
+  margin: 4px 16px 0;
+  width: calc(100% - 32px);
+}
+
+body.typeui-enterprise-body .enterprise-feedback-add-wrap {
+  padding: 8px 16px 16px;
+}
+
+body.typeui-enterprise-body .enterprise-feedback-actions {
+  padding: 16px;
+}
+
 body.typeui-enterprise-body .enterprise-profile-toast {
   position: fixed;
   top: calc(12px + env(safe-area-inset-top));
@@ -2350,17 +2388,19 @@ body.typeui-enterprise-body .requests-filter-wrap {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: var(--tg-bg);
-  backdrop-filter: blur(8px);
-  padding: 4px 0 10px;
+  margin: 0 -12px;
+  padding: 4px 12px 12px;
+  background: linear-gradient(180deg, rgba(11, 22, 34, 0.96), rgba(11, 22, 34, 0.76) 70%, rgba(11, 22, 34, 0));
+  backdrop-filter: blur(14px);
 }
 
 body.typeui-enterprise-body .requests-filter {
   border: 1px solid var(--tg-enterprise-border);
   border-radius: 14px;
-  background: var(--tg-surface);
+  background: rgba(18, 30, 45, 0.88);
   display: flex;
   padding: 3px;
+  box-shadow: var(--tg-enterprise-shadow-soft);
 }
 
 body.typeui-enterprise-body .requests-filter-btn {
