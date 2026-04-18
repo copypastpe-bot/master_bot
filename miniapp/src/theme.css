@@ -2031,6 +2031,16 @@ body.typeui-enterprise-body .enterprise-form-field {
   padding: 0 16px 12px;
 }
 
+body.typeui-enterprise-body .enterprise-form-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--tg-hint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 body.typeui-enterprise-body .enterprise-input {
   width: 100%;
   border-radius: 12px;
