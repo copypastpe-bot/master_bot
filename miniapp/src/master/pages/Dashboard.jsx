@@ -27,46 +27,24 @@ function formatDate(d, locale) {
 
 function OrdersSection({ title, orders, onNavigate, emptyContent, tr }) {
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 8,
-      }}>
-        <h3 style={{
-          color: 'var(--tg-text)',
-          fontSize: 16,
-          fontWeight: 600,
-          margin: 0,
-        }}>
-          {title}
-        </h3>
-        <span style={{
-          color: 'var(--tg-hint)',
-          fontSize: 13,
-        }}>
-          {orders.length > 0 ? tr(`${orders.length} зап.`, `${orders.length} bookings`) : ''}
-        </span>
+    <div className="enterprise-orders-section">
+      <div className="enterprise-section-header">
+        <div className="enterprise-section-title">{title}</div>
+        {orders.length > 0 && (
+          <span className="enterprise-section-count">
+            {tr(`${orders.length} зап.`, `${orders.length} bookings`)}
+          </span>
+        )}
       </div>
 
       {orders.length === 0 ? (
-        <div style={{
-          background: 'var(--tg-surface)',
-          borderRadius: 'var(--radius-card)',
-          padding: '14px 16px',
-          color: 'var(--tg-hint)',
-          fontSize: 14,
-          textAlign: 'center',
-        }}>
-          {emptyContent ?? tr('Свободный день! 🎉', 'Free day! 🎉')}
+        <div className="enterprise-cell-group">
+          <div style={{ padding: '14px 16px', color: 'var(--tg-hint)', fontSize: 14, textAlign: 'center' }}>
+            {emptyContent ?? tr('Свободный день! 🎉', 'Free day! 🎉')}
+          </div>
         </div>
       ) : (
-        <div style={{
-          background: 'var(--tg-surface)',
-          borderRadius: 'var(--radius-card)',
-          padding: '0 16px',
-        }}>
+        <div className="enterprise-cell-group">
           {orders.map((order, idx) => (
             <OrderCard
               key={order.id}
@@ -83,22 +61,25 @@ function OrdersSection({ title, orders, onNavigate, emptyContent, tr }) {
 
 function DashboardSkeleton() {
   return (
-    <div style={{ padding: '16px 16px 100px' }}>
-      <Skeleton height={24} style={{ width: '50%', marginBottom: 6 }} />
-      <Skeleton height={14} style={{ width: '35%', marginBottom: 24 }} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
+    <div className="enterprise-page">
+      <div className="enterprise-page-inner" style={{ marginBottom: 20 }}>
+        <Skeleton height={24} style={{ width: '55%', marginBottom: 6 }} />
+        <Skeleton height={14} style={{ width: '35%' }} />
+      </div>
+      <div className="enterprise-stat-grid">
         <Skeleton height={80} />
         <Skeleton height={80} />
         <Skeleton height={80} />
         <Skeleton height={80} />
       </div>
-
-      <Skeleton height={18} style={{ width: '30%', marginBottom: 10 }} />
-      <Skeleton height={64} style={{ marginBottom: 24 }} />
-
-      <Skeleton height={18} style={{ width: '30%', marginBottom: 10 }} />
-      <Skeleton height={64} />
+      <div className="enterprise-section-title" style={{ visibility: 'hidden' }}>—</div>
+      <div className="enterprise-cell-group" style={{ marginBottom: 20 }}>
+        <Skeleton height={64} />
+      </div>
+      <div className="enterprise-section-title" style={{ visibility: 'hidden' }}>—</div>
+      <div className="enterprise-cell-group">
+        <Skeleton height={64} />
+      </div>
     </div>
   );
 }
@@ -122,29 +103,18 @@ export default function Dashboard({ onNavigate }) {
 
   if (isError) {
     return (
-      <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <p style={{ color: 'var(--tg-text)', marginBottom: 8 }}>
-          {tr('Не удалось загрузить данные', 'Failed to load data')}
-        </p>
-        <button
-          onClick={() => {
-            if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
-              WebApp.HapticFeedback.impactOccurred('light');
-            }
-            refetch();
-          }}
-          style={{
-            background: 'var(--tg-button)',
-            color: 'var(--tg-button-text)',
-            border: 'none',
-            borderRadius: 10,
-            padding: '10px 24px',
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
-        >
-          {tr('Повторить', 'Retry')}
-        </button>
+      <div className="enterprise-page">
+        <div className="enterprise-page-inner" style={{ textAlign: 'center', paddingTop: 48 }}>
+          <p style={{ color: 'var(--tg-text)', marginBottom: 8 }}>
+            {tr('Не удалось загрузить данные', 'Failed to load data')}
+          </p>
+          <button
+            className="enterprise-btn-primary"
+            onClick={() => { WebApp?.HapticFeedback?.impactOccurred?.('light'); refetch(); }}
+          >
+            {tr('Повторить', 'Retry')}
+          </button>
+        </div>
       </div>
     );
   }
@@ -249,141 +219,57 @@ function DashboardContent({ data, subscription, onNavigate }) {
   };
 
   return (
-    <div style={{ padding: '16px 16px 100px' }}>
+    <div className="enterprise-page">
       {/* Onboarding banner */}
       {showBanner && (
-        <div style={{
-          background: 'var(--tg-secondary-bg)',
-          border: '1px solid var(--tg-enterprise-border)',
-          borderRadius: 'var(--radius-card)',
-          padding: '12px 14px',
-          marginBottom: 16,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <p style={{
-            flex: 1,
-            color: 'var(--tg-text)',
-            fontSize: 13,
-            margin: 0,
-            lineHeight: 1.4,
-          }}>
+        <div className="enterprise-info-card" style={{ alignItems: 'center', gap: 10 }}>
+          <p style={{ flex: 1, color: 'var(--tg-text)', fontSize: 13, margin: 0, lineHeight: 1.4 }}>
             {tr('Добавь первого клиента, чтобы увидеть как работают напоминания', 'Add your first client to see how reminders work')}
           </p>
           <button
             onClick={handleBannerAdd}
-            style={{
-              background: 'var(--tg-button)',
-              color: 'var(--tg-button-text)',
-              border: 'none',
-              borderRadius: 8,
-              padding: '7px 12px',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
+            style={{ background: 'var(--tg-button)', color: 'var(--tg-button-text)', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             {tr('Добавить →', 'Add ->')}
           </button>
           <button
             onClick={handleBannerDismiss}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--tg-hint)',
-              fontSize: 18,
-              cursor: 'pointer',
-              padding: '0 2px',
-              lineHeight: 1,
-            }}
+            style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Block 1: Greeting */}
-      <div style={{ marginBottom: 20 }}>
+      {/* Greeting */}
+      <div className="enterprise-page-inner" style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <h2 style={{
-            color: 'var(--tg-text)',
-            fontSize: 20,
-            fontWeight: 700,
-            margin: 0,
-          }}>
+          <h2 className="enterprise-page-title">
             {tr('Привет', 'Hello')}, {data?.master_name || ''}!
           </h2>
-          <span style={{ color: isSubscriptionActive ? '#2f74d2' : '#888888', fontSize: 24, lineHeight: 1 }}>
-            ★
-          </span>
+          <span style={{ color: isSubscriptionActive ? '#2f74d2' : '#888888', fontSize: 24, lineHeight: 1 }}>★</span>
         </div>
-        <p style={{
-          color: 'var(--tg-hint)',
-          fontSize: 13,
-          margin: 0,
-        }}>
-          {formatDate(today, locale)}
-        </p>
+        <p className="enterprise-page-subtitle">{formatDate(today, locale)}</p>
       </div>
 
-      {/* Block 2: KPI or motivational block */}
+      {/* Stats */}
       {totalDoneOrders > 0 ? (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 8,
-          marginBottom: 24,
-        }}>
-          <StatCard
-            icon="💰"
-            value={formatCurrency(stats.week_revenue || 0, locale)}
-            label={tr('Выручка за неделю', 'Revenue this week')}
-            onClick={handleReportsWeek}
-          />
-          <StatCard
-            icon="📅"
-            value={formatCurrency(stats.month_revenue || 0, locale)}
-            label={tr('Выручка за месяц', 'Revenue this month')}
-            onClick={handleReportsMonth}
-          />
-          <StatCard
-            icon="✅"
-            value={stats.week_orders || 0}
-            label={tr('Заказов за неделю', 'Orders this week')}
-          />
-          <StatCard
-            icon="👥"
-            value={stats.total_clients || 0}
-            label={tr('Всего клиентов', 'Total clients')}
-            onClick={handleClients}
-          />
+        <div className="enterprise-stat-grid">
+          <StatCard icon="💰" value={formatCurrency(stats.week_revenue || 0, locale)} label={tr('Выручка за неделю', 'Revenue this week')} onClick={handleReportsWeek} />
+          <StatCard icon="📅" value={formatCurrency(stats.month_revenue || 0, locale)} label={tr('Выручка за месяц', 'Revenue this month')} onClick={handleReportsMonth} />
+          <StatCard icon="✅" value={stats.week_orders || 0} label={tr('Заказов за неделю', 'Orders this week')} />
+          <StatCard icon="👥" value={stats.total_clients || 0} label={tr('Всего клиентов', 'Total clients')} onClick={handleClients} />
         </div>
       ) : (
-        <div style={{
-          background: 'var(--tg-secondary-bg)',
-          border: '1px solid var(--tg-enterprise-border)',
-          borderRadius: 'var(--radius-card)',
-          padding: '16px',
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 12,
-        }}>
+        <div className="enterprise-info-card">
           <span style={{ fontSize: 24, lineHeight: 1 }}>📊</span>
-          <p style={{
-            color: 'var(--tg-hint)',
-            fontSize: 14,
-            margin: 0,
-            lineHeight: 1.4,
-          }}>
+          <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: 0, lineHeight: 1.4 }}>
             {tr('Выполни первый заказ и увидишь показатели своей работы в цифрах', 'Complete your first order to see your performance in numbers')}
           </p>
         </div>
       )}
 
-      {/* Block 3: Today's orders */}
+      {/* Today's orders */}
       <OrdersSection
         title={tr('Сегодня', 'Today')}
         orders={todayOrders}
@@ -402,11 +288,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
                     background: isSubscriptionActive ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
                     color: isSubscriptionActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
                     border: isSubscriptionActive ? 'none' : '1px solid var(--tg-enterprise-border)',
-                    borderRadius: 8,
-                    padding: '8px 16px',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
+                    borderRadius: 8, padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
                   {tr('+ Добавить первую запись', '+ Add first booking')}
@@ -419,7 +301,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
         }
       />
 
-      {/* Block 4: Tomorrow's orders */}
+      {/* Tomorrow's orders */}
       <OrdersSection
         title={tr('Завтра', 'Tomorrow')}
         orders={tomorrowOrders}
@@ -428,21 +310,12 @@ function DashboardContent({ data, subscription, onNavigate }) {
         emptyContent={tr('Записей на завтра нет', 'No bookings for tomorrow')}
       />
 
-      {/* Block 5: Quick actions */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Actions */}
+      <div className="enterprise-actions">
         <button
+          className="enterprise-btn-primary"
           onClick={handleNewOrder}
-          style={{
-            background: isSubscriptionActive ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
-            color: isSubscriptionActive ? 'var(--tg-button-text)' : 'var(--tg-hint)',
-            border: isSubscriptionActive ? 'none' : '1px solid var(--tg-enterprise-border)',
-            borderRadius: 12,
-            padding: '14px',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            width: '100%',
-          }}
+          style={!isSubscriptionActive ? { background: 'var(--tg-secondary-bg)', color: 'var(--tg-hint)', border: '1px solid var(--tg-enterprise-border)' } : {}}
         >
           {tr('+ Новый заказ', '+ New order')}
         </button>
@@ -450,17 +323,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
         {(stats.pending_requests || 0) > 0 && (
           <button
             onClick={handleRequests}
-            style={{
-              background: 'var(--tg-surface)',
-              color: 'var(--tg-button)',
-              border: '1.5px solid var(--tg-button)',
-              borderRadius: 12,
-              padding: '14px',
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: 'pointer',
-              width: '100%',
-            }}
+            style={{ background: 'var(--tg-surface)', color: 'var(--tg-button)', border: '1.5px solid var(--tg-button)', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%' }}
           >
             {tr(`Новые заявки (${stats.pending_requests})`, `New requests (${stats.pending_requests})`)}
           </button>
