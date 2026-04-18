@@ -597,6 +597,7 @@ body.typeui-client-body .client-contact-mode-chevron {
 
 body.typeui-client-body .client-contact-section {
   margin-bottom: 18px;
+  padding: 0 var(--client-shell-padding);
 }
 
 body.typeui-client-body .client-contact-chips {
@@ -629,6 +630,7 @@ body.typeui-client-body .client-contact-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
+  padding: 0 var(--client-shell-padding);
 }
 
 body.typeui-client-body .client-contact-field {
@@ -679,7 +681,8 @@ body.typeui-client-body .client-contact-textarea {
   padding: 14px 14px;
   resize: none;
   outline: none;
-  margin-bottom: 14px;
+  margin: 0 var(--client-shell-padding) 14px;
+  width: calc(100% - 2 * var(--client-shell-padding));
 }
 
 body.typeui-client-body .client-contact-upload-block {
@@ -765,12 +768,13 @@ body.typeui-client-body .client-contact-error {
   font-size: 13px;
   line-height: 1.4;
   margin-top: 6px;
+  padding: 0 var(--client-shell-padding);
 }
 
 body.typeui-client-body .client-contact-submit-wrap {
   position: fixed;
-  left: 12px;
-  right: 12px;
+  left: var(--client-shell-padding);
+  right: var(--client-shell-padding);
   bottom: calc(86px + env(safe-area-inset-bottom));
   z-index: 110;
 }
