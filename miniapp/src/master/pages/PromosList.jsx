@@ -101,7 +101,7 @@ export default function PromosList({ onNavigate }) {
         </div>
       ) : (
         <div>
-          <div style={{ fontSize: 12, color: 'var(--tg-hint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', padding: '8px 16px' }}>
+          <div className="enterprise-section-title">
             {tr(`Активные (${active.length})`, `Active (${active.length})`)}
           </div>
           {active.map(p => (
