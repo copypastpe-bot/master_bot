@@ -2014,8 +2014,10 @@ body.typeui-enterprise-body .enterprise-input::placeholder {
 
 body.typeui-enterprise-body .enterprise-input:focus {
   border-color: var(--tg-accent);
+  background: var(--tg-section-bg);
 }
 
+/* Note: intentionally mirrors onb-btn-primary; onb- classes are reserved for MasterOnboarding flow */
 body.typeui-enterprise-body .enterprise-btn-primary {
   width: 100%;
   border: none;
@@ -2026,7 +2028,7 @@ body.typeui-enterprise-body .enterprise-btn-primary {
   font-weight: 700;
   padding: 13px 14px;
   cursor: pointer;
-  transition: transform 140ms ease, opacity 140ms ease;
+  transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease;
   font-family: inherit;
 }
 
