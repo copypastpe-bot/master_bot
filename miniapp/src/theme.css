@@ -2083,10 +2083,11 @@ body.typeui-enterprise-body .enterprise-orders-card {
   backdrop-filter: blur(14px);
   box-shadow: var(--tg-enterprise-shadow);
   overflow: hidden;
+  padding: 0 14px;
 }
 
 body.typeui-enterprise-body .enterprise-orders-empty {
-  padding: 18px 16px;
+  padding: 18px 2px;
   color: var(--tg-hint);
   font-size: 14px;
   line-height: 1.45;
