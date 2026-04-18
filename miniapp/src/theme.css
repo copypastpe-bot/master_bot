@@ -1990,6 +1990,42 @@ body.typeui-enterprise-body .enterprise-actions {
   padding: 0 12px;
 }
 
+body.typeui-enterprise-body .enterprise-btn-banner-action {
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+body.typeui-enterprise-body .enterprise-btn-dismiss {
+  background: none;
+  border: none;
+  color: var(--tg-hint);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+body.typeui-enterprise-body .enterprise-btn-outline {
+  width: 100%;
+  background: var(--tg-surface);
+  color: var(--tg-button);
+  border: 1.5px solid var(--tg-button);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 /* ── Enterprise form fields (replaces onb- in app pages) ── */
 body.typeui-enterprise-body .enterprise-form-field {
   padding: 0 16px 12px;

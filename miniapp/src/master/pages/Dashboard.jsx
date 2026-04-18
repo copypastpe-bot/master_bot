@@ -228,13 +228,13 @@ function DashboardContent({ data, subscription, onNavigate }) {
           </p>
           <button
             onClick={handleBannerAdd}
-            style={{ background: 'var(--tg-button)', color: 'var(--tg-button-text)', border: 'none', borderRadius: 8, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            className="enterprise-btn-banner-action"
           >
             {tr('Добавить →', 'Add ->')}
           </button>
           <button
             onClick={handleBannerDismiss}
-            style={{ background: 'none', border: 'none', color: 'var(--tg-hint)', fontSize: 18, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+            className="enterprise-btn-dismiss"
           >
             ×
           </button>
@@ -323,7 +323,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
         {(stats.pending_requests || 0) > 0 && (
           <button
             onClick={handleRequests}
-            style={{ background: 'var(--tg-surface)', color: 'var(--tg-button)', border: '1.5px solid var(--tg-button)', borderRadius: 12, padding: '14px', fontSize: 15, fontWeight: 600, cursor: 'pointer', width: '100%' }}
+            className="enterprise-btn-outline"
           >
             {tr(`Новые заявки (${stats.pending_requests})`, `New requests (${stats.pending_requests})`)}
           </button>
