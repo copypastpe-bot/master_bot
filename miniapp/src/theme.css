@@ -1927,6 +1927,137 @@ body.typeui-enterprise-body .onb-back-btn {
   cursor: pointer;
 }
 
+/* ── Dashboard page layout ── */
+body.typeui-enterprise-body .enterprise-page {
+  padding: 12px 0 100px;
+}
+
+body.typeui-enterprise-body .enterprise-page-inner {
+  padding: 0 12px;
+}
+
+body.typeui-enterprise-body .enterprise-page-title {
+  color: var(--tg-text);
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+body.typeui-enterprise-body .enterprise-page-subtitle {
+  color: var(--tg-hint);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+body.typeui-enterprise-body .enterprise-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 12px 24px;
+}
+
+body.typeui-enterprise-body .enterprise-info-card {
+  margin: 0 12px 16px;
+  background: var(--tg-secondary-bg);
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: var(--radius-card);
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+body.typeui-enterprise-body .enterprise-orders-section {
+  margin-bottom: 20px;
+}
+
+body.typeui-enterprise-body .enterprise-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 16px;
+}
+
+body.typeui-enterprise-body .enterprise-section-count {
+  color: var(--tg-hint);
+  font-size: 13px;
+}
+
+body.typeui-enterprise-body .enterprise-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px;
+}
+
+/* ── Enterprise form fields (replaces onb- in app pages) ── */
+body.typeui-enterprise-body .enterprise-form-field {
+  padding: 0 16px 12px;
+}
+
+body.typeui-enterprise-body .enterprise-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid var(--tg-enterprise-border);
+  background: var(--tg-section-bg);
+  color: var(--tg-text);
+  font-size: 16px;
+  line-height: 1.2;
+  padding: 12px 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+body.typeui-enterprise-body .enterprise-input::placeholder {
+  color: var(--tg-hint);
+}
+
+body.typeui-enterprise-body .enterprise-input:focus {
+  border-color: var(--tg-accent);
+}
+
+body.typeui-enterprise-body .enterprise-btn-primary {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: var(--tg-button);
+  color: var(--tg-button-text);
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 14px;
+  cursor: pointer;
+  transition: transform 140ms ease, opacity 140ms ease;
+  font-family: inherit;
+}
+
+body.typeui-enterprise-body .enterprise-btn-primary:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+body.typeui-enterprise-body .enterprise-btn-primary:not(:disabled):active {
+  transform: scale(0.99);
+}
+
+body.typeui-enterprise-body .enterprise-btn-secondary {
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid var(--tg-enterprise-border);
+  background: transparent;
+  color: var(--tg-hint);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 14px;
+  margin-top: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+body.typeui-enterprise-body .enterprise-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 body.typeui-enterprise-body .onb-field-group {
   margin-bottom: 14px;
 }
