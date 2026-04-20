@@ -427,7 +427,7 @@ export default function Requests({ onNavigate, onBadgeChange }) {
   return (
     <div className="requests-page">
       <div className="requests-header">
-        <h1>{tr('Заявки', 'Requests')}</h1>
+        <h2 className="enterprise-page-title">{tr('Заявки', 'Requests')}</h2>
         {unreadCount > 0 && <span className="requests-unread-pill">{tr('Новых', 'New')}: {unreadCount}</span>}
       </div>
 

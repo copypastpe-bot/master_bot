@@ -2654,7 +2654,7 @@ body.typeui-enterprise-body .onb-success-icon {
 }
 
 body.typeui-enterprise-body .requests-page {
-  padding: 14px 12px 94px;
+  padding: 18px 12px 108px;
 }
 
 body.typeui-enterprise-body .requests-header {
@@ -2662,14 +2662,6 @@ body.typeui-enterprise-body .requests-header {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
-}
-
-body.typeui-enterprise-body .requests-header h1 {
-  margin: 0;
-  color: var(--tg-text);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
 }
 
 body.typeui-enterprise-body .requests-unread-pill {
@@ -2683,13 +2675,8 @@ body.typeui-enterprise-body .requests-unread-pill {
 }
 
 body.typeui-enterprise-body .requests-filter-wrap {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  margin: 0 -12px;
-  padding: 4px 12px 12px;
-  background: linear-gradient(180deg, rgba(11, 22, 34, 0.96), rgba(11, 22, 34, 0.76) 70%, rgba(11, 22, 34, 0));
-  backdrop-filter: blur(14px);
+  margin: 0 0 12px;
+  padding: 0;
 }
 
 body.typeui-enterprise-body .requests-filter {
