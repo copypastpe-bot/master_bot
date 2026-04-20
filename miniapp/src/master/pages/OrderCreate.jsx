@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchMasterClients,
+  getMasterClients,
   getMasterServices,
   createMasterOrder,
   getLastClientAddress,
@@ -110,56 +111,71 @@ function StepClient({ selected, onSelect, onNext }) {
     staleTime: 30 * 1000,
   });
 
+  const { data: allClientsData, isFetching: allClientsFetching } = useQuery({
+    queryKey: ['master-clients-all-order'],
+    queryFn: () => getMasterClients('', 1),
+    staleTime: 60_000,
+  });
+
   const clients = data?.clients || [];
+
+  const allClients = [...(allClientsData?.clients || [])].sort((a, b) =>
+    a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' })
+  );
+
+  const searchClients = [...clients].sort((a, b) =>
+    a.name.localeCompare(b.name, 'ru', { sensitivity: 'base' })
+  );
+
+  const visibleClients = debouncedQuery.length > 0 ? searchClients : allClients;
+  const isLoadingClients = debouncedQuery.length > 0 ? isFetching : allClientsFetching;
 
   return (
     <div style={{ padding: '0 16px 16px' }}>
-      <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 8px' }}>
-        {tr('Начните вводить имя или телефон', 'Start typing name or phone')}
-      </p>
-
-      <input
-        type="text"
-        value={query}
-        onChange={handleChange}
-        placeholder={tr('Поиск клиента...', 'Search client...')}
-        autoFocus
-        style={{
-          width: '100%',
-          padding: '10px 12px',
-          fontSize: 15,
-          background: 'var(--tg-secondary-bg)',
-          color: 'var(--tg-text)',
-          border: '1px solid var(--tg-hint)',
-          borderRadius: 10,
-          outline: 'none',
-          boxSizing: 'border-box',
-        }}
-      />
-
-      {!selected && (
-        <button
-          onClick={() => { haptic(); setShowAddSheet(true); }}
+      {/* Search + add-client row */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <input
+          type="text"
+          value={query}
+          onChange={handleChange}
+          placeholder={tr('Поиск клиента...', 'Search client...')}
           style={{
-            marginTop: 8,
-            width: '100%',
-            padding: '11px 16px',
-            background: 'none',
-            border: '1.5px solid var(--tg-button)',
+            flex: 1,
+            padding: '10px 12px',
+            fontSize: 15,
+            background: 'var(--tg-secondary-bg)',
+            color: 'var(--tg-text)',
+            border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 10,
-            color: 'var(--tg-button)',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
+            outline: 'none',
           }}
-        >
-          {tr('+ Новый клиент', '+ New client')}
-        </button>
-      )}
+        />
+        {!selected && (
+          <button
+            type="button"
+            onClick={() => { haptic(); setShowAddSheet(true); }}
+            style={{
+              flexShrink: 0,
+              padding: '10px 14px',
+              background: 'none',
+              border: '1.5px solid var(--tg-button)',
+              borderRadius: 10,
+              color: 'var(--tg-button)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tr('+ Клиент', '+ Client')}
+          </button>
+        )}
+      </div>
 
+      {/* Selected client chip */}
       {selected && (
         <div style={{
-          marginTop: 12,
+          marginBottom: 12,
           padding: '10px 12px',
           background: 'var(--tg-button)',
           color: 'var(--tg-button-text)',
@@ -173,6 +189,7 @@ function StepClient({ selected, onSelect, onNext }) {
             <div style={{ fontSize: 12, opacity: 0.85 }}>{selected.phone}</div>
           </div>
           <button
+            type="button"
             onClick={() => { haptic(); onSelect(null); }}
             style={{
               background: 'rgba(255,255,255,0.2)',
@@ -189,59 +206,61 @@ function StepClient({ selected, onSelect, onNext }) {
         </div>
       )}
 
-      {!selected && debouncedQuery.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          {isFetching && (
-            <div style={{ textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13, padding: 12 }}>
-              {tr('Поиск...', 'Searching...')}
+      {/* Client list */}
+      {!selected && (
+        <div className="enterprise-cell-group" style={{ marginBottom: 16 }}>
+          {isLoadingClients && (
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13 }}>
+              {tr('Загрузка...', 'Loading...')}
             </div>
           )}
-          {!isFetching && clients.length === 0 && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ color: 'var(--tg-hint)', fontSize: 13, padding: '12px 0 8px' }}>
-                {tr('Клиенты не найдены', 'No clients found')}
-              </div>
+          {!isLoadingClients && visibleClients.length === 0 && (
+            <div style={{ padding: '16px', textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13 }}>
+              {debouncedQuery
+                ? tr('Клиенты не найдены', 'No clients found')
+                : tr('Нет клиентов', 'No clients')}
             </div>
           )}
-          {clients.map((c) => (
+          {visibleClients.map((c) => (
             <button
               key={c.id}
-              onClick={() => { haptic(); onSelect(c); setQuery(c.name); }}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                background: 'var(--tg-secondary-bg)',
-                border: 'none',
-                borderRadius: 8,
-                marginBottom: 6,
-                textAlign: 'left',
-                cursor: 'pointer',
-                display: 'block',
-              }}
+              type="button"
+              onClick={() => { haptic(); onSelect(c); }}
+              className="enterprise-cell is-interactive"
             >
-              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tg-text)' }}>{c.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{c.phone}</div>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'var(--tg-accent)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: 14,
+                flexShrink: 0,
+              }}>
+                {(c.name || '?')[0].toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--tg-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.name}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{c.phone}</div>
+              </div>
             </button>
           ))}
         </div>
       )}
 
+      {/* Next button */}
       <button
+        type="button"
         onClick={() => { haptic(); onNext(); }}
         disabled={!selected}
-        style={{
-          marginTop: 24,
-          width: '100%',
-          padding: '13px',
-          background: selected ? 'var(--tg-button)' : 'var(--tg-hint)',
-          color: 'var(--tg-button-text)',
-          border: 'none',
-          borderRadius: 12,
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: selected ? 'pointer' : 'not-allowed',
-          opacity: selected ? 1 : 0.5,
-        }}
+        className="enterprise-btn-primary"
+        style={!selected ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
       >
         {tr('Далее →', 'Next ->')}
       </button>
