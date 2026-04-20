@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMasterOrders, getMasterOrderDates } from '../../api/client';
 import MonthCalendar from '../components/MonthCalendar';
 import DaySchedule from '../components/DaySchedule';
+import { useI18n } from '../../i18n';
 
 function toYMD(d) {
   const y = d.getFullYear();
@@ -11,7 +12,13 @@ function toYMD(d) {
   return `${y}-${m}-${day}`;
 }
 
+function formatMonthTitle(year, month, locale) {
+  return new Date(year, month - 1, 1)
+    .toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+}
+
 export default function Calendar({ onNavigate }) {
+  const { tr, locale } = useI18n();
   const today = new Date();
   const todayStr = toYMD(today);
 
@@ -79,7 +86,15 @@ export default function Calendar({ onNavigate }) {
   }, [onNavigate, selectedDate]);
 
   return (
-    <div style={{ paddingBottom: 88, minHeight: '100vh', background: 'var(--tg-bg)' }}>
+    <div className="enterprise-page" style={{ paddingBottom: 0 }}>
+
+      {/* Page header */}
+      <div className="enterprise-page-inner" style={{ marginBottom: 14 }}>
+        <h2 className="enterprise-page-title">{tr('Календарь', 'Calendar')}</h2>
+        <p className="enterprise-page-subtitle">
+          {formatMonthTitle(viewYear, viewMonth, locale)}
+        </p>
+      </div>
 
       {/* Sticky month calendar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '8px 12px 6px', background: 'var(--tg-bg)' }}>
