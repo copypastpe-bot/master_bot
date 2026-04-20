@@ -333,11 +333,14 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
   };
 
   return (
-    <div style={{ padding: '12px 12px 96px', maxWidth: 760, margin: '0 auto' }}>
+    <div className="master-detail-page client-card-page">
       {/* Success toast */}
       {successMsg && (
         <div style={{
-          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed',
+          top: 'calc(var(--tg-safe-area-inset-top, env(safe-area-inset-top)) + var(--tg-content-safe-area-inset-top, 0px) + 10px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
           background: 'var(--tg-accent)', color: '#fff',
           padding: '8px 20px', borderRadius: 20, fontSize: 13, fontWeight: 500,
           zIndex: 300, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',

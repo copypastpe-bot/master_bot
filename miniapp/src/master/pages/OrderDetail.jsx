@@ -106,8 +106,8 @@ function BottomSheet({ open, onClose, title, children }) {
 // ============================================================
 // Complete Order Sheet
 // ============================================================
-function CompleteSheet({ order, master, onClose, onSuccess }) {
-  const { tr, locale } = useI18n();
+function CompleteSheet({ order, master, onSuccess }) {
+  const { tr } = useI18n();
   const [amount, setAmount] = useState(String(order.amount_total || 0));
   const [paymentType, setPaymentType] = useState('cash');
   const [useBonus, setUseBonus] = useState(false);
@@ -316,7 +316,7 @@ function TimePickerField({ label, value, onChange, inputStyle, labelStyle }) {
 // ============================================================
 // Move Order Sheet
 // ============================================================
-function MoveSheet({ order, onClose, onSuccess }) {
+function MoveSheet({ order, onSuccess }) {
   const { tr, locale } = useI18n();
   const scheduled = formatDateTime(order.scheduled_at, locale);
   const [newDate, setNewDate] = useState(
@@ -451,7 +451,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
   const services = order.services || [];
 
   return (
-    <div style={{ paddingBottom: 96, maxWidth: 760, margin: '0 auto' }}>
+    <div className="master-detail-page order-detail-page">
       {/* Back — only shown when Telegram BackButton unavailable */}
       {!hasTgBack && (
         <div style={{ padding: '12px 16px 0' }}>
@@ -724,7 +724,7 @@ const styles = {
     marginBottom: 8,
   },
   heroCard: {
-    margin: '12px 12px 0',
+    margin: '8px 0 0',
     background: 'var(--tg-section-bg)',
     borderRadius: 16,
     padding: '14px 16px',
@@ -732,7 +732,7 @@ const styles = {
     boxShadow: 'var(--tg-enterprise-shadow)',
   },
   card: {
-    margin: '12px 12px 0',
+    margin: '8px 0 0',
     background: 'var(--tg-section-bg)',
     borderRadius: 16,
     padding: '14px 16px',
