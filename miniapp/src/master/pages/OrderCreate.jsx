@@ -227,6 +227,7 @@ function StepClient({ selected, onSelect, onNext }) {
               type="button"
               onClick={() => { haptic(); onSelect(c); }}
               className="enterprise-cell is-interactive"
+              style={{ borderBottom: 'none' }}
             >
               <div style={{
                 width: 36,

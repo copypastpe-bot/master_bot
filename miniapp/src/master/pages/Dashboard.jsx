@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { TrendingUp, CalendarDays, CheckCircle2, Users } from 'lucide-react';
+import { TrendingUp, CalendarDays, CheckCircle2, Users, BarChart3 } from 'lucide-react';
 import {
   getMasterDashboard,
   getMasterSubscription,
@@ -263,7 +263,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
         </div>
       ) : (
         <div className="enterprise-info-card">
-          <span style={{ fontSize: 24, lineHeight: 1 }}>📊</span>
+          <span style={{ color: 'var(--tg-hint)', display: 'inline-flex' }}><BarChart3 size={24} /></span>
           <p style={{ color: 'var(--tg-hint)', fontSize: 14, margin: 0, lineHeight: 1.4 }}>
             {tr('Выполни первый заказ и увидишь показатели своей работы в цифрах', 'Complete your first order to see your performance in numbers')}
           </p>

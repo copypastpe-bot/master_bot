@@ -134,7 +134,7 @@ export default function ClientsList({ onNavigate }) {
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        background: 'var(--tg-bg)',
+        background: 'rgba(9, 19, 29, 0.98)',
         padding: '12px 16px',
       }}>
         <div style={{
@@ -210,6 +210,7 @@ export default function ClientsList({ onNavigate }) {
               key={client.id}
               onClick={() => handleClientClick(client)}
               className="enterprise-cell is-interactive"
+            style={{ borderBottom: 'none' }}
             >
               {/* Avatar */}
               <div style={{

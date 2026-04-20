@@ -1,3 +1,4 @@
+import { CalendarDays } from 'lucide-react';
 import OrderCard from './OrderCard';
 import { useI18n } from '../../i18n';
 
@@ -119,8 +120,8 @@ export default function DaySchedule({ dateStr, orders, loading, onOrderClick, on
             ))
           ) : (
             <div style={{ textAlign: 'center', paddingTop: 38, paddingBottom: 20 }}>
-              <div style={{ fontSize: 34, marginBottom: 10, opacity: 0.4 }}>
-                📅
+              <div style={{ marginBottom: 10, opacity: 0.4, color: 'var(--tg-hint)', display: 'inline-flex' }}>
+                <CalendarDays size={34} />
               </div>
               <div style={{ color: 'var(--tg-hint)', fontSize: 14 }}>
                 {tr('На этот день заказов пока нет', 'No orders for this day yet')}
