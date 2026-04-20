@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchMasterClients,
@@ -106,7 +106,7 @@ function StepClient({ selected, onSelect, onNext }) {
   const { data, isFetching } = useQuery({
     queryKey: ['master-client-search', debouncedQuery],
     queryFn: () => searchMasterClients(debouncedQuery),
-    enabled: true,
+    enabled: debouncedQuery.length > 0,
     staleTime: 30 * 1000,
   });
 
@@ -115,9 +115,7 @@ function StepClient({ selected, onSelect, onNext }) {
   return (
     <div style={{ padding: '0 16px 16px' }}>
       <p style={{ color: 'var(--tg-hint)', fontSize: 13, margin: '0 0 8px' }}>
-        {debouncedQuery.length > 0
-          ? tr('Введите имя или телефон клиента', 'Type client name or phone')
-          : tr('Список открыт сразу и отсортирован по алфавиту', 'The list opens immediately and is sorted alphabetically')}
+        {tr('Начните вводить имя или телефон', 'Start typing name or phone')}
       </p>
 
       <input
@@ -125,6 +123,7 @@ function StepClient({ selected, onSelect, onNext }) {
         value={query}
         onChange={handleChange}
         placeholder={tr('Поиск клиента...', 'Search client...')}
+        autoFocus
         style={{
           width: '100%',
           padding: '10px 12px',
@@ -190,7 +189,7 @@ function StepClient({ selected, onSelect, onNext }) {
         </div>
       )}
 
-      {!selected && (
+      {!selected && debouncedQuery.length > 0 && (
         <div style={{ marginTop: 8 }}>
           {isFetching && (
             <div style={{ textAlign: 'center', color: 'var(--tg-hint)', fontSize: 13, padding: 12 }}>
@@ -200,9 +199,7 @@ function StepClient({ selected, onSelect, onNext }) {
           {!isFetching && clients.length === 0 && (
             <div style={{ textAlign: 'center' }}>
               <div style={{ color: 'var(--tg-hint)', fontSize: 13, padding: '12px 0 8px' }}>
-                {debouncedQuery.length > 0
-                  ? tr('Клиенты не найдены', 'No clients found')
-                  : tr('Клиентов пока нет', 'No clients yet')}
+                {tr('Клиенты не найдены', 'No clients found')}
               </div>
             </div>
           )}
@@ -592,10 +589,7 @@ function StepDateTime({
     enabled: !!clientId && !isHomeMode,
     staleTime: 60 * 1000,
   });
-  const savedAddresses = useMemo(
-    () => addressesData?.addresses || [],
-    [addressesData],
-  );
+  const savedAddresses = addressesData?.addresses || [];
 
   const saveClientAddressMutation = useMutation({
     mutationFn: (payload) => createMasterClientAddress(clientId, payload),
@@ -658,7 +652,7 @@ function StepDateTime({
         label: addressLabel || undefined,
         make_default: false,
       });
-    } catch {
+    } catch (_) {
       // Error is handled in mutation onError.
     }
   };
@@ -1198,10 +1192,10 @@ export default function OrderCreate({ params, onBack, onCreated }) {
   }
 
   return (
-    <div className="order-create-page">
-      <div className="order-create-header">
-        <p className="order-create-step-kicker">{tr(`Шаг ${step}`, `Step ${step}`)}</p>
-        <h2 className="order-create-step-title">
+    <div style={{ minHeight: '100vh', background: 'var(--tg-bg)', paddingBottom: 24 }}>
+      {/* Header — no custom back button: Telegram BackButton handles navigation */}
+      <div style={{ padding: '12px 16px 4px', textAlign: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--tg-text)' }}>
           {TITLES[step - 1]}
         </h2>
       </div>

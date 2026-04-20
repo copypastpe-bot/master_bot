@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMasterOrders, getMasterOrderDates } from '../../api/client';
 import MonthCalendar from '../components/MonthCalendar';
@@ -37,52 +37,52 @@ export default function Calendar({ onNavigate }) {
   const orders = ordersData?.orders || [];
 
   // When user taps a date — if it's in a different month, jump there
-  const handleSelectDate = (dateStr) => {
+  const handleSelectDate = useCallback((dateStr) => {
     setSelectedDate(dateStr);
     const y = parseInt(dateStr.slice(0, 4), 10);
     const m = parseInt(dateStr.slice(5, 7), 10);
     setViewYear(y);
     setViewMonth(m);
-  };
+  }, []);
 
-  const handleGoToToday = () => {
+  const handleGoToToday = useCallback(() => {
     const t = new Date();
     setSelectedDate(todayStr);
     setViewYear(t.getFullYear());
     setViewMonth(t.getMonth() + 1);
-  };
+  }, [todayStr]);
 
-  const handlePrevMonth = () => {
+  const handlePrevMonth = useCallback(() => {
     if (viewMonth === 1) {
       setViewYear(y => y - 1);
       setViewMonth(12);
     } else {
       setViewMonth(m => m - 1);
     }
-  };
+  }, [viewMonth]);
 
-  const handleNextMonth = () => {
+  const handleNextMonth = useCallback(() => {
     if (viewMonth === 12) {
       setViewYear(y => y + 1);
       setViewMonth(1);
     } else {
       setViewMonth(m => m + 1);
     }
-  };
+  }, [viewMonth]);
 
-  const handleOrderClick = (orderId) => {
+  const handleOrderClick = useCallback((orderId) => {
     onNavigate('order', { id: orderId });
-  };
+  }, [onNavigate]);
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = useCallback(() => {
     onNavigate('create_order', { date: selectedDate });
-  };
+  }, [onNavigate, selectedDate]);
 
   return (
     <div style={{ paddingBottom: 88, minHeight: '100vh', background: 'var(--tg-bg)' }}>
 
       {/* Sticky month calendar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '4px 12px 6px', background: 'var(--tg-bg)' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '8px 12px 6px', background: 'var(--tg-bg)' }}>
         <div
           style={{
             background: 'var(--tg-surface)',

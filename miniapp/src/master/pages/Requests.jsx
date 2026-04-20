@@ -427,12 +427,7 @@ export default function Requests({ onNavigate, onBadgeChange }) {
   return (
     <div className="requests-page">
       <div className="requests-header">
-        <div className="requests-header-copy">
-          <div className="requests-header-kicker">{tr('Входящие', 'Inbox')}</div>
-          <p className="requests-header-text">
-            {tr('Сообщения, заявки на заказ и медиа от клиентов в одном потоке.', 'Messages, order requests, and client media in one stream.')}
-          </p>
-        </div>
+        <h1>{tr('Заявки', 'Requests')}</h1>
         {unreadCount > 0 && <span className="requests-unread-pill">{tr('Новых', 'New')}: {unreadCount}</span>}
       </div>
 

@@ -45,16 +45,7 @@ export default function MasterApp() {
     }
   }, []);
 
-  const handleBack = () => {
-    setNavStack(prev => prev.slice(0, -1));
-  };
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      refreshBadge();
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [refreshBadge]);
+  useEffect(() => { refreshBadge(); }, []);
 
   useEffect(() => {
     document.body.classList.add('typeui-enterprise-body');
@@ -85,6 +76,10 @@ export default function MasterApp() {
   // ---------------------------------------------------------------------------
   const push = (type, params = {}) => {
     setNavStack(prev => [...prev, { type, ...params }]);
+  };
+
+  const handleBack = () => {
+    setNavStack(prev => prev.slice(0, -1));
   };
 
   const switchTab = (newTab) => {
@@ -137,17 +132,11 @@ export default function MasterApp() {
     subscription:  t('masterApp.titles.subscription'),
     broadcast:     t('masterApp.titles.broadcast'),
   };
-  const rootTitleMap = {
-    home: t('nav.master.home'),
-    calendar: t('nav.master.calendar'),
-    requests: t('nav.master.requests'),
-    more: t('nav.master.more'),
-  };
 
-  const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : rootTitleMap[tab];
+  const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : 'Master_bot';
 
   if (current) {
-    const { type, id } = current;
+    const { type, id, ...rest } = current;
 
     if (type === 'order') {
       return (
