@@ -31,8 +31,6 @@ export default function StatCard({ icon, value, label, onClick }) {
         justifyContent: 'center',
         background: 'rgba(79, 156, 249, 0.12)',
         color: 'var(--tg-accent)',
-        fontSize: 18,
-        lineHeight: 1,
       }}>
         {icon}
       </div>

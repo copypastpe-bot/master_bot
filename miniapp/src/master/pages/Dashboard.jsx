@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { TrendingUp, CalendarDays, CheckCircle2, Users } from 'lucide-react';
 import {
   getMasterDashboard,
   getMasterSubscription,
@@ -255,10 +256,10 @@ function DashboardContent({ data, subscription, onNavigate }) {
       {/* Stats */}
       {totalDoneOrders > 0 ? (
         <div className="enterprise-stat-grid">
-          <StatCard icon="💰" value={formatCurrency(stats.week_revenue || 0, locale)} label={tr('Выручка за неделю', 'Revenue this week')} onClick={handleReportsWeek} />
-          <StatCard icon="📅" value={formatCurrency(stats.month_revenue || 0, locale)} label={tr('Выручка за месяц', 'Revenue this month')} onClick={handleReportsMonth} />
-          <StatCard icon="✅" value={stats.week_orders || 0} label={tr('Заказов за неделю', 'Orders this week')} />
-          <StatCard icon="👥" value={stats.total_clients || 0} label={tr('Всего клиентов', 'Total clients')} onClick={handleClients} />
+          <StatCard icon={<TrendingUp size={20} />} value={formatCurrency(stats.week_revenue || 0, locale)} label={tr('Выручка за неделю', 'Revenue this week')} onClick={handleReportsWeek} />
+          <StatCard icon={<CalendarDays size={20} />} value={formatCurrency(stats.month_revenue || 0, locale)} label={tr('Выручка за месяц', 'Revenue this month')} onClick={handleReportsMonth} />
+          <StatCard icon={<CheckCircle2 size={20} />} value={stats.week_orders || 0} label={tr('Заказов за неделю', 'Orders this week')} />
+          <StatCard icon={<Users size={20} />} value={stats.total_clients || 0} label={tr('Всего клиентов', 'Total clients')} onClick={handleClients} />
         </div>
       ) : (
         <div className="enterprise-info-card">
