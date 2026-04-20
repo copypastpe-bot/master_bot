@@ -136,7 +136,6 @@ export default function ClientsList({ onNavigate }) {
         zIndex: 10,
         background: 'var(--tg-bg)',
         padding: '12px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div style={{
           display: 'flex',
@@ -205,21 +204,12 @@ export default function ClientsList({ onNavigate }) {
       )}
 
       {!loading && clients.length > 0 && (
-        <div style={{ background: 'var(--tg-section-bg)' }}>
-          {clients.map((client, idx) => (
+        <div className="enterprise-cell-group">
+          {clients.map((client) => (
             <div
               key={client.id}
               onClick={() => handleClientClick(client)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                padding: '12px 16px',
-                cursor: 'pointer',
-                borderBottom: idx < clients.length - 1
-                  ? '1px solid var(--tg-secondary-bg)'
-                  : 'none',
-                gap: 12,
-              }}
+              className="enterprise-cell is-interactive"
             >
               {/* Avatar */}
               <div style={{
