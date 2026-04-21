@@ -135,7 +135,7 @@ export default function ClientsList({ onNavigate }) {
         top: 0,
         zIndex: 10,
         background: 'rgba(9, 19, 29, 0.98)',
-        padding: '12px 16px',
+        padding: '6px 16px 10px',
       }}>
         <div style={{
           display: 'flex',

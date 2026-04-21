@@ -8,6 +8,7 @@ import {
   YAxis,
   Tooltip,
 } from 'recharts';
+import { TrendingUp, ShoppingCart, UserPlus, RefreshCw, Receipt, Users } from 'lucide-react';
 import { getMasterReports } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import MonthCalendar from '../components/MonthCalendar';
@@ -65,7 +66,7 @@ function KpiCard({ icon, value, label }) {
       gap: 4,
       minHeight: 92,
     }}>
-      <div style={{ fontSize: 18, lineHeight: 1 }}>{icon}</div>
+      <div style={{ color: 'var(--tg-hint)', display: 'inline-flex' }}>{icon}</div>
       <div style={{
         color: 'var(--tg-text)',
         fontSize: 18,
@@ -536,12 +537,12 @@ export default function Reports({ initialPeriod = 'month' }) {
         <>
           {/* KPI grid 2×3 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-            <KpiCard icon="💰" value={formatCurrency(kpi.revenue || 0, locale)} label={tr('Выручка', 'Revenue')} />
-            <KpiCard icon="🛒" value={kpi.order_count || 0} label={tr('Заказов', 'Orders')} />
-            <KpiCard icon="👥" value={kpi.new_clients || 0} label={tr('Новых клиентов', 'New clients')} />
-            <KpiCard icon="🔄" value={kpi.repeat_clients || 0} label={tr('Повторных', 'Repeat')} />
-            <KpiCard icon="🧾" value={formatCurrency(kpi.avg_check || 0, locale)} label={tr('Средний чек', 'Average check')} />
-            <KpiCard icon="📋" value={kpi.total_clients || 0} label={tr('Всего в базе', 'Total clients')} />
+            <KpiCard icon={<TrendingUp size={18} />} value={formatCurrency(kpi.revenue || 0, locale)} label={tr('Выручка', 'Revenue')} />
+            <KpiCard icon={<ShoppingCart size={18} />} value={kpi.order_count || 0} label={tr('Заказов', 'Orders')} />
+            <KpiCard icon={<UserPlus size={18} />} value={kpi.new_clients || 0} label={tr('Новых клиентов', 'New clients')} />
+            <KpiCard icon={<RefreshCw size={18} />} value={kpi.repeat_clients || 0} label={tr('Повторных', 'Repeat')} />
+            <KpiCard icon={<Receipt size={18} />} value={formatCurrency(kpi.avg_check || 0, locale)} label={tr('Средний чек', 'Average check')} />
+            <KpiCard icon={<Users size={18} />} value={kpi.total_clients || 0} label={tr('Всего в базе', 'Total clients')} />
           </div>
 
           {/* Revenue chart */}

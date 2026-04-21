@@ -1212,7 +1212,7 @@ export default function OrderCreate({ params, onBack, onCreated }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--tg-bg)', paddingBottom: 24 }}>
+    <div style={{ paddingBottom: 24 }}>
       {/* Header — no custom back button: Telegram BackButton handles navigation */}
       <div style={{ padding: '12px 16px 4px', textAlign: 'center' }}>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--tg-text)' }}>
