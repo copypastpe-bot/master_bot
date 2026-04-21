@@ -9,10 +9,11 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
-from src.config import CLIENT_BOT_USERNAME, MASTER_BOT_TOKEN
+from src.config import CLIENT_BOT_USERNAME
 from src import google_calendar
 from src.database import (
     get_master_by_id,
@@ -80,12 +81,9 @@ async def _media_url_from_ref(media_ref: Optional[str], request: Request) -> Opt
         return f"/bonus-media/{path.name}"
     if media_ref.startswith("http://") or media_ref.startswith("https://"):
         return media_ref
+    # Telegram file_id — proxy through our own endpoint to avoid leaking bot token
     if _master_bot:
-        try:
-            file_info = await _master_bot.get_file(media_ref)
-            return f"https://api.telegram.org/file/bot{MASTER_BOT_TOKEN}/{file_info.file_path}"
-        except Exception:
-            return None
+        return f"/api/master/media/{media_ref}"
     return None
 
 
@@ -719,3 +717,43 @@ async def restore_master_service(
         raise HTTPException(status_code=404, detail="Service not found")
     await restore_service(service_id)
     return {"ok": True}
+
+
+# =============================================================================
+# Telegram media proxy — serves Telegram files without exposing bot token
+# =============================================================================
+
+@router.get("/master/media/{file_id:path}")
+async def proxy_telegram_media(file_id: str):
+    """
+    Proxy a Telegram file by file_id without leaking the bot token.
+
+    The bot token is used server-side only; the client receives the raw bytes.
+    """
+    if not _master_bot:
+        raise HTTPException(status_code=503, detail="Bot not available")
+
+    # Reject anything that looks like a path traversal or URL
+    if "/" in file_id or file_id.startswith("http"):
+        raise HTTPException(status_code=400, detail="Invalid file_id")
+
+    try:
+        file_info = await _master_bot.get_file(file_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        file_bytes = await _master_bot.download_file(file_info.file_path)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to download file")
+
+    # Detect media type from file extension
+    ext = (file_info.file_path or "").rsplit(".", 1)[-1].lower()
+    media_type_map = {
+        "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "png": "image/png", "webp": "image/webp",
+        "gif": "image/gif", "mp4": "video/mp4",
+    }
+    content_type = media_type_map.get(ext, "application/octet-stream")
+
+    return StreamingResponse(file_bytes, media_type=content_type)
