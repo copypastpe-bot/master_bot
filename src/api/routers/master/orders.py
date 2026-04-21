@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
+from src.api.ratelimit import write_limiter
 from src.database import (
     get_order_by_id,
     get_order_items,
@@ -103,6 +104,7 @@ async def create_master_order(
     body: CreateOrderBody,
     request: Request,
     master: Master = Depends(get_current_master),
+    _: None = Depends(write_limiter.make_dependency()),
 ):
     """Create a new order."""
     # Validate client belongs to this master

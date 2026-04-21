@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
+from src.api.ratelimit import broadcast_limiter
 from src.config import CLIENT_BOT_USERNAME
 from src.database import get_clients_by_segment, save_campaign, get_broadcast_recipients_count
 from src.models import Master
@@ -143,6 +144,13 @@ async def send_broadcast(
     master: Master = Depends(get_current_master),
 ):
     """Send broadcast to selected segment via client_bot."""
+    # Rate limit: 2 broadcasts per master per 5 minutes
+    if not broadcast_limiter.is_allowed(f"master:{master.id}"):
+        raise HTTPException(
+            status_code=429,
+            detail="Рассылка отправляется слишком часто. Подождите несколько минут.",
+        )
+
     # Validate segment
     if segment not in VALID_SEGMENTS:
         raise HTTPException(status_code=422, detail="Unknown segment")

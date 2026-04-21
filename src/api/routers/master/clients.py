@@ -4,10 +4,11 @@ import logging
 import math
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from src.api.dependencies import get_current_master
+from src.api.ratelimit import write_limiter
 from src.database import (
     get_connection,
     get_last_client_address,
@@ -323,7 +324,9 @@ class ClientCreateRequest(BaseModel):
 @router.post("/master/clients", status_code=201)
 async def create_master_client_endpoint(
     body: ClientCreateRequest,
+    request: Request,
     master: Master = Depends(get_current_master),
+    _: None = Depends(write_limiter.make_dependency()),
 ):
     """Create or link a client. Handles duplicate phone scenarios."""
     name = body.name.strip()

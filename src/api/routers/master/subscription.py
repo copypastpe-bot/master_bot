@@ -7,10 +7,11 @@ from typing import Optional
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 from aiogram.types import LabeledPrice
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from src.api.dependencies import get_current_master
+from src.api.ratelimit import invoice_limiter
 from src.config import SUBSCRIPTION_PLANS, MASTER_BOT_USERNAME, MASTER_BOT_TOKEN
 from src.database import get_subscription_status
 from src.models import Master
@@ -79,7 +80,9 @@ class SubscriptionInvoiceBody(BaseModel):
 @router.post("/master/subscription/invoice-link")
 async def post_master_subscription_invoice_link(
     body: SubscriptionInvoiceBody,
+    request: Request,
     master: Master = Depends(get_current_master),
+    _: None = Depends(invoice_limiter.make_dependency()),
 ):
     """Create Telegram Stars invoice link for selected subscription plan."""
     if body.payload not in SUBSCRIPTION_PLANS:
