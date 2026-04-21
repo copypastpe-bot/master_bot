@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from src.api.dependencies import get_current_master
 from src.api.ratelimit import write_limiter
@@ -80,8 +80,8 @@ async def get_master_order_detail(
 
 class OrderServiceItem(BaseModel):
     service_id: Optional[int] = None
-    name: Optional[str] = None
-    price: int
+    name: Optional[str] = Field(default=None, max_length=200)
+    price: int = Field(ge=1, le=1_000_000)
 
     @field_validator("price")
     @classmethod
@@ -94,9 +94,9 @@ class OrderServiceItem(BaseModel):
 class CreateOrderBody(BaseModel):
     client_id: int
     services: list[OrderServiceItem]
-    scheduled_date: str  # YYYY-MM-DD
-    scheduled_time: str  # HH:MM
-    address: str = ""
+    scheduled_date: str = Field(max_length=10)   # YYYY-MM-DD
+    scheduled_time: str = Field(max_length=5)    # HH:MM
+    address: str = Field(default="", max_length=500)
 
 
 @router.post("/master/orders")
@@ -227,10 +227,10 @@ async def create_master_order(
 
 
 class CompleteOrderBody(BaseModel):
-    amount: int
-    payment_type: str
-    bonus_spent: int = 0
-    comment: Optional[str] = None
+    amount: int = Field(ge=1, le=10_000_000)
+    payment_type: str = Field(max_length=20)
+    bonus_spent: int = Field(default=0, ge=0, le=100_000)
+    comment: Optional[str] = Field(default=None, max_length=1000)
 
 
 @router.put("/master/orders/{order_id}/complete")
@@ -319,7 +319,7 @@ async def move_master_order(
 
 
 class CancelOrderBody(BaseModel):
-    reason: Optional[str] = None
+    reason: Optional[str] = Field(default=None, max_length=500)
 
 
 @router.put("/master/orders/{order_id}/cancel")

@@ -5,7 +5,7 @@ import math
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from src.api.dependencies import get_current_master
 from src.api.ratelimit import write_limiter
@@ -266,7 +266,7 @@ async def update_master_client(
 # ---------------------------------------------------------------------------
 
 class NoteBody(BaseModel):
-    note: str
+    note: str = Field(max_length=2000)
 
 
 @router.put("/master/clients/{client_id}/note")
@@ -289,8 +289,8 @@ async def update_master_client_note(
 # ---------------------------------------------------------------------------
 
 class BonusBody(BaseModel):
-    amount: int
-    comment: str = ""
+    amount: int = Field(ge=-100_000, le=100_000)
+    comment: str = Field(default="", max_length=500)
 
 
 @router.post("/master/clients/{client_id}/bonus")
@@ -405,8 +405,8 @@ async def create_master_client_endpoint(
 # ---------------------------------------------------------------------------
 
 class ClientAddressBody(BaseModel):
-    address: str
-    label: Optional[str] = None
+    address: str = Field(max_length=500)
+    label: Optional[str] = Field(default=None, max_length=100)
     make_default: bool = False
 
 
