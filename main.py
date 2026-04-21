@@ -6,7 +6,7 @@ import logging
 
 import uvicorn
 
-from src.config import LOG_LEVEL, API_PORT
+from src.config import LOG_LEVEL, API_PORT, APP_ENV
 
 # Configure logging
 logging.basicConfig(
@@ -14,6 +14,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+if APP_ENV == "development":
+    logger.warning(
+        "⚠️  DEVELOPMENT MODE: initData authentication bypass is ENABLED. "
+        "Never run with APP_ENV=development on a production server."
+    )
 
 
 async def run_master_bot():
