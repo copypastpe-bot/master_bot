@@ -59,6 +59,27 @@ BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
 MAX_BONUS_MEDIA_BYTES = 10 * 1024 * 1024
 BONUS_TYPES = {"welcome", "birthday"}
 
+# Allowed image formats with their magic byte signatures.
+# SVG is intentionally excluded — it supports inline <script> tags.
+_IMAGE_MAGIC: list[tuple[bytes, str, str]] = [
+    (b"\xff\xd8\xff", ".jpg", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", ".png", "image/png"),
+    (b"GIF87a", ".gif", "image/gif"),
+    (b"GIF89a", ".gif", "image/gif"),
+    (b"RIFF", ".webp", "image/webp"),  # full check: bytes[8:12] == b"WEBP"
+]
+
+
+def _detect_image(data: bytes) -> tuple[str, str] | None:
+    """Return (extension, mime_type) by inspecting magic bytes, or None if unrecognised."""
+    for magic, ext, mime in _IMAGE_MAGIC:
+        if data[:len(magic)] == magic:
+            # Extra check for WebP: RIFF????WEBP
+            if magic == b"RIFF" and data[8:12] != b"WEBP":
+                continue
+            return ext, mime
+    return None
+
 
 def _bonus_photo_field(bonus_type: str) -> str:
     if bonus_type == "welcome":
@@ -541,23 +562,21 @@ async def upload_bonus_photo(
     if bonus_type not in BONUS_TYPES:
         raise HTTPException(status_code=400, detail="bonus_type must be one of: welcome, birthday")
 
-    content_type = (photo.content_type or "").lower()
-    if not content_type.startswith("image/"):
-        raise HTTPException(status_code=415, detail="Only image files are supported")
-
     media_bytes = await photo.read()
     if not media_bytes:
         raise HTTPException(status_code=400, detail="Empty file")
     if len(media_bytes) > MAX_BONUS_MEDIA_BYTES:
         raise HTTPException(status_code=413, detail="Image exceeds 10 MB limit")
 
-    ext = ".jpg"
-    if content_type == "image/png":
-        ext = ".png"
-    elif content_type == "image/webp":
-        ext = ".webp"
-    elif content_type == "image/gif":
-        ext = ".gif"
+    # Verify file format by magic bytes — Content-Type header is attacker-controlled
+    # and would allow SVG (image/svg+xml supports inline <script>).
+    detected = _detect_image(media_bytes)
+    if detected is None:
+        raise HTTPException(
+            status_code=415,
+            detail="Unsupported file format. Allowed: JPEG, PNG, GIF, WebP.",
+        )
+    ext, _mime = detected
 
     BONUS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"m{master.id}_{bonus_type}_{secrets.token_hex(12)}{ext}"
