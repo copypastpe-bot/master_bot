@@ -20,6 +20,15 @@ Infra map (canonical, token-light): /Users/evgenijpastusenko/Projects/agent1/doc
 8. `miniapp/`
 9. `TODO.md`
 
+## Central Context
+
+This project uses central agent memory outside the current repository.
+If `./AGENT_STATE.md` or `./SESSION_LOG.md` are missing here, that is expected.
+Read and update only these registered files:
+
+- State: `/Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/AGENT_STATE.md`
+- Log: `/Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/SESSION_LOG.md`
+
 ## Key Sources
 
 - `main.py`
@@ -36,11 +45,12 @@ Infra map (canonical, token-light): /Users/evgenijpastusenko/Projects/agent1/doc
 
 - Project context state is centralized in /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/AGENT_STATE.md.
 - Project session log is centralized in /Users/evgenijpastusenko/Projects/agent1/project_ai_context/master-bot/SESSION_LOG.md.
+- Central context lives in `agent1/project_ai_context/`, not in this repository.
+- Missing local `AGENT_STATE.md` / `SESSION_LOG.md` in `Master_bot` is expected and not an error.
 - Do not recreate local AGENT_STATE.md and SESSION_LOG.md in this project.
 - If required facts are missing, ask the user directly.
 - Do not enumerate speculative options by default.
 - Use detective mode only when the user explicitly asks to find a solution or process.
-
 
 - Prefer the Mini App and API as the primary master-facing flow unless code proves otherwise.
 - The main user scenario starts from the Mini App home screen with dashboard and upcoming orders.
