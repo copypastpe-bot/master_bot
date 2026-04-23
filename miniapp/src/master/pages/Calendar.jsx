@@ -89,15 +89,14 @@ export default function Calendar({ onNavigate }) {
     <div className="enterprise-page" style={{ paddingBottom: 0 }}>
 
       {/* Page header */}
-      <div className="enterprise-page-inner" style={{ marginBottom: 6 }}>
+      <div className="enterprise-page-inner" style={{ marginBottom: 20 }}>
         <h2 className="enterprise-page-title">{tr('Календарь', 'Calendar')}</h2>
         <p className="enterprise-page-subtitle">
           {formatMonthTitle(viewYear, viewMonth, locale)}
         </p>
       </div>
 
-      {/* Sticky month calendar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '2px 12px 6px', background: 'var(--tg-bg-base)' }}>
+      <div style={{ padding: '0 12px 6px' }}>
         <div
           style={{
             background: 'var(--tg-surface)',
