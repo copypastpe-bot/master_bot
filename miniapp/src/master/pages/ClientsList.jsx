@@ -124,27 +124,25 @@ export default function ClientsList({ onNavigate }) {
 
   const formatBalance = (balance) => {
     if (!balance) return null;
-    return `🎁 ${balance}`;
+    return `★ ${balance}`;
   };
 
   return (
-    <div style={{ paddingBottom: 80 }}>
-      {/* Search bar */}
-      <div style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-        background: 'rgba(9, 19, 29, 0.98)',
-        padding: '6px 16px 10px',
-      }}>
+    <div className="enterprise-page">
+      <div className="enterprise-page-inner" style={{ marginBottom: 20 }}>
+        <h2 className="enterprise-page-title">{tr('Клиенты', 'Clients')}</h2>
+      </div>
+
+      {/* Search + add button row */}
+      <div style={{ padding: '0 12px', marginBottom: 12, display: 'flex', gap: 8 }}>
         <div style={{
+          flex: 1,
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           background: 'var(--tg-secondary-bg)',
           borderRadius: 12,
           padding: '8px 12px',
-          transition: 'box-shadow 0.15s',
         }}>
           <span style={{ color: 'var(--tg-hint)', flexShrink: 0 }}>
             <SearchIcon />
@@ -180,6 +178,23 @@ export default function ClientsList({ onNavigate }) {
             </button>
           )}
         </div>
+        <button
+          onClick={() => { haptic(); setShowAddSheet(true); }}
+          style={{
+            flexShrink: 0,
+            padding: '10px 14px',
+            background: 'none',
+            border: '1.5px solid var(--tg-button)',
+            borderRadius: 10,
+            color: 'var(--tg-button)',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {tr('+ Клиент', '+ Client')}
+        </button>
       </div>
 
       {/* Content */}
@@ -277,30 +292,6 @@ export default function ClientsList({ onNavigate }) {
         </div>
       )}
 
-      {/* FAB: Add client */}
-      <button
-        onClick={() => { haptic(); setShowAddSheet(true); }}
-        style={{
-          position: 'fixed',
-          bottom: 90,
-          right: 20,
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'var(--tg-button)',
-          color: 'var(--tg-button-text)',
-          border: 'none',
-          fontSize: 26,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
-          zIndex: 20,
-        }}
-      >
-        +
-      </button>
 
       {showAddSheet && (
         <ClientAddSheet
