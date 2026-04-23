@@ -43,6 +43,7 @@ body {
 }
 
 body.typeui-enterprise-body {
+  --tg-bg-base: #0b1622;
   --tg-bg:
     radial-gradient(circle at top, rgba(89, 170, 255, 0.2), transparent 34%),
     radial-gradient(circle at 85% 12%, rgba(59, 130, 246, 0.16), transparent 24%),

@@ -97,7 +97,7 @@ export default function Calendar({ onNavigate }) {
       </div>
 
       {/* Sticky month calendar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '2px 12px 6px', background: 'var(--tg-bg)' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 50, padding: '2px 12px 6px', background: 'var(--tg-bg-base)' }}>
         <div
           style={{
             background: 'var(--tg-surface)',
