@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMasterFeedbackSettings, updateMasterFeedbackSettings } from '../../api/client';
+import { getMasterFeedbackSettings, updateMasterFeedbackSettings, getMasterMe } from '../../api/client';
 import { useI18n } from '../../i18n';
 
 const WebApp = window.Telegram?.WebApp;
@@ -62,6 +62,13 @@ export default function FeedbackSettings() {
     queryFn: getMasterFeedbackSettings,
     staleTime: 60_000,
   });
+
+  const { data: meData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 5 * 60_000,
+  });
+  const masterName = meData?.name || '';
 
   useEffect(() => {
     if (!data || isInitialized) return;
@@ -155,8 +162,9 @@ export default function FeedbackSettings() {
       master_name: '{master_name}',
       service: '{service}',
     }),
-  );
-  const replyPreview = previewText(reply5, t('feedbackSettings.placeholders.reply5'));
+  ).replace(/\{master_name\}/gi, masterName || '{master_name}');
+  const replyPreview = previewText(reply5, t('feedbackSettings.placeholders.reply5'))
+    .replace(/\{master_name\}/gi, masterName || '{master_name}');
   const variableTokens = ['{master_name}', '{service}'];
 
   if (isLoading && !isInitialized) {
@@ -341,6 +349,10 @@ export default function FeedbackSettings() {
           <div className="enterprise-feedback-preview-card">
             <div className="enterprise-feedback-preview-label">{t('feedbackSettings.sections.message')}</div>
             <div className="enterprise-feedback-preview-text">{requestPreview}</div>
+          </div>
+          <div className="enterprise-feedback-preview-card is-secondary">
+            <div className="enterprise-feedback-preview-label">{t('feedbackSettings.sections.reply5')}</div>
+            <div className="enterprise-feedback-preview-text">{replyPreview}</div>
             {activeButtons.length > 0 && (
               <div className="enterprise-feedback-preview-buttons">
                 {activeButtons.map((btn, index) => (
@@ -350,10 +362,6 @@ export default function FeedbackSettings() {
                 ))}
               </div>
             )}
-          </div>
-          <div className="enterprise-feedback-preview-card is-secondary">
-            <div className="enterprise-feedback-preview-label">{t('feedbackSettings.sections.reply5')}</div>
-            <div className="enterprise-feedback-preview-text">{replyPreview}</div>
           </div>
         </div>
       </section>
