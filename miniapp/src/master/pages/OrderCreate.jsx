@@ -131,9 +131,9 @@ function StepClient({ selected, onSelect, onNext }) {
   const isLoadingClients = debouncedQuery.length > 0 ? isFetching : allClientsFetching;
 
   return (
-    <div style={{ padding: '0 16px 16px' }}>
+    <div style={{ padding: '0 0 16px' }}>
       {/* Search + add-client row */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, padding: '0 12px' }}>
         <input
           type="text"
           value={query}
@@ -176,6 +176,7 @@ function StepClient({ selected, onSelect, onNext }) {
       {selected && (
         <div style={{
           marginBottom: 12,
+          margin: '0 12px 12px',
           padding: '10px 12px',
           background: 'var(--tg-button)',
           color: 'var(--tg-button-text)',
