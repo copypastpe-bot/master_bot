@@ -2,11 +2,13 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterClient,
+  getMasterMe,
   updateMasterClient,
   updateMasterClientNote,
   masterClientBonus,
 } from '../../api/client';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -239,6 +241,13 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
     queryFn: () => getMasterClient(clientId),
     staleTime: 30_000,
   });
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 60_000,
+  });
+  const activeMaster = masterData || qc.getQueryData(['master-me']);
+  const currencySymbol = getCurrencySymbol(activeMaster?.currency || DEFAULT_CURRENCY);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['master-client', clientId] });
@@ -435,11 +444,11 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
         gap: 8,
         marginTop: 10,
       }}>
-        <StatBadge label={tr('Бонусы', 'Bonuses')} value={`${client.bonus_balance || 0} ₽`} />
+        <StatBadge label={tr('Бонусы', 'Bonuses')} value={`${client.bonus_balance || 0} ${currencySymbol}`} />
         <div style={{ width: 1, background: 'var(--tg-secondary-bg)' }} />
         <StatBadge label={tr('Заказов', 'Orders')} value={client.order_count || 0} />
         <div style={{ width: 1, background: 'var(--tg-secondary-bg)' }} />
-        <StatBadge label={tr('Потрачено', 'Spent')} value={`${(client.total_spent || 0).toLocaleString(locale)} ₽`} />
+        <StatBadge label={tr('Потрачено', 'Spent')} value={`${(client.total_spent || 0).toLocaleString(locale)} ${currencySymbol}`} />
       </div>
 
       {/* Note */}
@@ -502,12 +511,13 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
       {/* Tab content */}
       <div style={{ padding: '10px 0 16px' }}>
         {tab === 'history' && (
-          <HistoryTab orders={client.orders || []} onNavigate={onNavigate} />
+          <HistoryTab orders={client.orders || []} onNavigate={onNavigate} currencySymbol={currencySymbol} />
         )}
         {tab === 'bonuses' && (
           <BonusesTab
             balance={client.bonus_balance || 0}
             log={client.bonus_log || []}
+            currencySymbol={currencySymbol}
             onAccrue={() => { haptic(); setBonusSheet('accrue'); }}
             onDeduct={() => { haptic(); setBonusSheet('deduct'); }}
           />
@@ -537,7 +547,7 @@ export default function ClientCard({ clientId, onBack, onNavigate }) {
 // Tab: History
 // ---------------------------------------------------------------------------
 
-function HistoryTab({ orders, onNavigate }) {
+function HistoryTab({ orders, onNavigate, currencySymbol }) {
   const { tr, locale } = useI18n();
   if (!orders.length) {
     return (
@@ -581,7 +591,7 @@ function HistoryTab({ orders, onNavigate }) {
           </div>
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--tg-text)' }}>
-              {(o.amount_total || 0).toLocaleString(locale)} ₽
+              {(o.amount_total || 0).toLocaleString(locale)} {currencySymbol}
             </div>
             <StatusBadge status={o.status} />
           </div>
@@ -595,7 +605,7 @@ function HistoryTab({ orders, onNavigate }) {
 // Tab: Bonuses
 // ---------------------------------------------------------------------------
 
-function BonusesTab({ balance, log, onAccrue, onDeduct }) {
+function BonusesTab({ balance, log, onAccrue, onDeduct, currencySymbol }) {
   const { tr, locale } = useI18n();
   const fmtDate = (str) => {
     if (!str) return '—';
@@ -612,7 +622,7 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
         borderBottom: '1px solid var(--tg-secondary-bg)',
       }}>
         <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--tg-text)' }}>
-          {balance.toLocaleString(locale)} ₽
+          {balance.toLocaleString(locale)} {currencySymbol}
         </div>
         <div style={{ fontSize: 13, color: 'var(--tg-hint)', marginTop: 4 }}>{tr('Бонусный баланс', 'Bonus balance')}</div>
       </div>
@@ -653,7 +663,7 @@ function BonusesTab({ balance, log, onAccrue, onDeduct }) {
                 color: entry.amount > 0 ? '#4caf50' : 'var(--tg-destructive, #e53935)',
                 flexShrink: 0,
               }}>
-                {entry.amount > 0 ? '+' : ''}{entry.amount} ₽
+                {entry.amount > 0 ? '+' : ''}{entry.amount} {currencySymbol}
               </div>
             </div>
           ))}

@@ -14,6 +14,7 @@ import {
 import { useBackButton } from '../hooks/useBackButton';
 import ClientAddSheet from '../components/ClientAddSheet';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -284,7 +285,7 @@ function StepClient({ selected, onSelect, onNext }) {
 
 // ─── Step 2: Services ────────────────────────────────────────────────────────
 
-function StepServices({ selected, onSelect, onNext, onBack }) {
+function StepServices({ selected, onSelect, onNext, onBack, currencySymbol }) {
   const { tr, locale } = useI18n();
   const [custom, setCustom] = useState({ name: '', price: '' });
   const [showCustom, setShowCustom] = useState(false);
@@ -374,7 +375,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
                 {sel ? '✓ ' : ''}{svc.name}
               </span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>
-                {svc.price ? `${svc.price.toLocaleString(locale)} ₽` : tr('цена не указана', 'price not specified')}
+                {svc.price ? `${svc.price.toLocaleString(locale)} ${currencySymbol}` : tr('цена не указана', 'price not specified')}
               </span>
             </button>
             {sel && noPrice && (
@@ -386,7 +387,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
               }}>
                 <input
                   type="number"
-                  placeholder={tr('Введите цену ₽', 'Enter price ₽')}
+                  placeholder={tr(`Введите цену ${currencySymbol}`, `Enter price ${currencySymbol}`)}
                   value={priceOverrides[svc.id] || ''}
                   onChange={(e) => updateServicePrice(svc.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}
@@ -433,7 +434,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
             <span style={{ fontSize: 14, fontWeight: isSel ? 600 : 400 }}>
               {isSel ? '✓ ' : ''}{item.name}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString(locale)} ₽</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString(locale)} {currencySymbol}</span>
           </button>
         );
       })}
@@ -466,7 +467,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               type="number"
-              placeholder={tr('Цена ₽', 'Price ₽')}
+              placeholder={tr(`Цена ${currencySymbol}`, `Price ${currencySymbol}`)}
               value={custom.price}
               onChange={(e) => setCustom({ ...custom, price: e.target.value })}
               style={{
@@ -529,7 +530,7 @@ function StepServices({ selected, onSelect, onNext, onBack }) {
         }}>
           <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--tg-text)' }}>
-            {total.toLocaleString(locale)} ₽
+            {total.toLocaleString(locale)} {currencySymbol}
           </span>
         </div>
       )}
@@ -924,7 +925,7 @@ function StepDateTime({
 
 // ─── Step 4: Summary ─────────────────────────────────────────────────────────
 
-function StepSummary({ client, services, date, time, address, onBack, onCreated }) {
+function StepSummary({ client, services, date, time, address, onBack, onCreated, currencySymbol }) {
   const { tr, locale } = useI18n();
   const [error, setError] = useState('');
 
@@ -1027,7 +1028,7 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
             <span style={{ fontSize: 14, color: 'var(--tg-text)' }}>{s.name}</span>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tg-text)' }}>
-              {s.price.toLocaleString(locale)} ₽
+              {s.price.toLocaleString(locale)} {currencySymbol}
             </span>
           </div>
         ))}
@@ -1040,7 +1041,7 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated 
         }}>
           <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--tg-text)' }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tg-text)' }}>
-            {total.toLocaleString(locale)} ₽
+            {total.toLocaleString(locale)} {currencySymbol}
           </span>
         </div>
       </div>
@@ -1163,6 +1164,7 @@ export default function OrderCreate({ params, onBack, onCreated }) {
   });
   const workMode = masterData?.work_mode || 'travel';
   const masterDefaultAddress = masterData?.work_address_default || '';
+  const currencySymbol = getCurrencySymbol(masterData?.currency || DEFAULT_CURRENCY);
 
   const [step, setStep] = useState(prefillClient ? 2 : 1);
   const [client, setClient] = useState(prefillClient);
@@ -1237,6 +1239,7 @@ export default function OrderCreate({ params, onBack, onCreated }) {
           onSelect={setServices}
           onNext={() => goToStep(3)}
           onBack={() => goToStep(1)}
+          currencySymbol={currencySymbol}
         />
       )}
 
@@ -1265,6 +1268,7 @@ export default function OrderCreate({ params, onBack, onCreated }) {
           address={address}
           onBack={() => goToStep(3)}
           onCreated={handleCreated}
+          currencySymbol={currencySymbol}
         />
       )}
     </div>

@@ -13,13 +13,14 @@ import { getMasterReports } from '../../api/client';
 import { Skeleton } from '../../components/Skeleton';
 import MonthCalendar from '../components/MonthCalendar';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
 
-function formatCurrency(n, locale) {
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₽';
+function formatCurrency(n, locale, currencyCode) {
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n)} ${getCurrencySymbol(currencyCode)}`;
 }
 
 function formatYAxis(n) {
@@ -88,7 +89,7 @@ function KpiCard({ icon, value, label }) {
 
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
-function CustomTooltip({ active, payload, label, locale }) {
+function CustomTooltip({ active, payload, label, locale, currencyCode }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -100,7 +101,7 @@ function CustomTooltip({ active, payload, label, locale }) {
     }}>
       <div style={{ color: 'var(--tg-hint)', marginBottom: 2 }}>{formatTooltipDate(label, locale)}</div>
       <div style={{ color: 'var(--tg-text)', fontWeight: 600 }}>
-        {formatCurrency(payload[0].value, locale)}
+        {formatCurrency(payload[0].value, locale, currencyCode)}
       </div>
     </div>
   );
@@ -108,7 +109,7 @@ function CustomTooltip({ active, payload, label, locale }) {
 
 // ─── Revenue chart ────────────────────────────────────────────────────────────
 
-function RevenueChart({ data, locale, tr }) {
+function RevenueChart({ data, locale, tr, currencyCode }) {
   if (!data || data.length === 0) {
     return (
       <div style={{ color: 'var(--tg-hint)', fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
@@ -122,7 +123,7 @@ function RevenueChart({ data, locale, tr }) {
     return (
       <div style={{ textAlign: 'center', padding: '32px 0' }}>
         <div style={{ color: 'var(--tg-text)', fontSize: 22, fontWeight: 700 }}>
-          {formatCurrency(dayRevenue, locale)}
+          {formatCurrency(dayRevenue, locale, currencyCode)}
         </div>
         <div style={{ color: 'var(--tg-hint)', fontSize: 13, marginTop: 4 }}>
           {tr('за', 'for')} {formatTooltipDate(data[0].date, locale)}
@@ -158,7 +159,7 @@ function RevenueChart({ data, locale, tr }) {
           tickLine={false}
           width={36}
         />
-        <Tooltip content={<CustomTooltip locale={locale} />} />
+        <Tooltip content={<CustomTooltip locale={locale} currencyCode={currencyCode} />} />
         <Area
           type="monotone"
           dataKey="revenue"
@@ -523,6 +524,7 @@ export default function Reports({ initialPeriod = 'month' }) {
   }
 
   const kpi = data?.kpi || {};
+  const currencyCode = data?.currency || DEFAULT_CURRENCY;
   const hasData = (kpi.order_count || 0) > 0;
 
   return (
@@ -537,11 +539,11 @@ export default function Reports({ initialPeriod = 'month' }) {
         <>
           {/* KPI grid 2×3 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
-            <KpiCard icon={<TrendingUp size={18} />} value={formatCurrency(kpi.revenue || 0, locale)} label={tr('Выручка', 'Revenue')} />
+            <KpiCard icon={<TrendingUp size={18} />} value={formatCurrency(kpi.revenue || 0, locale, currencyCode)} label={tr('Выручка', 'Revenue')} />
             <KpiCard icon={<ShoppingCart size={18} />} value={kpi.order_count || 0} label={tr('Заказов', 'Orders')} />
             <KpiCard icon={<UserPlus size={18} />} value={kpi.new_clients || 0} label={tr('Новых клиентов', 'New clients')} />
             <KpiCard icon={<RefreshCw size={18} />} value={kpi.repeat_clients || 0} label={tr('Повторных', 'Repeat')} />
-            <KpiCard icon={<Receipt size={18} />} value={formatCurrency(kpi.avg_check || 0, locale)} label={tr('Средний чек', 'Average check')} />
+            <KpiCard icon={<Receipt size={18} />} value={formatCurrency(kpi.avg_check || 0, locale, currencyCode)} label={tr('Средний чек', 'Average check')} />
             <KpiCard icon={<Users size={18} />} value={kpi.total_clients || 0} label={tr('Всего в базе', 'Total clients')} />
           </div>
 
@@ -560,7 +562,7 @@ export default function Reports({ initialPeriod = 'month' }) {
             }}>
               {tr('Выручка по дням', 'Revenue by day')}
             </div>
-            <RevenueChart data={data?.chart_data} locale={locale} tr={tr} />
+            <RevenueChart data={data?.chart_data} locale={locale} tr={tr} currencyCode={currencyCode} />
           </div>
 
           {/* Top services */}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMasterBonusSettings, getMasterMe, updateMasterBonusSettings } from '../../api/client';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -61,22 +62,6 @@ const ChevronIcon = () => (
 
 function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
-}
-
-function getCurrencySymbol(code) {
-  const map = {
-    RUB: '₽',
-    EUR: '€',
-    ILS: '₪',
-    USD: '$',
-    UAH: '₴',
-    BYN: 'Br',
-    KZT: '₸',
-    TRY: '₺',
-    GEL: '₾',
-    UZS: 'UZS',
-  };
-  return map[code] || code || '₽';
 }
 
 function Toggle({ checked, onChange, disabled }) {
@@ -219,7 +204,7 @@ export default function BonusSettings({ onNavigate }) {
   }
 
   const disabled = !localSettings.bonus_enabled;
-  const currencySymbol = getCurrencySymbol(masterData?.currency);
+  const currencySymbol = getCurrencySymbol(masterData?.currency || DEFAULT_CURRENCY);
   const currencyUnit = ` ${currencySymbol}`;
   const hasWelcomeTemplate = Boolean((localSettings.welcome_message || '').trim() || localSettings.welcome_photo_url);
   const hasBirthdayTemplate = Boolean((localSettings.birthday_message || '').trim() || localSettings.birthday_photo_url);

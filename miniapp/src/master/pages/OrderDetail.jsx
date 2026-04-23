@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterOrder,
+  getMasterMe,
   completeMasterOrder,
   moveMasterOrder,
   cancelMasterOrder,
 } from '../../api/client';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -390,9 +392,15 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
     queryFn: () => getMasterOrder(orderId),
     staleTime: 10_000,
   });
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 60_000,
+  });
 
   // Master data for bonus calculations — from dashboard/me cache
-  const activeMaster = queryClient.getQueryData(['master-me']);
+  const activeMaster = masterData || queryClient.getQueryData(['master-me']);
+  const currencySymbol = getCurrencySymbol(activeMaster?.currency || DEFAULT_CURRENCY);
 
   const handleActionSuccess = (result) => {
     haptic('medium');
@@ -552,7 +560,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
             }}>
               <span style={{ color: 'var(--tg-text)', fontSize: 15 }}>{s.name}</span>
               {s.price > 0 && (
-                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{formatAmount(s.price, locale)} ₽</span>
+                <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{formatAmount(s.price, locale)} {currencySymbol}</span>
               )}
             </div>
           ))
@@ -566,7 +574,7 @@ export default function OrderDetail({ orderId, onBack, onUpdated, onNavigate }) 
         }}>
           <span style={{ fontWeight: 600, color: 'var(--tg-text)', fontSize: 16 }}>{tr('Итого', 'Total')}</span>
           <span style={{ fontWeight: 700, color: 'var(--tg-text)', fontSize: 16 }}>
-            {formatAmount(order.amount_total, locale)} ₽
+            {formatAmount(order.amount_total, locale)} {currencySymbol}
           </span>
         </div>
 

@@ -12,14 +12,15 @@ import StatCard from '../components/StatCard';
 import OrderCard from '../components/OrderCard';
 import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
-function formatCurrency(amount, locale) {
+function formatCurrency(amount, locale, currencyCode) {
   return new Intl.NumberFormat(locale, {
     style: 'decimal',
     maximumFractionDigits: 0,
-  }).format(amount) + ' ₽';
+  }).format(amount) + ` ${getCurrencySymbol(currencyCode)}`;
 }
 
 function formatDate(d, locale) {
@@ -138,6 +139,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
   });
 
   const stats = data?.stats || {};
+  const currencyCode = data?.currency || DEFAULT_CURRENCY;
   const today = new Date();
   const totalDoneOrders = data?.total_done_orders ?? 0;
   const todayOrders = data?.today_orders || [];
@@ -256,8 +258,8 @@ function DashboardContent({ data, subscription, onNavigate }) {
       {/* Stats */}
       {totalDoneOrders > 0 ? (
         <div className="enterprise-stat-grid">
-          <StatCard icon={<TrendingUp size={20} />} value={formatCurrency(stats.week_revenue || 0, locale)} label={tr('Выручка за неделю', 'Revenue this week')} onClick={handleReportsWeek} />
-          <StatCard icon={<CalendarDays size={20} />} value={formatCurrency(stats.month_revenue || 0, locale)} label={tr('Выручка за месяц', 'Revenue this month')} onClick={handleReportsMonth} />
+          <StatCard icon={<TrendingUp size={20} />} value={formatCurrency(stats.week_revenue || 0, locale, currencyCode)} label={tr('Выручка за неделю', 'Revenue this week')} onClick={handleReportsWeek} />
+          <StatCard icon={<CalendarDays size={20} />} value={formatCurrency(stats.month_revenue || 0, locale, currencyCode)} label={tr('Выручка за месяц', 'Revenue this month')} onClick={handleReportsMonth} />
           <StatCard icon={<CheckCircle2 size={20} />} value={stats.week_orders || 0} label={tr('Заказов за неделю', 'Orders this week')} />
           <StatCard icon={<Users size={20} />} value={stats.total_clients || 0} label={tr('Всего клиентов', 'Total clients')} onClick={handleClients} />
         </div>

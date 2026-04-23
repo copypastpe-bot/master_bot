@@ -38,6 +38,23 @@ export const LANG_OPTIONS = ['ru', 'en'];
 
 export const DEFAULT_TIMEZONE = 'Europe/Moscow';
 export const DEFAULT_CURRENCY = 'RUB';
+export const CURRENCY_SYMBOLS = Object.freeze({
+  RUB: '₽',
+  EUR: '€',
+  ILS: '₪',
+  UAH: '₴',
+  BYN: 'Br',
+  KZT: '₸',
+  USD: '$',
+  TRY: '₺',
+  GEL: '₾',
+  UZS: "so'm",
+});
+
+export function getCurrencySymbol(code) {
+  const normalized = String(code || '').toUpperCase();
+  return CURRENCY_SYMBOLS[normalized] || normalized || '';
+}
 
 export function resolveInitialTimezone() {
   const browserTz = Intl.DateTimeFormat?.().resolvedOptions?.().timeZone;

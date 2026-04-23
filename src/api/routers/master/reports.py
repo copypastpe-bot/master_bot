@@ -70,6 +70,7 @@ async def get_master_reports(
             "to": d_to.isoformat(),
             "label": label,
         },
+        "currency": master.currency,
         "kpi": {
             "revenue": kpi_raw["revenue"],
             "order_count": kpi_raw["order_count"],

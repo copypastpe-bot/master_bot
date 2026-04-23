@@ -121,6 +121,7 @@ async def get_master_dashboard(
 
     return {
         "master_name": master.name,
+        "currency": master.currency,
         "today_orders": [_format_order(o) for o in today_orders_raw],
         "tomorrow_orders": [_format_order(o) for o in tomorrow_orders_raw],
         "stats": {

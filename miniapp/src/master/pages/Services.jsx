@@ -9,6 +9,7 @@ import {
   restoreMasterService,
 } from '../../api/client';
 import { useI18n } from '../../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -60,22 +61,6 @@ const ChevronIcon = () => (
 
 function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
-}
-
-function getCurrencySymbol(code) {
-  const map = {
-    RUB: '₽',
-    EUR: '€',
-    ILS: '₪',
-    USD: '$',
-    UAH: '₴',
-    BYN: 'Br',
-    KZT: '₸',
-    TRY: '₺',
-    GEL: '₾',
-    UZS: 'UZS',
-  };
-  return map[code] || code || '₽';
 }
 
 function formatPrice(value, currencySymbol, locale) {
@@ -238,7 +223,7 @@ export default function Services() {
 
   const active = data?.active || [];
   const archived = data?.archived || [];
-  const currencySymbol = getCurrencySymbol(masterData?.currency);
+  const currencySymbol = getCurrencySymbol(masterData?.currency || DEFAULT_CURRENCY);
 
   const handleSave = (serviceData) => {
     if (sheet?.service) {
