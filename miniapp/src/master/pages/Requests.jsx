@@ -427,7 +427,12 @@ export default function Requests({ onNavigate, onBadgeChange }) {
   return (
     <div className="requests-page">
       <div className="requests-header">
-        <h2 className="enterprise-page-title">{tr('Заявки', 'Requests')}</h2>
+        <div>
+          <h2 className="enterprise-page-title">{tr('Заявки', 'Requests')}</h2>
+          <p className="enterprise-page-subtitle">
+            {new Date().toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long' })}
+          </p>
+        </div>
         {unreadCount > 0 && <span className="requests-unread-pill">{tr('Новых', 'New')}: {unreadCount}</span>}
       </div>
 
