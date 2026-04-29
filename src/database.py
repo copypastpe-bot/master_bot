@@ -1175,6 +1175,111 @@ async def get_client_bonus_log(master_id: int, client_id: int, limit: int = 20) 
         await conn.close()
 
 
+def _short_client_name(name: str | None) -> str:
+    """Return public client name like 'Анна М.'."""
+    if not name:
+        return "Клиент"
+    parts = str(name).strip().split()
+    if len(parts) >= 2 and parts[1]:
+        return f"{parts[0]} {parts[1][0]}."
+    return parts[0] if parts else "Клиент"
+
+
+async def create_review(
+    master_id: int,
+    client_id: int,
+    order_id: int,
+    text: str,
+    rating: int | None = None,
+) -> int:
+    """Create a public text review. One review per order."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO reviews (master_id, client_id, order_id, rating, text)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (master_id, client_id, order_id, rating, text),
+        )
+        await conn.commit()
+        return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def get_review_by_order(order_id: int) -> Optional[dict]:
+    """Return review for an order if it exists."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM reviews WHERE order_id = ?",
+            (order_id,),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def get_reviews(master_id: int, limit: int = 20, offset: int = 0) -> list[dict]:
+    """Return visible public reviews for a specialist."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT r.*, c.name as raw_client_name
+            FROM reviews r
+            JOIN clients c ON c.id = r.client_id
+            WHERE r.master_id = ? AND r.is_visible = 1
+            ORDER BY r.created_at DESC, r.id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (master_id, limit, offset),
+        )
+        rows = await cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["client_name"] = _short_client_name(item.pop("raw_client_name", None))
+            result.append(item)
+        return result
+    finally:
+        await conn.close()
+
+
+async def count_reviews(master_id: int) -> int:
+    """Count visible public reviews for a specialist."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT COUNT(*) as cnt FROM reviews WHERE master_id = ? AND is_visible = 1",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        return int(row["cnt"]) if row else 0
+    finally:
+        await conn.close()
+
+
+async def toggle_review_visibility(review_id: int, master_id: int, is_visible: bool) -> bool:
+    """Hide or show a public review."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            UPDATE reviews
+            SET is_visible = ?
+            WHERE id = ? AND master_id = ?
+            """,
+            (1 if is_visible else 0, review_id, master_id),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
 async def update_client_note(master_id: int, client_id: int, note: Optional[str]) -> None:
     """Update client note in master_clients."""
     await update_master_client(master_id, client_id, note=note)

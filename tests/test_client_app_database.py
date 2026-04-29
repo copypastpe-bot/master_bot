@@ -35,3 +35,80 @@ class ClientAppDatabaseTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("is_visible", reviews_names)
         self.assertIn("created_at", reviews_names)
         self.assertIn("notify_bonuses", master_client_names)
+
+    async def _seed_review_fixture(self):
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                """
+                INSERT INTO masters (id, tg_id, name, sphere, invite_token)
+                VALUES (1, 1001, 'Анна Иванова', 'Маникюр', 'invite_anna')
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO clients (id, tg_id, name, phone)
+                VALUES (1, 2001, 'Мария Петрова', '+79990000000')
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO master_clients (master_id, client_id, bonus_balance)
+                VALUES (1, 1, 120)
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO orders (id, master_id, client_id, status, scheduled_at, amount_total)
+                VALUES (1, 1, 1, 'done', '2026-04-20 10:00:00', 3000)
+                """
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def test_create_review_returns_id_and_prevents_duplicate_order_review(self):
+        await self._seed_review_fixture()
+
+        review_id = await db.create_review(
+            master_id=1,
+            client_id=1,
+            order_id=1,
+            text="Отличный визит, всё понравилось",
+            rating=5,
+        )
+        self.assertIsInstance(review_id, int)
+
+        existing = await db.get_review_by_order(1)
+        self.assertEqual(existing["id"], review_id)
+        self.assertEqual(existing["text"], "Отличный визит, всё понравилось")
+
+        with self.assertRaises(Exception):
+            await db.create_review(
+                master_id=1,
+                client_id=1,
+                order_id=1,
+                text="Повторный отзыв по тому же заказу",
+                rating=5,
+            )
+
+    async def test_get_reviews_shortens_client_name_and_hides_invisible_reviews(self):
+        await self._seed_review_fixture()
+        review_id = await db.create_review(
+            master_id=1,
+            client_id=1,
+            order_id=1,
+            text="Очень хороший специалист",
+            rating=5,
+        )
+
+        reviews = await db.get_reviews(master_id=1, limit=20, offset=0)
+        self.assertEqual(len(reviews), 1)
+        self.assertEqual(reviews[0]["client_name"], "Мария П.")
+        self.assertEqual(reviews[0]["rating"], 5)
+
+        changed = await db.toggle_review_visibility(review_id, master_id=1, is_visible=False)
+        self.assertTrue(changed)
+
+        reviews_after_hide = await db.get_reviews(master_id=1, limit=20, offset=0)
+        self.assertEqual(reviews_after_hide, [])
