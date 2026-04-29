@@ -12,7 +12,6 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 
 from src.database import (
     get_orders_for_reminder_24h,
-    get_orders_for_reminder_1h,
     get_orders_for_feedback,
     get_clients_with_birthday_today,
     mark_reminder_sent,
@@ -29,35 +28,12 @@ from src.utils import (
     DEFAULT_FEEDBACK_MESSAGE,
 )
 from src.config import REMINDER_DAYS_BEFORE
+from src.notifications import reminder_24h_keyboard
 
 logger = logging.getLogger(__name__)
 
 # Initialize scheduler with Moscow timezone
 scheduler = AsyncIOScheduler(timezone="Europe/Moscow")
-
-MONTHS_RU = [
-    "", "января", "февраля", "марта", "апреля", "мая", "июня",
-    "июля", "августа", "сентября", "октября", "ноября", "декабря"
-]
-
-
-def confirm_order_kb(order_id: int) -> InlineKeyboardMarkup:
-    """Keyboard with confirm/reschedule/cancel buttons for 24h reminder."""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтверждаю запись", callback_data=f"confirm_order:{order_id}")],
-        [
-            InlineKeyboardButton(text="📅 Перенести", callback_data=f"reschedule_order:{order_id}"),
-            InlineKeyboardButton(text="❌ Отменить", callback_data=f"cancel_order:{order_id}"),
-        ],
-    ])
-
-
-def write_master_kb(master_tg_id: int) -> InlineKeyboardMarkup:
-    """Keyboard with button to write to master for 1h reminder."""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📞 Написать мастеру", url=f"tg://user?id={master_tg_id}")]
-    ])
-
 
 def feedback_rating_kb(order_id: int) -> InlineKeyboardMarkup:
     """Inline keyboard with rating buttons 1-5."""
@@ -96,29 +72,24 @@ async def send_reminders_24h(client_bot: Bot) -> None:
             try:
                 # Parse scheduled_at
                 scheduled_at = datetime.fromisoformat(order["scheduled_at"])
-                day = scheduled_at.day
-                month = MONTHS_RU[scheduled_at.month]
                 time_str = scheduled_at.strftime("%H:%M")
 
                 services = order.get("services") or "—"
                 address = order.get("address") or "—"
                 master_name = order.get("master_name") or "—"
-                master_contacts = order.get("master_contacts") or "—"
 
                 text = (
-                    f"🔔 Напоминание о записи\n\n"
-                    f"Завтра у вас запись:\n"
-                    f"📅 {day} {month}, {time_str}\n"
-                    f"📍 {address}\n"
-                    f"🛠 {services}\n\n"
-                    f"Мастер: {master_name}\n"
-                    f"📞 {master_contacts}"
+                    "Напоминание:\n\n"
+                    f"{services}\n"
+                    f"Завтра, {time_str} — {master_name}"
                 )
+                if address and address != "—":
+                    text += f"\n{address}"
 
                 await client_bot.send_message(
                     chat_id=order["client_tg_id"],
                     text=text,
-                    reply_markup=confirm_order_kb(order["order_id"])
+                    reply_markup=reminder_24h_keyboard(order["order_id"])
                 )
 
                 await mark_reminder_sent(order["order_id"], "24h")
@@ -134,55 +105,6 @@ async def send_reminders_24h(client_bot: Bot) -> None:
 
     except Exception as e:
         logger.error(f"Error in send_reminders_24h: {e}")
-
-
-async def send_reminders_1h(client_bot: Bot) -> None:
-    """Send 1-hour reminders to clients."""
-    logger.info("Running 1h reminder task")
-
-    try:
-        orders = await get_orders_for_reminder_1h()
-        logger.info(f"Found {len(orders)} orders for 1h reminder")
-
-        for order in orders:
-            try:
-                # Parse scheduled_at
-                scheduled_at = datetime.fromisoformat(order["scheduled_at"])
-                time_str = scheduled_at.strftime("%H:%M")
-
-                services = order.get("services") or "—"
-                address = order.get("address") or "—"
-                master_name = order.get("master_name") or "—"
-                master_contacts = order.get("master_contacts") or "—"
-
-                text = (
-                    f"⏰ Через час ваша запись!\n\n"
-                    f"📅 Сегодня в {time_str}\n"
-                    f"📍 {address}\n"
-                    f"🛠 {services}\n\n"
-                    f"Мастер: {master_name}\n"
-                    f"📞 {master_contacts}"
-                )
-
-                await client_bot.send_message(
-                    chat_id=order["client_tg_id"],
-                    text=text,
-                    reply_markup=write_master_kb(order["master_tg_id"])
-                )
-
-                await mark_reminder_sent(order["order_id"], "1h")
-                logger.info(f"Sent 1h reminder for order {order['order_id']}")
-
-            except TelegramForbiddenError:
-                logger.warning(f"Client {order['client_tg_id']} blocked the bot, skipping")
-                await mark_reminder_sent(order["order_id"], "1h")
-            except TelegramBadRequest as e:
-                logger.error(f"Failed to send 1h reminder for order {order['order_id']}: {e}")
-            except Exception as e:
-                logger.error(f"Error sending 1h reminder for order {order['order_id']}: {e}")
-
-    except Exception as e:
-        logger.error(f"Error in send_reminders_1h: {e}")
 
 
 async def send_feedback_requests(client_bot: Bot) -> None:
@@ -345,16 +267,6 @@ def setup_scheduler(client_bot: Bot, master_bot: Bot | None = None) -> None:
         minutes=60,
         args=[client_bot],
         id="reminder_24h",
-        replace_existing=True
-    )
-
-    # 1h reminder - every 15 minutes
-    scheduler.add_job(
-        send_reminders_1h,
-        "interval",
-        minutes=15,
-        args=[client_bot],
-        id="reminder_1h",
         replace_existing=True
     )
 
