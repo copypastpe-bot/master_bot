@@ -10,7 +10,7 @@ import { useI18n } from '../i18n';
 const WebApp = window.Telegram?.WebApp;
 const PAGE = 20;
 
-export default function History({ activeMasterId, navigate, masterProfile }) {
+export default function History({ activeMasterId, navigate, masterProfile, reviewOrderId }) {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [items, setItems] = useState([]);
@@ -19,6 +19,7 @@ export default function History({ activeMasterId, navigate, masterProfile }) {
   const [hasMore, setHasMore] = useState(true);
   const [bonusBalance, setBonusBalance] = useState(null);
   const [reviewOrder, setReviewOrder] = useState(null);
+  const [openedReviewOrderId, setOpenedReviewOrderId] = useState(null);
   const [contactMaster, setContactMaster] = useState(null);
   const triggerRef = useRef(null);
 
@@ -36,6 +37,18 @@ export default function History({ activeMasterId, navigate, masterProfile }) {
   }, [activeMasterId]);
 
   useEffect(() => { setOffset(0); loadPage(0); }, [loadPage]);
+
+  useEffect(() => {
+    if (!reviewOrderId || loading || openedReviewOrderId === reviewOrderId) return;
+    const target = items.find(item =>
+      item.type === 'order' &&
+      Number(item.id) === Number(reviewOrderId)
+    );
+    if (target && !target.has_review) {
+      setReviewOrder(target);
+      setOpenedReviewOrderId(reviewOrderId);
+    }
+  }, [items, loading, openedReviewOrderId, reviewOrderId]);
 
   // Intersection observer for lazy load
   useEffect(() => {

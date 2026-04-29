@@ -20,10 +20,15 @@ const MasterApp = lazy(() => import('./master/MasterApp'));
 
 const SUB_SCREENS = new Set(['create_order', 'ask_question', 'landing']);
 
-function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken }) {
-  const [tab, setTab] = useState('home');
-  const [page, setPage] = useState(initialInviteToken ? 'landing' : 'home');
-  const [pageParams, setPageParams] = useState(initialInviteToken ? { inviteToken: initialInviteToken, mode: 'public' } : {});
+function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken, initialReviewOrderId }) {
+  const initialTab = initialReviewOrderId ? 'history' : 'home';
+  const [tab, setTab] = useState(initialTab);
+  const [page, setPage] = useState(initialInviteToken ? 'landing' : initialTab);
+  const [pageParams, setPageParams] = useState(() => {
+    if (initialInviteToken) return { inviteToken: initialInviteToken, mode: 'public' };
+    if (initialReviewOrderId) return { reviewOrderId: initialReviewOrderId };
+    return {};
+  });
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [masterProfile, setMasterProfile] = useState(null);
   const qc = useQueryClient();
@@ -46,7 +51,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
     if (pageId === 'home' || pageId === 'history' || pageId === 'news' || pageId === 'settings') {
       setTab(pageId);
       setPage(pageId);
-      setPageParams({});
+      setPageParams(params);
     } else {
       setPage(pageId);
       setPageParams(params);
@@ -78,7 +83,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
   const handleMasterSelectDone = (masterId) => {
     onMasterChange(masterId);
     qc.invalidateQueries();
-    navigate(tab);
+    navigate(tab, pageParams);
   };
 
   const handleLinked = () => {
@@ -143,6 +148,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
         activeMasterId={activeMasterId}
         navigate={navigate}
         masterProfile={masterProfile}
+        reviewOrderId={pageParams.reviewOrderId}
       />
     );
     if (tab === 'news') return (
@@ -210,6 +216,16 @@ function extractReferralCode(startParamRaw) {
   return null;
 }
 
+function extractReviewOrderId(startParamRaw, search = window.location.search) {
+  const params = new URLSearchParams(search || '');
+  const fromQuery = params.get('review_order_id');
+  if (fromQuery && /^\d+$/.test(fromQuery)) return Number(fromQuery);
+
+  const raw = startParamRaw || '';
+  const match = raw.match(/^review_order_(\d+)$/);
+  return match ? Number(match[1]) : null;
+}
+
 function getForcedRole() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -232,6 +248,7 @@ export default function App() {
   // Extract invite token at component level so it's available for ClientApp
   const startParam = WebApp?.initDataUnsafe?.start_param;
   const inviteToken = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
+  const reviewOrderId = extractReviewOrderId(startParam);
 
   useEffect(() => {
     getAuthRole()
@@ -309,6 +326,7 @@ export default function App() {
         activeMasterId={activeMasterId}
         onMasterChange={handleMasterChange}
         initialInviteToken={inviteToken}
+        initialReviewOrderId={reviewOrderId}
       />
     );
   }
