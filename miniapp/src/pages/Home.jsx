@@ -1,214 +1,193 @@
-import { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMe, getOrders, getBonuses } from '../api/client';
+import { useState, useEffect } from 'react';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import {
+  getClientMasterProfile,
+  getClientMasterActivity,
+  getClientMasterServices,
+  getClientMasterNews,
+  confirmClientOrder,
+} from '../api/client';
 import { Skeleton } from '../components/Skeleton';
-import ErrorScreen from '../components/ErrorScreen';
+import OrderCard from '../components/OrderCard';
+import ReviewModal from '../components/ReviewModal';
+import ContactSheet from '../components/ContactSheet';
 import { useI18n } from '../i18n';
 
-function relativeDate(dateStr, t) {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((date - now) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return t('home.relative.today');
-  if (diffDays === 1) return t('home.relative.tomorrow');
-  if (diffDays > 1) return t('home.relative.inDays', { count: diffDays });
-  return '';
-}
+const WebApp = window.Telegram?.WebApp;
+function haptic(t = 'light') { WebApp?.HapticFeedback?.impactOccurred(t); }
 
-function formatDate(dateStr, locale) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString(locale, {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-const BONUS_ICONS = {
-  accrual: { icon: '+', color: '#4caf50' },
-  spend: { icon: '−', color: '#f44336' },
-  birthday: { icon: '★', color: '#ffd700' },
-  manual: { icon: '✎', color: '#2196f3' },
-  promo: { icon: '◆', color: '#9c27b0' },
-};
-
-function RefreshButton({ title, onClick }) {
+function Accordion({ services, onBook }) {
+  const { t } = useI18n();
+  const [openId, setOpenId] = useState(null);
+  if (!services.length) return <p style={{ color: 'var(--tg-theme-hint-color)', fontSize: 14 }}>{t('clientHome.noServices')}</p>;
   return (
-    <button className="client-home-refresh-btn" onClick={onClick} title={title} aria-label={title}>
-      ↻
-    </button>
+    <div className="client-card" style={{ padding: '0 14px' }}>
+      {services.map(s => (
+        <div key={s.id} className="client-accordion-item">
+          <button className="client-accordion-trigger" onClick={() => { haptic(); setOpenId(openId === s.id ? null : s.id); }}>
+            <span className="client-accordion-trigger-name">{s.name}</span>
+            <span className="client-accordion-trigger-right">
+              {s.price != null && <span className="client-accordion-trigger-price">{s.price} ₽</span>}
+              <span className={`client-accordion-chevron${openId === s.id ? ' is-open' : ''}`}>▸</span>
+            </span>
+          </button>
+          {openId === s.id && (
+            <div className="client-accordion-body">
+              {s.description && <p style={{ marginBottom: 8 }}>{s.description}</p>}
+              <button className="client-order-card-btn is-primary" onClick={() => { haptic(); onBook(s); }}>
+                {t('clientHome.bookService')}
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
-export default function Home({ masters = [], activeMasterId, onMasterChange }) {
-  const { t, locale } = useI18n();
+export default function Home({ activeMasterId, navigate, masterName, onProfileLoaded }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
-  const [showMasterPicker, setShowMasterPicker] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState(null);
+  const [contactOrder, setContactOrder] = useState(null);
+  const [profile, setProfile] = useState(null);
 
-  const { data: me, isLoading: meLoading, error: meError, refetch: refetchMe } = useQuery({
-    queryKey: ['me'],
-    queryFn: getMe,
-  });
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ['orders'],
-    queryFn: getOrders,
-  });
-  const { data: bonuses, isLoading: bonusesLoading } = useQuery({
-    queryKey: ['bonuses'],
-    queryFn: getBonuses,
+  const results = useQueries({
+    queries: [
+      { queryKey: ['client-profile', activeMasterId], queryFn: () => getClientMasterProfile(activeMasterId), enabled: !!activeMasterId },
+      { queryKey: ['client-activity', activeMasterId], queryFn: () => getClientMasterActivity(activeMasterId, 3), enabled: !!activeMasterId },
+      { queryKey: ['client-services', activeMasterId], queryFn: () => getClientMasterServices(activeMasterId), enabled: !!activeMasterId },
+      { queryKey: ['client-news', activeMasterId], queryFn: () => getClientMasterNews(activeMasterId), enabled: !!activeMasterId },
+    ],
   });
 
-  if (meError) return <ErrorScreen message={meError.message} onRetry={refetchMe} />;
+  const [profRes, actRes, svcRes, newsRes] = results;
+  const prof = profRes.data;
+  const activity = actRes.data?.items || [];
+  const services = svcRes.data?.services || [];
+  const news = newsRes.data?.publications?.[0] || null;
 
-  const now = new Date();
-  const upcoming = orders
-    .filter((o) => (o.status === 'new' || o.status === 'confirmed') && new Date(o.scheduled_at) > now)
-    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
+  // Notify parent when profile is loaded (needed for History ContactSheet)
+  useEffect(() => {
+    if (prof) {
+      setProfile(prof);
+      onProfileLoaded?.(prof);
+    }
+  }, [prof, onProfileLoaded]);
 
-  const recentBonuses = bonuses?.log?.slice(0, 3) || [];
-  const initials = me?.client?.name
-    ? me.client.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-    : '?';
-  const masterName = me?.master?.name || t('common.dash');
-  const multiMaster = masters.length > 1;
+  const handleConfirm = async (orderId) => {
+    try {
+      await confirmClientOrder(orderId);
+      qc.invalidateQueries({ queryKey: ['client-activity', activeMasterId] });
+      WebApp?.HapticFeedback?.notificationOccurred('success');
+    } catch { WebApp?.HapticFeedback?.notificationOccurred('error'); }
+  };
+
+  const handleRepeat = (order) => {
+    const service = order.services ? { name: order.services } : null;
+    navigate('create_order', service ? { service } : {});
+  };
+
+  const avatarContent = prof?.photo_url
+    ? <img src={prof.photo_url} alt="" />
+    : (prof?.name || masterName || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="client-page client-home-page">
-      <header className="client-page-header client-home-header">
-        <div>
-          <p className="client-page-subtitle">{t('home.welcome')}</p>
-          {meLoading ? (
-            <Skeleton width={160} height={28} style={{ marginTop: 6 }} />
-          ) : (
-            <h1 className="client-page-title">{me?.client?.name || t('common.dash')}</h1>
+    <div className="client-page" style={{ padding: '0 16px 120px' }}>
+      {/* Specialist header */}
+      <div className="client-profile-card" style={{ marginTop: 12 }}>
+        <div className="client-profile-avatar">{avatarContent}</div>
+        <div className="client-profile-info">
+          {profRes.isLoading ? <Skeleton width={140} height={20} /> : (
+            <p className="client-profile-name">{prof?.name || masterName || '—'}</p>
+          )}
+          {prof?.sphere && <p className="client-profile-sphere">{prof.sphere}</p>}
+          {prof?.bio && <p className="client-profile-bio">{prof.bio}</p>}
+          <button className="client-profile-details-link"
+            onClick={() => { haptic(); navigate('landing', { masterId: activeMasterId }); }}>
+            {t('clientHome.detailsLink')}
+          </button>
+        </div>
+        <div className="client-profile-bonus">
+          {profRes.isLoading ? <Skeleton width={40} height={24} /> : (
+            <>
+              <div className="client-profile-bonus-value">{prof?.bonus_balance ?? 0}</div>
+              <div className="client-profile-bonus-label">{t('clientHome.bonusLabel')}</div>
+            </>
           )}
         </div>
+      </div>
 
-        <div className="client-home-header-actions">
-          <RefreshButton title={t('common.refresh')} onClick={() => qc.invalidateQueries()} />
-          <div className="client-home-avatar">{initials}</div>
-        </div>
-      </header>
+      {/* Actions */}
+      <div className="client-action-grid">
+        <button className="client-action-btn is-primary" onClick={() => { haptic(); navigate('create_order'); }}>
+          {t('clientHome.bookBtn')}
+        </button>
+        <button className="client-action-btn is-secondary" onClick={() => { haptic(); navigate('ask_question'); }}>
+          {t('clientHome.questionBtn')}
+        </button>
+      </div>
 
-      <section className="client-card client-home-hero-card">
-        <div className="client-home-balance-row">
-          <div>
-            <p className="client-home-kicker">{t('home.bonusBalance')}</p>
-            {bonusesLoading ? (
-              <Skeleton width={132} height={44} style={{ marginTop: 8 }} />
-            ) : (
-              <p className="client-home-balance-value">{bonuses?.balance ?? 0} ₽</p>
-            )}
-          </div>
-          <div className="client-home-balance-badge">CRM</div>
-        </div>
+      {/* Activity */}
+      <div className="client-section-header">
+        <span className="client-section-header-title">{t('clientHome.activityTitle')}</span>
+        <button className="client-section-header-link" onClick={() => { haptic(); navigate('history'); }}>
+          {t('clientHome.allHistory')}
+        </button>
+      </div>
+      {actRes.isLoading ? (
+        <><Skeleton height={80} style={{ marginBottom: 8 }} /><Skeleton height={80} /></>
+      ) : activity.length === 0 ? (
+        <p style={{ fontSize: 14, color: 'var(--tg-theme-hint-color)' }}>{t('clientHome.noActivity')}</p>
+      ) : activity.map(order => (
+        <OrderCard key={order.id} order={order}
+          onConfirm={handleConfirm}
+          onReview={o => setReviewOrder(o)}
+          onRepeat={handleRepeat}
+          onContact={o => setContactOrder(o)}
+        />
+      ))}
 
-        {meLoading ? (
-          <Skeleton width={190} height={18} style={{ marginTop: 18 }} />
-        ) : (
-          <button
-            className={`client-home-master-row${multiMaster ? ' is-interactive' : ''}`}
-            onClick={multiMaster ? () => setShowMasterPicker(true) : undefined}
-            type="button"
-          >
-            <span className="client-home-master-label">{t('home.masterPrefix', { name: masterName })}</span>
-            {multiMaster && <span className="client-home-master-chevron">▼</span>}
-          </button>
-        )}
-
-        {me?.master?.sphere && (
-          <div className="client-home-tags">
-            <span className="client-pill">{me.master.sphere}</span>
-          </div>
-        )}
-      </section>
-
-      <p className="client-section-title">{t('home.upcoming')}</p>
-      {ordersLoading ? (
-        <div className="client-card client-home-upcoming-card">
-          <Skeleton height={84} radius={18} />
-        </div>
-      ) : upcoming ? (
-        <section className="client-card client-home-upcoming-card">
-          <div className="client-home-upcoming-topline">
-            <span className="client-home-upcoming-date">📅 {formatDate(upcoming.scheduled_at, locale)}</span>
-            <span className="client-home-upcoming-relative">{relativeDate(upcoming.scheduled_at, t)}</span>
-          </div>
-          <h2 className="client-home-upcoming-title">{upcoming.services || t('home.serviceNotSpecified')}</h2>
-          {upcoming.address && <p className="client-home-upcoming-address">{upcoming.address}</p>}
-        </section>
-      ) : (
-        <div className="client-card client-home-empty-card">
-          <p className="client-home-empty-title">{t('home.serviceNotSpecified')}</p>
-          <p className="client-home-empty-subtitle">{t('app.noMasters.subtitle')}</p>
-        </div>
+      {/* Services */}
+      <div className="client-section-header" style={{ marginTop: 8 }}>
+        <span className="client-section-header-title">{t('clientHome.servicesTitle')}</span>
+      </div>
+      {svcRes.isLoading ? <Skeleton height={50} /> : (
+        <Accordion services={services} onBook={s => navigate('create_order', { service: s })} />
       )}
 
-      {recentBonuses.length > 0 && (
+      {/* News preview */}
+      {(newsRes.isLoading || news) && (
         <>
-          <p className="client-section-title">{t('home.recentOperations')}</p>
-          <section className="client-card client-home-log-card">
-            {recentBonuses.map((op, i) => {
-              const { icon, color } = BONUS_ICONS[op.type] || { icon: '•', color: 'var(--tg-hint)' };
-              const sign = op.amount > 0 ? '+' : '';
-              return (
-                <div
-                  key={op.id ?? i}
-                  className={`client-home-log-item${i < recentBonuses.length - 1 ? ' has-border' : ''}`}
-                >
-                  <div className="client-home-log-meta">
-                    <span className="client-home-log-icon" style={{ color, backgroundColor: `${color}20` }}>
-                      {icon}
-                    </span>
-                    <div>
-                      <p className="client-home-log-title">{op.comment || op.type}</p>
-                      <p className="client-home-log-date">
-                        {op.created_at
-                          ? new Date(op.created_at).toLocaleDateString(locale, { day: 'numeric', month: 'long' })
-                          : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="client-home-log-amount" style={{ color }}>
-                    {sign}
-                    {op.amount} ₽
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+          <div className="client-section-header" style={{ marginTop: 8 }}>
+            <span className="client-section-header-title">{t('clientHome.newsTitle')}</span>
+          </div>
+          {newsRes.isLoading ? <Skeleton height={60} /> : news && (
+            <div className="client-card" style={{ padding: 14, cursor: 'pointer' }}
+              onClick={() => { haptic(); navigate('news'); }}>
+              <p style={{ fontSize: 12, color: 'var(--tg-theme-hint-color)', marginBottom: 4 }}>
+                {new Date(news.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'long' })}
+              </p>
+              <p style={{ fontSize: 14, color: 'var(--tg-theme-text-color)', lineHeight: 1.4 }}>
+                {news.text?.slice(0, 120)}{news.text?.length > 120 ? '…' : ''}
+              </p>
+            </div>
+          )}
         </>
       )}
 
-      {showMasterPicker && (
-        <div className="client-home-sheet-overlay" onClick={() => setShowMasterPicker(false)}>
-          <div className="client-home-sheet" onClick={(e) => e.stopPropagation()}>
-            <p className="client-home-sheet-title">{t('home.switchMaster')}</p>
-            <div className="client-home-sheet-list">
-              {masters.map((m) => (
-                <button
-                  key={m.master_id}
-                  type="button"
-                  className={`client-home-sheet-item${m.master_id === activeMasterId ? ' is-active' : ''}`}
-                  onClick={() => {
-                    onMasterChange(m.master_id);
-                    qc.invalidateQueries();
-                    setShowMasterPicker(false);
-                  }}
-                >
-                  <span className="client-home-sheet-avatar">{(m.master_name || '?')[0].toUpperCase()}</span>
-                  <span className="client-home-sheet-copy">
-                    <span className="client-home-sheet-name">{m.master_name}</span>
-                    {m.sphere && <span className="client-home-sheet-sphere">{m.sphere}</span>}
-                  </span>
-                  {m.master_id === activeMasterId && <span className="client-home-sheet-check">✓</span>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+      {reviewOrder && (
+        <ReviewModal
+          order={reviewOrder}
+          onClose={() => setReviewOrder(null)}
+          onSuccess={() => {
+            qc.invalidateQueries({ queryKey: ['client-activity', activeMasterId] });
+            setReviewOrder(null);
+          }}
+        />
+      )}
+      {contactOrder && (
+        <ContactSheet master={profile} onClose={() => setContactOrder(null)} />
       )}
     </div>
   );
