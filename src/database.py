@@ -2759,6 +2759,73 @@ async def mark_order_confirmed_by_client(order_id: int) -> None:
         await conn.close()
 
 
+async def get_order_notification_context(order_id: int, client_tg_id: int | None = None) -> dict | None:
+    """Return order, client, master, settings, and services for client bot notifications."""
+    conn = await get_connection()
+    try:
+        params: list = [order_id]
+        client_filter = ""
+        if client_tg_id is not None:
+            client_filter = "AND c.tg_id = ?"
+            params.append(client_tg_id)
+
+        cursor = await conn.execute(
+            f"""
+            SELECT
+                o.id AS order_id,
+                o.status,
+                o.scheduled_at,
+                o.address,
+                o.client_confirmed,
+                c.id AS client_id,
+                c.tg_id AS client_tg_id,
+                c.name AS client_name,
+                m.id AS master_id,
+                m.tg_id AS master_tg_id,
+                m.name AS master_name,
+                m.phone AS master_phone,
+                m.telegram AS master_telegram,
+                m.contacts AS master_contacts,
+                mc.notify_reminders,
+                mc.notify_marketing,
+                mc.notify_bonuses,
+                mc.bonus_balance,
+                GROUP_CONCAT(oi.name, ', ') AS services
+            FROM orders o
+            JOIN clients c ON c.id = o.client_id
+            JOIN masters m ON m.id = o.master_id
+            JOIN master_clients mc ON mc.master_id = m.id AND mc.client_id = c.id
+            LEFT JOIN order_items oi ON oi.order_id = o.id
+            WHERE o.id = ?
+              {client_filter}
+            GROUP BY o.id
+            """,
+            params,
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def is_manual_bonus_notification_enabled(master_id: int, client_id: int) -> bool:
+    """Return whether standalone positive bonus notifications may be sent."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT notify_bonuses
+            FROM master_clients
+            WHERE master_id = ? AND client_id = ?
+            """,
+            (master_id, client_id),
+        )
+        row = await cursor.fetchone()
+        return bool(row and row["notify_bonuses"])
+    finally:
+        await conn.close()
+
+
 async def confirm_order_by_client(order_id: int, client_id: int) -> bool:
     """Confirm a client order using existing client_confirmed architecture."""
     conn = await get_connection()
