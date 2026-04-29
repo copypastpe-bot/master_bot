@@ -101,3 +101,40 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
 
         disabled = await db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
         self.assertFalse(disabled)
+
+
+class ClientBotNotificationFormattingTest(unittest.TestCase):
+    def test_contact_keyboard_uses_only_available_structured_contacts(self):
+        from src.notifications import contact_keyboard
+
+        kb = contact_keyboard(phone="+79990001122", telegram="@anna_nails")
+        rows = kb.inline_keyboard
+
+        self.assertEqual(rows[0][0].text, "Позвонить")
+        self.assertEqual(rows[0][0].url, "tel:+79990001122")
+        self.assertEqual(rows[1][0].text, "Написать в TG")
+        self.assertEqual(rows[1][0].url, "https://t.me/anna_nails")
+        self.assertEqual(rows[2][0].text, "Открыть приложение")
+        self.assertIsNotNone(rows[2][0].web_app)
+
+    def test_reminder_keyboard_has_confirm_contact_and_miniapp(self):
+        from src.notifications import reminder_24h_keyboard
+
+        kb = reminder_24h_keyboard(order_id=10)
+        buttons = [button for row in kb.inline_keyboard for button in row]
+
+        self.assertEqual(buttons[0].text, "Подтвердить")
+        self.assertEqual(buttons[0].callback_data, "confirm_order:10")
+        self.assertEqual(buttons[1].text, "Связаться")
+        self.assertEqual(buttons[1].callback_data, "contact_order:10")
+        self.assertEqual(buttons[2].text, "Открыть приложение")
+        self.assertIsNotNone(buttons[2].web_app)
+
+    def test_review_button_adds_order_id_to_client_miniapp_url(self):
+        from src.notifications import review_keyboard
+
+        kb = review_keyboard(order_id=10)
+        url = kb.inline_keyboard[0][0].web_app.url
+
+        self.assertIn("app=client", url)
+        self.assertIn("review_order_id=10", url)

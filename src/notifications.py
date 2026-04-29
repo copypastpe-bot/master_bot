@@ -2,10 +2,13 @@
 
 import logging
 from datetime import datetime
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
-from src.config import CLIENT_BOT_TOKEN
+from src.config import CLIENT_BOT_TOKEN, CLIENT_MINIAPP_URL
 from src.models import Client, Order, Master
 from src.utils import get_currency_symbol
 
@@ -23,6 +26,63 @@ MONTHS_RU = [
 def format_datetime(dt: datetime) -> str:
     """Format datetime for display."""
     return f"{dt.day} {MONTHS_RU[dt.month]} в {dt.strftime('%H:%M')}"
+
+
+def _client_miniapp_url(**params: str | int) -> str:
+    parts = urlsplit(CLIENT_MINIAPP_URL)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    for key, value in params.items():
+        query[key] = str(value)
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
+def open_app_button(**params: str | int) -> InlineKeyboardButton:
+    return InlineKeyboardButton(
+        text="Открыть приложение",
+        web_app=WebAppInfo(url=_client_miniapp_url(**params)),
+    )
+
+
+def order_action_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
+            open_app_button(),
+        ],
+    ])
+
+
+def reminder_24h_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Подтвердить", callback_data=f"confirm_order:{order_id}"),
+            InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
+        ],
+        [open_app_button()],
+    ])
+
+
+def contact_keyboard(phone: str | None, telegram: str | None) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    phone_value = (phone or "").strip()
+    telegram_value = (telegram or "").strip().lstrip("@")
+    if phone_value:
+        rows.append([InlineKeyboardButton(text="Позвонить", url=f"tel:{phone_value}")])
+    if telegram_value:
+        rows.append([InlineKeyboardButton(text="Написать в TG", url=f"https://t.me/{telegram_value}")])
+    rows.append([open_app_button()])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def review_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="Оставить отзыв",
+                web_app=WebAppInfo(url=_client_miniapp_url(review_order_id=order_id)),
+            )
+        ],
+    ])
 
 
 async def notify_order_created(
