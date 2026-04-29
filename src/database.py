@@ -1282,6 +1282,205 @@ async def toggle_review_visibility(review_id: int, master_id: int, is_visible: b
         await conn.close()
 
 
+def _client_display_status(order: dict) -> str:
+    """Return client-facing order status without changing stored status."""
+    status = order.get("status") or "new"
+    if status == "done":
+        return "done"
+    if status == "cancelled":
+        return "cancelled"
+    if status == "moved":
+        return "moved"
+    if order.get("client_confirmed"):
+        return "confirmed"
+    if order.get("reminder_24h_sent"):
+        return "reminder"
+    if status == "confirmed":
+        return "new"
+    return status
+
+
+async def get_client_orders_for_app(
+    master_id: int,
+    client_id: int,
+    limit: int = 20,
+    offset: int = 0,
+) -> list[dict]:
+    """Return client orders shaped for the redesigned Mini App."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                o.*,
+                GROUP_CONCAT(oi.name, ', ') as services,
+                CASE WHEN r.id IS NULL THEN 0 ELSE 1 END as has_review
+            FROM orders o
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN reviews r ON r.order_id = o.id
+            WHERE o.master_id = ? AND o.client_id = ?
+            GROUP BY o.id
+            ORDER BY
+                CASE
+                    WHEN o.status IN ('confirmed', 'new') THEN 0
+                    WHEN o.status = 'done' THEN 1
+                    WHEN o.status = 'cancelled' THEN 2
+                    ELSE 3
+                END,
+                o.scheduled_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (master_id, client_id, limit, offset),
+        )
+        rows = await cursor.fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["has_review"] = bool(item.get("has_review"))
+            item["client_confirmed"] = bool(item.get("client_confirmed")) if "client_confirmed" in item else False
+            item["display_status"] = _client_display_status(item)
+            item["type"] = "order"
+            result.append(item)
+        return result
+    finally:
+        await conn.close()
+
+
+async def get_client_activity_feed(
+    master_id: int,
+    client_id: int,
+    limit: int = 10,
+    offset: int = 0,
+) -> list[dict]:
+    """Return mixed order and standalone bonus activity for the client."""
+    orders = await get_client_orders_for_app(master_id, client_id, limit=limit, offset=0)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                id,
+                'bonus' as type,
+                created_at,
+                amount,
+                comment,
+                type as bonus_type
+            FROM bonus_log
+            WHERE master_id = ? AND client_id = ? AND order_id IS NULL
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (master_id, client_id, limit),
+        )
+        bonus_rows = [dict(row) for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+    items = orders + bonus_rows
+    items.sort(key=lambda item: str(item.get("scheduled_at") or item.get("created_at") or ""), reverse=True)
+    return items[offset:offset + limit]
+
+
+async def get_client_publications(
+    master_id: int,
+    limit: int = 20,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """Return active campaigns in publication-shaped format."""
+    conn = await get_connection()
+    try:
+        today = date.today().isoformat()
+        count_cursor = await conn.execute(
+            """
+            SELECT COUNT(*) as cnt
+            FROM campaigns
+            WHERE master_id = ?
+              AND type = 'promo'
+              AND (active_from IS NULL OR active_from <= ?)
+              AND (active_to IS NULL OR active_to >= ?)
+            """,
+            (master_id, today, today),
+        )
+        count_row = await count_cursor.fetchone()
+        total = int(count_row["cnt"]) if count_row else 0
+
+        cursor = await conn.execute(
+            """
+            SELECT *
+            FROM campaigns
+            WHERE master_id = ?
+              AND type = 'promo'
+              AND (active_from IS NULL OR active_from <= ?)
+              AND (active_to IS NULL OR active_to >= ?)
+            ORDER BY created_at DESC, id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (master_id, today, today, limit, offset),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "id": row["id"],
+                "type": "promo",
+                "title": row["title"],
+                "text": row["text"],
+                "image_url": None,
+                "scheduled_date": None,
+                "active_from": row["active_from"],
+                "active_to": row["active_to"],
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ], total
+    finally:
+        await conn.close()
+
+
+async def get_master_public_profile(master_id: int) -> Optional[dict]:
+    """Return public specialist profile data for connected or public views."""
+    master = await get_master_by_id(master_id)
+    if not master:
+        return None
+
+    review_count = await count_reviews(master_id)
+    created_at = master.created_at or _utcnow()
+    if isinstance(created_at, str):
+        created_dt = _parse_db_datetime(created_at) or _utcnow()
+    else:
+        created_dt = created_at
+    years_on_platform = max(0, int((_utcnow() - created_dt).days // 365))
+
+    return {
+        "id": master.id,
+        "name": master.name,
+        "sphere": master.sphere,
+        "bio": master.contacts,
+        "contacts": master.contacts,
+        "phone": master.phone,
+        "telegram": master.telegram,
+        "instagram": master.instagram,
+        "website": master.website,
+        "contact_address": master.contact_address,
+        "socials": master.socials,
+        "work_hours": master.work_hours,
+        "work_mode": master.work_mode,
+        "work_address_default": master.work_address_default,
+        "invite_token": master.invite_token,
+        "review_count": review_count,
+        "years_on_platform": years_on_platform,
+        "created_at": created_dt.isoformat() if created_dt else None,
+    }
+
+
+async def get_master_by_invite_token_public(invite_token: str) -> Optional[dict]:
+    """Return public specialist profile by invite token."""
+    master = await get_master_by_invite_token(invite_token)
+    if not master:
+        return None
+    return await get_master_public_profile(master.id)
+
+
 async def update_client_note(master_id: int, client_id: int, note: Optional[str]) -> None:
     """Update client note in master_clients."""
     await update_master_client(master_id, client_id, note=note)

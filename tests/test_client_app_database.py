@@ -147,3 +147,60 @@ class ClientAppDatabaseTest(unittest.IsolatedAsyncioTestCase):
             "notify_promos": 0,
             "notify_bonuses": 0,
         })
+
+    async def test_client_app_feed_profile_and_publications_use_current_architecture(self):
+        await self._seed_review_fixture()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                """
+                INSERT INTO services (id, master_id, name, price, description, is_active)
+                VALUES (1, 1, 'Маникюр', 3000, 'Классический маникюр', 1)
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO order_items (order_id, service_id, name, price)
+                VALUES (1, 1, 'Маникюр', 3000)
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO orders (id, master_id, client_id, status, scheduled_at, amount_total, client_confirmed)
+                VALUES (2, 1, 1, 'confirmed', '2026-04-24 12:00:00', 2500, 1)
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO bonus_log (master_id, client_id, order_id, type, amount, comment, created_at)
+                VALUES (1, 1, NULL, 'manual', 50, 'Подарок', '2026-04-21 10:00:00')
+                """
+            )
+            await conn.execute(
+                """
+                INSERT INTO campaigns (master_id, type, title, text, active_from, active_to, created_at)
+                VALUES (1, 'promo', 'Скидка', 'Минус 10%', '2026-04-01', '2026-12-31', '2026-04-22 10:00:00')
+                """
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        orders = await db.get_client_orders_for_app(master_id=1, client_id=1, limit=20, offset=0)
+        by_id = {order["id"]: order for order in orders}
+        self.assertEqual(by_id[2]["display_status"], "confirmed")
+        self.assertEqual(by_id[1]["services"], "Маникюр")
+        self.assertFalse(by_id[1]["has_review"])
+
+        feed = await db.get_client_activity_feed(master_id=1, client_id=1, limit=10, offset=0)
+        self.assertEqual({item["type"] for item in feed}, {"order", "bonus"})
+
+        publications, total = await db.get_client_publications(master_id=1, limit=20, offset=0)
+        self.assertEqual(total, 1)
+        self.assertEqual(publications[0]["type"], "promo")
+        self.assertEqual(publications[0]["title"], "Скидка")
+
+        profile = await db.get_master_public_profile(master_id=1)
+        self.assertEqual(profile["name"], "Анна Иванова")
+        self.assertEqual(profile["review_count"], 0)
+        self.assertGreaterEqual(profile["years_on_platform"], 0)
