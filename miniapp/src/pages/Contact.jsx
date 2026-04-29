@@ -150,9 +150,9 @@ function FilePicker({ files, onFilesChange }) {
   );
 }
 
-function BookingForm({ onSuccess, keyboardOpen }) {
+function BookingForm({ onSuccess, keyboardOpen, preselectedService }) {
   const { t, locale } = useI18n();
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedService, setSelectedService] = useState(preselectedService || null);
   const [desiredDate, setDesiredDate] = useState('');
   const [desiredTime, setDesiredTime] = useState('');
   const [comment, setComment] = useState('');
@@ -359,9 +359,9 @@ function ContactModeCard({ icon, title, subtitle, onClick }) {
   );
 }
 
-export default function Contact({ onNavigate, keyboardOpen }) {
+export default function Contact({ onNavigate, keyboardOpen, preselectedService, initialMode }) {
   const { t } = useI18n();
-  const [mode, setMode] = useState(null);
+  const [mode, setMode] = useState(initialMode || null);
   const [done, setDone] = useState(false);
 
   if (done) return <SuccessScreen onBack={() => onNavigate('home')} />;
@@ -378,7 +378,7 @@ export default function Contact({ onNavigate, keyboardOpen }) {
           }}
           backLabel={t('common.back')}
         />
-        <BookingForm onSuccess={() => setDone(true)} keyboardOpen={keyboardOpen} />
+        <BookingForm onSuccess={() => setDone(true)} keyboardOpen={keyboardOpen} preselectedService={preselectedService} />
       </div>
     );
   }
