@@ -1,5 +1,6 @@
 """FastAPI application for Mini App backend."""
 
+import os
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import client, orders, bonuses, promos, services
 from src.api.routers import auth_router
+from src.api.routers import client_app
 from src.api.routers import client_masters
 from src.api.routers import requests as client_requests
 from src.api.routers.master import dashboard as master_dashboard
@@ -49,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
+BONUS_MEDIA_DIR = Path(os.getenv("BONUS_MEDIA_DIR", "/app/data/bonus_media"))
 BONUS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/bonus-media", StaticFiles(directory=str(BONUS_MEDIA_DIR)), name="bonus-media")
 
@@ -60,6 +62,7 @@ app.include_router(bonuses.router, prefix="/api")
 app.include_router(promos.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
+app.include_router(client_app.router, prefix="/api")
 app.include_router(client_masters.router, prefix="/api")
 app.include_router(client_requests.router, prefix="/api")
 app.include_router(master_dashboard.router, prefix="/api")
