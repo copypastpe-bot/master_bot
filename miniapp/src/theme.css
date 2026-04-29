@@ -543,6 +543,7 @@ body.typeui-client-body .client-contact-back-btn {
 
 body.typeui-client-body .client-contact-content {
   padding: 0 0 128px;
+  overflow-x: hidden;
 }
 
 body.typeui-client-body .client-contact-root-list {
@@ -552,7 +553,7 @@ body.typeui-client-body .client-contact-root-list {
 }
 
 body.typeui-client-body .client-contact-mode-card {
-  width: 100%;
+  width: calc(100% - (var(--client-shell-padding) * 2));
   display: flex;
   align-items: center;
   gap: 14px;
@@ -700,7 +701,7 @@ body.typeui-client-body .client-contact-hidden-input {
 }
 
 body.typeui-client-body .client-contact-upload-btn {
-  width: 100%;
+  width: calc(100% - (var(--client-shell-padding) * 2));
   min-height: 62px;
   padding: 16px 18px;
   border-style: dashed;
@@ -1668,6 +1669,10 @@ body.typeui-enterprise-body .enterprise-feedback-actions .enterprise-btn-primary
 }
 
 @media (max-width: 480px) {
+  body.typeui-client-body .client-contact-grid {
+    grid-template-columns: 1fr;
+  }
+
   body.typeui-enterprise-body .enterprise-feedback-hero {
     flex-direction: column;
   }
@@ -3025,4 +3030,548 @@ body.typeui-enterprise-body .onb-final-subtitle {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* ── Client App v2 ─────────────────────────────────────────────────────────── */
+
+/* Profile card (Home screen) */
+body.typeui-client-body .client-profile-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  margin-bottom: 8px;
+}
+body.typeui-client-body .client-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+body.typeui-client-body .client-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+body.typeui-client-body .client-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+body.typeui-client-body .client-profile-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #fff);
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.typeui-client-body .client-profile-sphere {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin: 0 0 6px;
+}
+body.typeui-client-body .client-profile-bio {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin: 6px 0 4px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+body.typeui-client-body .client-profile-details-link {
+  font-size: 13px;
+  color: var(--tg-theme-link-color, #2481cc);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+body.typeui-client-body .client-profile-bonus {
+  text-align: right;
+  flex-shrink: 0;
+}
+body.typeui-client-body .client-profile-bonus-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #fff);
+  line-height: 1.1;
+}
+body.typeui-client-body .client-profile-bonus-label {
+  font-size: 11px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+
+/* Action buttons row */
+body.typeui-client-body .client-action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+body.typeui-client-body .client-action-btn {
+  padding: 13px 8px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+body.typeui-client-body .client-action-btn:active { opacity: 0.75; }
+body.typeui-client-body .client-action-btn.is-primary {
+  background: #2481cc;
+  color: #fff;
+}
+body.typeui-client-body .client-action-btn.is-secondary {
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  color: var(--tg-theme-text-color, #fff);
+}
+body.typeui-client-body .client-action-btn.is-full {
+  grid-column: 1 / -1;
+  background: #2481cc;
+  color: #fff;
+}
+
+/* Section header with right link */
+body.typeui-client-body .client-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 16px 0 8px;
+}
+body.typeui-client-body .client-section-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #fff);
+}
+body.typeui-client-body .client-section-header-link {
+  font-size: 13px;
+  color: var(--tg-theme-link-color, #2481cc);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Order card */
+body.typeui-client-body .client-order-card {
+  border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  border: 1px solid rgba(255,255,255,0.07);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+body.typeui-client-body .client-order-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+body.typeui-client-body .client-order-card-date {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+body.typeui-client-body .client-order-card-services {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #fff);
+  margin: 0 0 6px;
+}
+body.typeui-client-body .client-order-card-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+body.typeui-client-body .client-order-card-price {
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+body.typeui-client-body .client-order-card-bonuses {
+  color: #4caf50;
+  font-weight: 600;
+}
+body.typeui-client-body .client-order-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+body.typeui-client-body .client-order-card-btn {
+  flex: 1;
+  min-width: 100px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  text-align: center;
+}
+body.typeui-client-body .client-order-card-btn:active { opacity: 0.75; }
+body.typeui-client-body .client-order-card-btn.is-primary {
+  background: #2481cc;
+  color: #fff;
+}
+body.typeui-client-body .client-order-card-btn.is-outline {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: var(--tg-theme-text-color, #fff);
+}
+body.typeui-client-body .client-order-review-left {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  font-style: italic;
+}
+
+/* Status badge pills */
+body.typeui-client-body .client-status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+body.typeui-client-body .client-status-badge.is-yellow { background: rgba(255,193,7,0.18); color: #ffc107; }
+body.typeui-client-body .client-status-badge.is-blue   { background: rgba(36,129,204,0.18); color: #2481cc; }
+body.typeui-client-body .client-status-badge.is-green  { background: rgba(76,175,80,0.18); color: #4caf50; }
+body.typeui-client-body .client-status-badge.is-grey   { background: rgba(142,153,164,0.12); color: #8e99a4; }
+body.typeui-client-body .client-status-badge.is-red    { background: rgba(244,67,54,0.18); color: #f44336; }
+
+/* Services accordion */
+body.typeui-client-body .client-accordion-item {
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+body.typeui-client-body .client-accordion-item:last-child { border-bottom: none; }
+body.typeui-client-body .client-accordion-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 0;
+  background: none;
+  border: none;
+  color: var(--tg-theme-text-color, #fff);
+  cursor: pointer;
+  text-align: left;
+}
+body.typeui-client-body .client-accordion-trigger-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+body.typeui-client-body .client-accordion-trigger-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+body.typeui-client-body .client-accordion-trigger-price {
+  font-size: 14px;
+  color: #2481cc;
+}
+body.typeui-client-body .client-accordion-chevron {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  transition: transform 0.2s;
+}
+body.typeui-client-body .client-accordion-chevron.is-open { transform: rotate(90deg); }
+body.typeui-client-body .client-accordion-body {
+  padding: 0 0 12px;
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  line-height: 1.5;
+}
+
+/* Bonus row (history) */
+body.typeui-client-body .client-bonus-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  margin-bottom: 6px;
+}
+body.typeui-client-body .client-bonus-row-left { flex: 1; min-width: 0; }
+body.typeui-client-body .client-bonus-row-desc {
+  font-size: 14px;
+  color: var(--tg-theme-text-color, #fff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.typeui-client-body .client-bonus-row-date {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin-top: 2px;
+}
+body.typeui-client-body .client-bonus-row-amount {
+  font-size: 15px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+body.typeui-client-body .client-bonus-row-amount.is-positive { color: #4caf50; }
+body.typeui-client-body .client-bonus-row-amount.is-negative { color: #f44336; }
+
+/* News card */
+body.typeui-client-body .client-news-card {
+  border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+body.typeui-client-body .client-news-card-image {
+  width: 100%;
+  display: block;
+  max-height: 200px;
+  object-fit: cover;
+}
+body.typeui-client-body .client-news-card-body { padding: 12px 14px; }
+body.typeui-client-body .client-news-card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+body.typeui-client-body .client-news-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #fff);
+  margin: 0 0 4px;
+}
+body.typeui-client-body .client-news-card-text {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+/* News tag colors */
+body.typeui-client-body .client-news-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+body.typeui-client-body .client-news-tag.is-promo        { background: rgba(255,87,51,0.18); color: #ff5733; }
+body.typeui-client-body .client-news-tag.is-announcement { background: rgba(255,193,7,0.18); color: #ffc107; }
+body.typeui-client-body .client-news-tag.is-free_slot    { background: rgba(76,175,80,0.18); color: #4caf50; }
+
+/* Settings groups (iOS-style) */
+body.typeui-client-body .client-settings-group {
+  margin-bottom: 20px;
+}
+body.typeui-client-body .client-settings-group-label {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+body.typeui-client-body .client-settings-list {
+  border-radius: 12px;
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  overflow: hidden;
+}
+body.typeui-client-body .client-settings-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+body.typeui-client-body .client-settings-row:last-child { border-bottom: none; }
+body.typeui-client-body .client-settings-row-copy { flex: 1; }
+body.typeui-client-body .client-settings-row-title {
+  font-size: 15px;
+  color: var(--tg-theme-text-color, #fff);
+}
+body.typeui-client-body .client-settings-row-hint {
+  font-size: 12px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin-top: 2px;
+}
+body.typeui-client-body .client-settings-row-value {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+body.typeui-client-body .client-settings-row.is-danger .client-settings-row-title {
+  color: #f44336;
+}
+body.typeui-client-body .client-settings-row.is-link {
+  cursor: pointer;
+}
+/* Toggle switch */
+body.typeui-client-body .client-toggle {
+  position: relative;
+  width: 50px;
+  height: 28px;
+  flex-shrink: 0;
+}
+body.typeui-client-body .client-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+body.typeui-client-body .client-toggle-track {
+  position: absolute; inset: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  transition: background 0.2s;
+  cursor: pointer;
+}
+body.typeui-client-body .client-toggle input:checked + .client-toggle-track {
+  background: #4caf50;
+}
+body.typeui-client-body .client-toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  pointer-events: none;
+}
+body.typeui-client-body .client-toggle input:checked ~ .client-toggle-thumb {
+  transform: translateX(22px);
+}
+
+/* Bottom sheet */
+body.typeui-client-body .client-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+body.typeui-client-body .client-sheet {
+  width: 100%;
+  background: var(--tg-theme-secondary-bg-color, #1c2230);
+  border-radius: 16px 16px 0 0;
+  padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+body.typeui-client-body .client-sheet-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tg-theme-text-color, #fff);
+  margin-bottom: 14px;
+  text-align: center;
+}
+body.typeui-client-body .client-sheet-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 10px;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+}
+body.typeui-client-body .client-sheet-btn.is-secondary {
+  background: rgba(255,255,255,0.08);
+  color: var(--tg-theme-text-color, #fff);
+}
+
+/* Master landing */
+body.typeui-client-body .client-landing-hero {
+  text-align: center;
+  padding: 24px 16px 16px;
+}
+body.typeui-client-body .client-landing-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--tg-theme-button-color, #2481cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 auto 12px;
+  overflow: hidden;
+}
+body.typeui-client-body .client-landing-avatar img { width: 100%; height: 100%; object-fit: cover; }
+body.typeui-client-body .client-landing-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+body.typeui-client-body .client-landing-sphere {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin-bottom: 8px;
+}
+body.typeui-client-body .client-landing-metrics {
+  font-size: 13px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+
+/* Change specialist button in header */
+body.typeui-client-body .client-header-specialist-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--tg-theme-text-color, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.typeui-client-body .client-header-specialist-btn svg {
+  flex-shrink: 0;
+  color: var(--tg-theme-hint-color, #8e99a4);
+}
+
+/* Confirmation dialog */
+body.typeui-client-body .client-confirm-dialog {
+  padding: 24px 16px 16px;
+  text-align: center;
+}
+body.typeui-client-body .client-confirm-dialog-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+body.typeui-client-body .client-confirm-dialog-text {
+  font-size: 14px;
+  color: var(--tg-theme-hint-color, #8e99a4);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+/* Lazy load trigger */
+body.typeui-client-body .client-load-more-trigger {
+  height: 1px;
+  width: 100%;
+}
+
+/* Page header with specialist switcher */
+body.typeui-client-body .client-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--tg-theme-bg-color, #0b1622);
 }
