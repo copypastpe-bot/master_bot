@@ -1620,8 +1620,13 @@ async def get_client_masters(client_id: int) -> list[dict]:
     try:
         cursor = await conn.execute(
             """
-            SELECT m.id as master_id, m.name as master_name, m.sphere,
+            SELECT m.id as master_id,
+                   m.name as name,
+                   m.name as master_name,
+                   m.sphere,
                    mc.bonus_balance, mc.last_visit,
+                   (SELECT COUNT(*) FROM orders
+                    WHERE master_id = m.id AND client_id = ? AND status = 'done') as visit_count,
                    (SELECT COUNT(*) FROM orders
                     WHERE master_id = m.id AND client_id = ? AND status = 'done') as order_count
             FROM masters m
@@ -1629,7 +1634,7 @@ async def get_client_masters(client_id: int) -> list[dict]:
             WHERE mc.client_id = ?
             ORDER BY mc.last_visit DESC NULLS LAST
             """,
-            (client_id, client_id),
+            (client_id, client_id, client_id),
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]

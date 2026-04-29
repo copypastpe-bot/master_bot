@@ -226,3 +226,16 @@ class ClientAppDatabaseTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(row["status"], "confirmed")
         self.assertEqual(row["client_confirmed"], 1)
+
+    async def test_get_client_masters_returns_new_and_legacy_field_names(self):
+        await self._seed_review_fixture()
+
+        masters = await db.get_client_masters(client_id=1)
+        self.assertEqual(len(masters), 1)
+        item = masters[0]
+        self.assertEqual(item["master_id"], 1)
+        self.assertEqual(item["name"], "Анна Иванова")
+        self.assertEqual(item["master_name"], "Анна Иванова")
+        self.assertEqual(item["visit_count"], 1)
+        self.assertEqual(item["order_count"], 1)
+        self.assertEqual(item["bonus_balance"], 120)
