@@ -33,20 +33,6 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
     return () => document.body.classList.remove('typeui-client-body');
   }, []);
 
-  // Telegram BackButton
-  useEffect(() => {
-    if (!WebApp?.BackButton) return;
-    const isSubScreen = SUB_SCREENS.has(page) || page === 'master_select';
-    if (isSubScreen) {
-      WebApp.BackButton.show();
-      const handler = () => navigate(tab);
-      WebApp.BackButton.onClick(handler);
-      return () => WebApp.BackButton.offClick(handler);
-    } else {
-      WebApp.BackButton.hide();
-    }
-  }, [page, tab]);
-
   // Hide BottomNav when keyboard open
   useEffect(() => {
     const vv = window.visualViewport;
@@ -66,6 +52,20 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
       setPageParams(params);
     }
   };
+
+  // Telegram BackButton — show on sub-screens, hide on tabs
+  useEffect(() => {
+    if (!WebApp?.BackButton) return;
+    const isSubScreen = SUB_SCREENS.has(page) || page === 'master_select';
+    if (isSubScreen) {
+      WebApp.BackButton.show();
+      const handler = () => navigate(tab);
+      WebApp.BackButton.onClick(handler);
+      return () => WebApp.BackButton.offClick(handler);
+    } else {
+      WebApp.BackButton.hide();
+    }
+  }, [page, tab]);
 
   const handleTabNav = (tabId) => {
     if (tabId === tab && !SUB_SCREENS.has(page) && page !== 'master_select') {
