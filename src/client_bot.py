@@ -136,6 +136,49 @@ async def build_home_text(client, master, master_client) -> str:
     )
 
 
+def client_miniapp_entry_kb() -> InlineKeyboardMarkup:
+    """Open redesigned client Mini App."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Открыть приложение",
+            web_app=WebAppInfo(url=CLIENT_MINIAPP_URL),
+        )],
+    ])
+
+
+def build_miniapp_entry_text(client, masters: list[dict]) -> str:
+    """Build simplified client bot entry text."""
+    if not masters:
+        return (
+            f"👋 Привет, {client.name}!\n\n"
+            "Пока нет подключённых специалистов.\n"
+            "Откройте ссылку-приглашение от специалиста, чтобы подключиться."
+        )
+
+    lines = [f"👋 Привет, {client.name}!", "", "Ваши специалисты:"]
+    for item in masters:
+        name = item.get("name") or item.get("master_name") or "Специалист"
+        sphere = item.get("sphere")
+        balance = item.get("bonus_balance") or 0
+        title = f"• {name}"
+        if sphere:
+            title += f" · {sphere}"
+        lines.append(title)
+        lines.append(f"  Бонусы: {balance}")
+    lines.extend(["", "Все функции доступны в приложении."])
+    return "\n".join(lines)
+
+
+async def send_miniapp_entry(bot: Bot, chat_id: int, client) -> None:
+    """Send simplified Mini App entry message."""
+    masters = await get_all_client_masters_by_tg_id(client.tg_id)
+    await bot.send_message(
+        chat_id,
+        build_miniapp_entry_text(client, masters),
+        reply_markup=client_miniapp_entry_kb(),
+    )
+
+
 async def show_home(bot: Bot, client, master, master_client, chat_id: int, force_new: bool = False) -> int:
     """Show or update home screen. Returns message_id.
 
@@ -344,9 +387,9 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
             await state.clear()
             await bot.send_message(
                 message.chat.id,
-                f"✅ Вы уже записаны к мастеру {master.name}"
+                f"✅ Вы уже подключены к специалисту {master.name}"
             )
-            await show_home(bot, client, master, existing_link, message.chat.id, force_new=True)
+            await send_miniapp_entry(bot, message.chat.id, client)
         else:
             # Scenario 2: existing client, new master
             await link_existing_client_to_master(client.id, master.id)
@@ -360,9 +403,9 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
             await state.clear()
             await bot.send_message(
                 message.chat.id,
-                f"✅ Вы подключились к мастеру {master.name}!"
+                f"✅ Вы подключились к специалисту {master.name}!"
             )
-            await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
+            await send_miniapp_entry(bot, message.chat.id, client)
         return
 
     # ── Branch B: no token ────────────────────────────────────────────────────
@@ -381,11 +424,11 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
     client, master, master_client = await get_client_context(tg_id, _active_masters.get(tg_id))
     if master:
-        await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
+        await send_miniapp_entry(bot, message.chat.id, client)
     else:
         await bot.send_message(
             message.chat.id,
-            "👋 Для начала работы нужна ссылка от мастера.",
+            "👋 Для начала работы нужна ссылка от специалиста.",
             reply_markup=ReplyKeyboardRemove()
         )
 
