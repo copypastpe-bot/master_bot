@@ -260,3 +260,46 @@ export const getMasterRequestsUnreadCount = () =>
   api.get('/api/master/requests/unread_count').then(r => r.data);
 export const closeMasterRequest = (id) =>
   api.post(`/api/master/requests/${id}/close`).then(r => r.data);
+
+// ── Client App v2 ────────────────────────────────────────────────────────────
+
+export const getClientMasterProfile = (masterId) =>
+  api.get(`/api/client/master/${masterId}/profile`).then(r => r.data);
+
+export const getClientMasterActivity = (masterId, limit = 3) =>
+  api.get(`/api/client/master/${masterId}/activity`, { params: { limit } }).then(r => r.data);
+
+export const getClientMasterServices = (masterId) =>
+  api.get(`/api/client/master/${masterId}/services`).then(r => r.data);
+
+export const getClientMasterNews = (masterId) =>
+  api.get(`/api/client/master/${masterId}/news`, { params: { limit: 1 } }).then(r => r.data);
+
+export const getClientMasterHistory = (masterId, limit = 20, offset = 0) =>
+  api.get(`/api/client/master/${masterId}/history`, { params: { limit, offset } }).then(r => r.data);
+
+export const getClientMasterPublications = (masterId, limit = 20, offset = 0) =>
+  api.get(`/api/client/master/${masterId}/publications`, { params: { limit, offset } }).then(r => r.data);
+
+export const getClientMasterSettings = (masterId) =>
+  api.get(`/api/client/master/${masterId}/settings`).then(r => r.data);
+
+export const patchClientMasterSettings = (masterId, patch) =>
+  api.patch(`/api/client/master/${masterId}/settings`, patch).then(r => r.data);
+
+export const getClientMasterReviews = (masterId, limit = 20, offset = 0) =>
+  api.get(`/api/client/master/${masterId}/reviews`, { params: { limit, offset } }).then(r => r.data);
+
+export const confirmClientOrder = (orderId) =>
+  api.post(`/api/client/orders/${orderId}/confirm`).then(r => r.data);
+
+export const createClientOrderReview = (orderId, body) =>
+  api.post(`/api/client/orders/${orderId}/review`, body).then(r => r.data);
+
+export const deleteClientProfile = () =>
+  api.delete('/api/client/profile').then(r => r.data);
+
+// Public — no X-Init-Data required (backend does not check it)
+const publicApi = axios.create({ baseURL: API_URL });
+export const getPublicMasterProfile = (inviteToken) =>
+  publicApi.get(`/api/public/master/${inviteToken}`).then(r => r.data);
