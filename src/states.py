@@ -148,39 +148,3 @@ class ReportPeriodFSM(StatesGroup):
     date_from = State()   # Step 1: Start date
     date_to = State()     # Step 2: End date
 
-
-# =============================================================================
-# Client Bot FSM States
-# =============================================================================
-
-class OrderRequestFSM(StatesGroup):
-    """Order request flow in client_bot."""
-    service = State()         # Step 1: Select service
-    custom_service = State()  # Step 1b: Enter custom service name
-    comment = State()         # Step 2: Add comment (optional)
-    confirm = State()         # Step 3: Confirm and send
-
-
-class QuestionFSM(StatesGroup):
-    """Question to master flow in client_bot."""
-    text = State()  # Step 1: Enter question text
-
-
-class MediaFSM(StatesGroup):
-    """Media sending flow in client_bot."""
-    media = State()    # Step 1: Send photo/video
-    comment = State()  # Step 2: Add comment (optional)
-
-
-class ClientRescheduleOrder(StatesGroup):
-    """Client reschedule order flow in client_bot."""
-    date = State()       # Step 1: Select new date
-    hour = State()       # Step 2: Select hour
-    minutes = State()    # Step 3: Select minutes
-    confirm = State()    # Step 4: Confirm reschedule
-
-
-class ClientCancelOrder(StatesGroup):
-    """Client cancel order flow in client_bot."""
-    reason = State()   # Step 1: Select/enter reason
-    confirm = State()  # Step 2: Confirm cancellation
