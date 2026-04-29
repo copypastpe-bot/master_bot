@@ -24,9 +24,9 @@ const en = {
   nav: {
     client: {
       home: 'Home',
-      contact: 'Contact',
-      bonuses: 'Bonuses',
-      promos: 'Promos',
+      history: 'History',
+      news: 'News',
+      settings: 'Settings',
     },
     master: {
       home: 'Home',
@@ -44,9 +44,9 @@ const en = {
   },
 
   masterSelect: {
-    title: 'Choose a master',
-    subtitle: 'You are connected to several masters',
-    bonus: '💎 {amount} ₽',
+    title: 'Choose a specialist',
+    subtitle: 'You are connected to several specialists',
+    bonus: '💎 {amount} bonuses',
     visits: '📋 {count} visits',
     lastVisit: 'Last visit: {date}',
   },
@@ -457,6 +457,114 @@ const en = {
     },
     activeTo: 'Until {date}',
   },
+
+  clientHome: {
+    specialist: 'Your specialist',
+    detailsLink: 'Details',
+    bookBtn: 'Book',
+    questionBtn: 'Ask a question',
+    activityTitle: 'Activity',
+    allHistory: 'All history',
+    servicesTitle: 'Services',
+    newsTitle: 'News',
+    bookService: 'Book',
+    noActivity: 'No orders yet',
+    noServices: 'No services listed',
+    noNews: 'No publications yet',
+    bonusLabel: 'bonuses',
+  },
+
+  orderCard: {
+    statusNew: 'New booking',
+    statusReminder: 'Reminder',
+    statusConfirmed: 'Confirmed',
+    statusDone: 'Completed',
+    statusCancelled: 'Cancelled',
+    statusMoved: 'Rescheduled',
+    reviewLeft: 'Review left',
+    btnConfirm: 'Confirm',
+    btnContact: 'Contact',
+    btnReview: 'Leave a review',
+    btnRepeat: 'Repeat',
+  },
+
+  reviewModal: {
+    title: 'Review your visit',
+    placeholder: 'Tell us about your experience...',
+    submit: 'Submit',
+    submitting: 'Submitting...',
+    minLengthError: 'At least 10 characters',
+    successMsg: 'Thank you for your review!',
+  },
+
+  contactSheet: {
+    title: 'Contact specialist',
+    phone: 'Call',
+    telegram: 'Message on Telegram',
+  },
+
+  history: {
+    title: 'History',
+    balanceLabel: 'Balance',
+    bonusSuffix: 'bonuses',
+    noBonusDesc: 'Transaction',
+    loadMore: 'Load more',
+    empty: 'No records yet',
+  },
+
+  news: {
+    title: 'News',
+    tagPromo: 'Promo',
+    tagAnnouncement: 'Announcement',
+    tagFreeSlot: 'Free slot',
+    btnBook: 'Book',
+    btnWantSame: 'I want this',
+    empty: 'No publications yet',
+    loadMore: 'Load more',
+  },
+
+  settings: {
+    title: 'Settings',
+    notificationsGroup: 'Notifications',
+    notifyReminders: 'Booking reminders',
+    notifyRemindersHint: '24 hours before visit',
+    notifyMarketing: 'News & promos',
+    notifyMarketingHint: "Specialist's publications",
+    notifyBonuses: 'Bonuses',
+    notifyBonusesHint: 'Credits and debits',
+    supportGroup: 'Support',
+    supportBtn: 'Contact support',
+    aboutGroup: 'About',
+    versionLabel: 'Version',
+    privacyBtn: 'Privacy policy',
+    accountGroup: 'Account',
+    deleteProfile: 'Delete profile',
+    deleteConfirmTitle: 'Delete profile?',
+    deleteConfirmText: 'Your data will be permanently deleted.',
+    deleteConfirmBtn: 'Yes, delete',
+    deleteCancelBtn: 'Cancel',
+    deleting: 'Deleting...',
+  },
+
+  masterLanding: {
+    reviewsMetric: '{count} reviews',
+    yearsMetric: '{count} years on platform',
+    yearMetric: '1 year on platform',
+    bookBtn: 'Book',
+    questionBtn: 'Ask a question',
+    connectBtn: 'Connect to specialist',
+    connecting: 'Connecting...',
+    aboutTitle: 'About',
+    servicesTitle: 'Services',
+    contactsTitle: 'Contacts',
+    workModeTitle: 'Work format',
+    reviewsTitle: 'Reviews',
+    shareBtn: 'Share specialist',
+    noReviews: 'No reviews yet',
+    noServices: 'No services listed',
+  },
+
+  changeSpecialist: 'Change specialist',
 
   contact: {
     root: {

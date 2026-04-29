@@ -24,9 +24,9 @@ const ru = {
   nav: {
     client: {
       home: 'Главная',
-      contact: 'Связаться',
-      bonuses: 'Бонусы',
-      promos: 'Акции',
+      history: 'История',
+      news: 'Новости',
+      settings: 'Настройки',
     },
     master: {
       home: 'Главная',
@@ -44,9 +44,9 @@ const ru = {
   },
 
   masterSelect: {
-    title: 'Выберите мастера',
-    subtitle: 'Вы подключены к нескольким мастерам',
-    bonus: '💎 {amount} ₽',
+    title: 'Выберите специалиста',
+    subtitle: 'Вы подключены к нескольким специалистам',
+    bonus: '💎 {amount} бонусов',
     visits: '📋 {count} визитов',
     lastVisit: 'Последний визит: {date}',
   },
@@ -457,6 +457,114 @@ const ru = {
     },
     activeTo: 'До {date}',
   },
+
+  clientHome: {
+    specialist: 'Ваш специалист',
+    detailsLink: 'Подробнее',
+    bookBtn: 'Записаться',
+    questionBtn: 'Задать вопрос',
+    activityTitle: 'Активность',
+    allHistory: 'Вся история',
+    servicesTitle: 'Услуги',
+    newsTitle: 'Новости',
+    bookService: 'Записаться',
+    noActivity: 'Заказов пока нет',
+    noServices: 'Услуги не указаны',
+    noNews: 'Публикаций пока нет',
+    bonusLabel: 'бонусов',
+  },
+
+  orderCard: {
+    statusNew: 'Новая запись',
+    statusReminder: 'Напоминание',
+    statusConfirmed: 'Подтверждён',
+    statusDone: 'Выполнен',
+    statusCancelled: 'Отменён',
+    statusMoved: 'Перенесён',
+    reviewLeft: 'Отзыв оставлен',
+    btnConfirm: 'Подтвердить',
+    btnContact: 'Связаться',
+    btnReview: 'Оставить отзыв',
+    btnRepeat: 'Повторить',
+  },
+
+  reviewModal: {
+    title: 'Отзыв о визите',
+    placeholder: 'Расскажите о вашем опыте...',
+    submit: 'Отправить',
+    submitting: 'Отправляем...',
+    minLengthError: 'Минимум 10 символов',
+    successMsg: 'Спасибо за отзыв!',
+  },
+
+  contactSheet: {
+    title: 'Связаться со специалистом',
+    phone: 'Позвонить',
+    telegram: 'Написать в Telegram',
+  },
+
+  history: {
+    title: 'История',
+    balanceLabel: 'Баланс',
+    bonusSuffix: 'бонусов',
+    noBonusDesc: 'Операция',
+    loadMore: 'Загрузить ещё',
+    empty: 'Записей пока нет',
+  },
+
+  news: {
+    title: 'Новости',
+    tagPromo: 'Акция',
+    tagAnnouncement: 'Объявление',
+    tagFreeSlot: 'Свободное окно',
+    btnBook: 'Записаться',
+    btnWantSame: 'Хочу так же',
+    empty: 'Публикаций пока нет',
+    loadMore: 'Загрузить ещё',
+  },
+
+  settings: {
+    title: 'Настройки',
+    notificationsGroup: 'Уведомления',
+    notifyReminders: 'Напоминания о записи',
+    notifyRemindersHint: 'За 24 часа до визита',
+    notifyMarketing: 'Новости и акции',
+    notifyMarketingHint: 'Публикации специалиста',
+    notifyBonuses: 'Бонусы',
+    notifyBonusesHint: 'Начисления и списания',
+    supportGroup: 'Поддержка',
+    supportBtn: 'Написать в поддержку',
+    aboutGroup: 'О приложении',
+    versionLabel: 'Версия',
+    privacyBtn: 'Политика конфиденциальности',
+    accountGroup: 'Аккаунт',
+    deleteProfile: 'Удалить профиль',
+    deleteConfirmTitle: 'Удалить профиль?',
+    deleteConfirmText: 'Данные будут удалены безвозвратно.',
+    deleteConfirmBtn: 'Да, удалить',
+    deleteCancelBtn: 'Отмена',
+    deleting: 'Удаляем...',
+  },
+
+  masterLanding: {
+    reviewsMetric: '{count} отзывов',
+    yearsMetric: '{count} лет на платформе',
+    yearMetric: '1 год на платформе',
+    bookBtn: 'Записаться',
+    questionBtn: 'Задать вопрос',
+    connectBtn: 'Подключиться к специалисту',
+    connecting: 'Подключаемся...',
+    aboutTitle: 'О специалисте',
+    servicesTitle: 'Услуги',
+    contactsTitle: 'Контакты',
+    workModeTitle: 'Формат работы',
+    reviewsTitle: 'Отзывы',
+    shareBtn: 'Поделиться специалистом',
+    noReviews: 'Отзывов пока нет',
+    noServices: 'Услуги не указаны',
+  },
+
+  changeSpecialist: 'Сменить специалиста',
 
   contact: {
     root: {
