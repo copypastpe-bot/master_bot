@@ -2826,6 +2826,30 @@ async def is_manual_bonus_notification_enabled(master_id: int, client_id: int) -
         await conn.close()
 
 
+async def get_manual_bonus_notification_context(master_id: int, client_id: int) -> dict | None:
+    """Return data needed to notify a client about standalone manual bonus accrual."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                c.tg_id AS client_tg_id,
+                m.name AS master_name,
+                mc.bonus_balance,
+                mc.notify_bonuses
+            FROM master_clients mc
+            JOIN clients c ON c.id = mc.client_id
+            JOIN masters m ON m.id = mc.master_id
+            WHERE mc.master_id = ? AND mc.client_id = ?
+            """,
+            (master_id, client_id),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
 async def confirm_order_by_client(order_id: int, client_id: int) -> bool:
     """Confirm a client order using existing client_confirmed architecture."""
     conn = await get_connection()

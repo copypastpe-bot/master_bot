@@ -102,6 +102,14 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
         disabled = await db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
         self.assertFalse(disabled)
 
+    async def test_get_manual_bonus_notification_context_returns_balance_and_client_tg(self):
+        context = await db.get_manual_bonus_notification_context(master_id=1, client_id=1)
+
+        self.assertEqual(context["client_tg_id"], 2001)
+        self.assertEqual(context["master_name"], "Анна Иванова")
+        self.assertEqual(context["bonus_balance"], 150)
+        self.assertEqual(context["notify_bonuses"], 1)
+
 
 class ClientBotNotificationFormattingTest(unittest.TestCase):
     def test_contact_keyboard_uses_only_available_structured_contacts(self):

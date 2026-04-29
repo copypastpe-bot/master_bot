@@ -9,6 +9,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 from src.config import CLIENT_BOT_TOKEN, CLIENT_MINIAPP_URL
+from src.database import get_order_notification_context
 from src.models import Client, Order, Master
 from src.utils import get_currency_symbol
 
@@ -89,10 +90,15 @@ async def notify_order_created(
     client: Client,
     order: dict,
     master: Master,
-    services: list[dict]
+    services: list[dict],
+    bot=None,
 ) -> bool:
-    """Notify client about new order."""
+    """Notify client about a new order if reminder notifications are enabled."""
     if not client.tg_id:
+        return False
+
+    context = await get_order_notification_context(order["id"], client_tg_id=client.tg_id)
+    if not context or not context.get("notify_reminders"):
         return False
 
     try:
@@ -100,34 +106,63 @@ async def notify_order_created(
         if isinstance(scheduled_at, str):
             scheduled_at = datetime.fromisoformat(scheduled_at)
 
-        services_text = ", ".join(s["name"] for s in services)
-        amount = order.get("amount_total", 0)
-        curr = get_currency_symbol(master.currency)
-
+        services_text = ", ".join(s["name"] for s in services) or "—"
+        date_str = f"{scheduled_at.day} {MONTHS_RU[scheduled_at.month]}"
+        time_str = scheduled_at.strftime("%H:%M")
+        address = (order.get("address") or "").strip()
         text = (
-            "📋 Новая запись!\n"
-            "━━━━━━━━━━━━━━━\n"
-            f"📅 {format_datetime(scheduled_at)}\n"
-            f"📍 {order.get('address', '—')}\n"
-            f"🛠 {services_text}\n"
-            f"💰 Сумма: {amount} {curr}\n"
-            "━━━━━━━━━━━━━━━\n"
-            f"Мастер: {master.name}\n"
-            f"📞 {master.contacts or '—'}"
+            f"{master.name} записал(а) вас:\n\n"
+            f"{services_text}\n"
+            f"{date_str}, {time_str}"
         )
+        if address:
+            text += f"\n{address}"
 
-        await client_bot.send_message(client.tg_id, text)
-        logger.info(f"Notification sent to client {client.id}: order created")
+        await (bot or client_bot).send_message(
+            client.tg_id,
+            text,
+            reply_markup=order_action_keyboard(order["id"]),
+        )
+        logger.info("Notification sent to client %s: order created", client.id)
         return True
 
     except TelegramForbiddenError:
-        logger.warning(f"Client {client.id} blocked the bot")
+        logger.warning("Client %s blocked the bot", client.id)
         return False
     except TelegramBadRequest as e:
-        logger.error(f"Failed to send notification to client {client.id}: {e}")
+        logger.error("Failed to send notification to client %s: %s", client.id, e)
         return False
     except Exception as e:
-        logger.error(f"Unexpected error sending notification to client {client.id}: {e}")
+        logger.error("Unexpected error sending notification to client %s: %s", client.id, e)
+        return False
+
+
+async def notify_manual_bonus(
+    chat_id: int,
+    master_name: str,
+    amount: int,
+    comment: str | None,
+    balance: int,
+    bot=None,
+) -> bool:
+    """Notify a client about standalone positive manual bonus accrual."""
+    if amount <= 0:
+        return False
+
+    comment_text = (comment or "").strip()
+    text = f"Начислено +{amount} бонусов"
+    if comment_text:
+        text += f"\n{comment_text}"
+    text += f"\nот {master_name}\n\nВаш баланс: {balance} бонусов"
+
+    try:
+        await (bot or client_bot).send_message(chat_id=chat_id, text=text)
+        return True
+    except TelegramForbiddenError:
+        logger.warning("Client %s blocked the bot for manual bonus notification", chat_id)
+        return False
+    except TelegramBadRequest as e:
+        logger.error("Failed to send manual bonus notification to %s: %s", chat_id, e)
         return False
 
 

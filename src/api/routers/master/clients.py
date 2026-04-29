@@ -20,12 +20,14 @@ from src.database import (
     update_client,
     update_client_note,
     manual_bonus_transaction,
+    get_manual_bonus_notification_context,
     get_client_by_phone,
     create_client,
     link_client_to_master,
     restore_client,
 )
 from src.models import Master
+from src.notifications import notify_manual_bonus
 from src.utils import normalize_phone, parse_date
 
 logger = logging.getLogger(__name__)
@@ -297,6 +299,7 @@ class BonusBody(BaseModel):
 async def master_client_bonus(
     client_id: int,
     body: BonusBody,
+    request: Request,
     master: Master = Depends(get_current_master),
 ):
     """Manually accrue (positive) or deduct (negative) bonuses."""
@@ -307,7 +310,19 @@ async def master_client_bonus(
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    await manual_bonus_transaction(master.id, client_id, body.amount, body.comment)
+    new_balance = await manual_bonus_transaction(master.id, client_id, body.amount, body.comment)
+    if body.amount > 0:
+        context = await get_manual_bonus_notification_context(master.id, client_id)
+        client_bot = getattr(request.app.state, "client_bot", None)
+        if context and context.get("client_tg_id") and context.get("notify_bonuses"):
+            await notify_manual_bonus(
+                chat_id=context["client_tg_id"],
+                master_name=context.get("master_name") or master.name,
+                amount=body.amount,
+                comment=body.comment,
+                balance=new_balance,
+                bot=client_bot,
+            )
     return {"ok": True}
 
 

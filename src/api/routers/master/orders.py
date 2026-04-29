@@ -215,6 +215,7 @@ async def create_master_order(
                 },
                 master=master,
                 services=order_items,
+                bot=getattr(request.app.state, "client_bot", None),
             )
     except Exception as e:
         logger.error(f"Failed to notify client (create order {order_id}): {e}")
