@@ -1,11 +1,14 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import Home from './pages/Home';
+import History from './pages/History';
+import News from './pages/News';
+import Settings from './pages/Settings';
+import MasterLanding from './pages/MasterLanding';
 import Contact from './pages/Contact';
-import Bonuses from './pages/Bonuses';
-import Promos from './pages/Promos';
 import BottomNav from './components/BottomNav';
 import { Skeleton } from './components/Skeleton';
-import { getAuthRole, getClientMasters, linkToMaster, setActiveMasterId } from './api/client';
+import { getAuthRole, getClientMasters, setActiveMasterId } from './api/client';
 import MasterOnboarding from './master/pages/MasterOnboarding';
 import MasterSelectScreen from './pages/MasterSelectScreen';
 import MasterTypeUIProvider from './master/components/MasterTypeUIProvider';
@@ -15,67 +18,165 @@ const WebApp = window.Telegram?.WebApp;
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
 
-const clientPages = { home: Home, contact: Contact, bonuses: Bonuses, promos: Promos };
+const SUB_SCREENS = new Set(['create_order', 'ask_question', 'landing']);
 
-function ClientApp({ masters, activeMasterId, onMasterChange }) {
-  const [page, setPage] = useState('home');
+function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken }) {
+  const [tab, setTab] = useState('home');
+  const [page, setPage] = useState(initialInviteToken ? 'landing' : 'home');
+  const [pageParams, setPageParams] = useState(initialInviteToken ? { inviteToken: initialInviteToken, mode: 'public' } : {});
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [masterProfile, setMasterProfile] = useState(null);
+  const qc = useQueryClient();
 
   useEffect(() => {
     document.body.classList.add('typeui-client-body');
-    return () => {
-      document.body.classList.remove('typeui-client-body');
-    };
+    return () => document.body.classList.remove('typeui-client-body');
   }, []);
 
-  // Telegram BackButton — show on all pages except home
+  // Telegram BackButton
   useEffect(() => {
     if (!WebApp?.BackButton) return;
-    if (page === 'home' || page === 'contact') {
-      WebApp.BackButton.hide();
-    } else {
+    const isSubScreen = SUB_SCREENS.has(page) || page === 'master_select';
+    if (isSubScreen) {
       WebApp.BackButton.show();
-      const handler = () => setPage('home');
+      const handler = () => navigate(tab);
       WebApp.BackButton.onClick(handler);
       return () => WebApp.BackButton.offClick(handler);
+    } else {
+      WebApp.BackButton.hide();
     }
-  }, [page]);
+  }, [page, tab]);
 
-  // Hide BottomNav when keyboard is open
-  // visualViewport.height shrinks on iOS when keyboard opens; window.innerHeight stays the same
+  // Hide BottomNav when keyboard open
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const handler = () => {
-      setKeyboardOpen(window.innerHeight - vv.height > 150);
-    };
+    const handler = () => setKeyboardOpen(window.innerHeight - vv.height > 150);
     vv.addEventListener('resize', handler);
     return () => vv.removeEventListener('resize', handler);
   }, []);
 
-  const Page = clientPages[page];
+  const navigate = (pageId, params = {}) => {
+    if (pageId === 'home' || pageId === 'history' || pageId === 'news' || pageId === 'settings') {
+      setTab(pageId);
+      setPage(pageId);
+      setPageParams({});
+    } else {
+      setPage(pageId);
+      setPageParams(params);
+    }
+  };
 
-  const content = !activeMasterId ? (
-    <MasterSelectScreen
-      masters={masters}
-      onSelect={onMasterChange}
-    />
-  ) : (
-    <Page
-      onNavigate={setPage}
-      masters={masters}
-      activeMasterId={activeMasterId}
-      onMasterChange={onMasterChange}
-      keyboardOpen={keyboardOpen}
-    />
-  );
+  const handleTabNav = (tabId) => {
+    if (tabId === tab && !SUB_SCREENS.has(page) && page !== 'master_select') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate(tabId);
+    }
+  };
+
+  const handleMasterSelectDone = (masterId) => {
+    onMasterChange(masterId);
+    qc.invalidateQueries();
+    navigate(tab);
+  };
+
+  const handleLinked = () => {
+    window.location.reload();
+  };
+
+  const isSubScreen = SUB_SCREENS.has(page) || page === 'master_select';
+  const activeMaster = masters.find(m => m.master_id === activeMasterId);
+
+  const renderContent = () => {
+    if (!activeMasterId && page !== 'landing') {
+      return <MasterSelectScreen masters={masters} onSelect={handleMasterSelectDone} />;
+    }
+
+    if (page === 'master_select') {
+      return <MasterSelectScreen masters={masters} onSelect={handleMasterSelectDone} />;
+    }
+
+    if (page === 'landing') {
+      return (
+        <MasterLanding
+          mode={pageParams.mode || 'private'}
+          masterId={pageParams.masterId || activeMasterId}
+          inviteToken={pageParams.inviteToken}
+          navigate={navigate}
+          onLinked={handleLinked}
+        />
+      );
+    }
+
+    if (page === 'create_order') {
+      return (
+        <Contact
+          onNavigate={(p) => navigate(p)}
+          keyboardOpen={keyboardOpen}
+          preselectedService={pageParams.service}
+          initialMode="booking"
+        />
+      );
+    }
+
+    if (page === 'ask_question') {
+      return (
+        <Contact
+          onNavigate={(p) => navigate(p)}
+          keyboardOpen={keyboardOpen}
+          initialMode="question"
+        />
+      );
+    }
+
+    if (tab === 'home') return (
+      <Home
+        activeMasterId={activeMasterId}
+        navigate={navigate}
+        masterName={activeMaster?.master_name}
+        onProfileLoaded={setMasterProfile}
+      />
+    );
+    if (tab === 'history') return (
+      <History
+        activeMasterId={activeMasterId}
+        navigate={navigate}
+        masterProfile={masterProfile}
+      />
+    );
+    if (tab === 'news') return (
+      <News activeMasterId={activeMasterId} navigate={navigate} />
+    );
+    if (tab === 'settings') return (
+      <Settings
+        activeMasterId={activeMasterId}
+        onProfileDeleted={() => window.location.reload()}
+      />
+    );
+
+    return null;
+  };
 
   return (
     <div className="client-shell">
       <div className="client-shell-content">
-        {content}
+        {/* Specialist switcher header — shown on tab screens when multi-master */}
+        {!isSubScreen && activeMasterId && masters.length > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0' }}>
+            <button className="client-header-specialist-btn" onClick={() => navigate('master_select')}>
+              <span>{activeMaster?.master_name}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+          </div>
+        )}
+        {renderContent()}
       </div>
-      {activeMasterId && !keyboardOpen && <BottomNav active={page} onNavigate={setPage} />}
+      {!isSubScreen && activeMasterId && !keyboardOpen && (
+        <BottomNav active={tab} onNavigate={handleTabNav} />
+      )}
     </div>
   );
 }
@@ -128,6 +229,10 @@ export default function App() {
   const referralCode = extractReferralCode(WebApp?.initDataUnsafe?.start_param);
   const forcedRole = getForcedRole();
 
+  // Extract invite token at component level so it's available for ClientApp
+  const startParam = WebApp?.initDataUnsafe?.start_param;
+  const inviteToken = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
+
   useEffect(() => {
     getAuthRole()
       .then((data) => {
@@ -143,26 +248,11 @@ export default function App() {
 
   useEffect(() => {
     if (role !== 'client') return;
-
-    // Deep link: start_param = "invite_TOKEN"
-    const startParam = WebApp?.initDataUnsafe?.start_param;
-    const token = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
-
+    // Invite linking is now handled by MasterLanding — just load masters here
     const load = async () => {
-      if (token) {
-        try {
-          await linkToMaster(token);
-        } catch (e) {
-          // 409 = already linked — not an error, continue
-          if (e?.response?.status !== 409) {
-            console.error('linkToMaster failed', e);
-          }
-        }
-      }
       const data = await getClientMasters();
       setMasters(data.masters || []);
     };
-
     load().catch(() => setMasters([]));
   }, [role]);
 
@@ -194,7 +284,8 @@ export default function App() {
   if (role === 'client') {
     if (masters === null) return <RoleSkeleton />;
 
-    if (masters.length === 0) {
+    // If no masters but invite token present — show landing so user can connect
+    if (masters.length === 0 && !inviteToken) {
       return (
         <div className="client-shell">
           <div className="client-shell-content">
@@ -217,6 +308,7 @@ export default function App() {
         masters={masters}
         activeMasterId={activeMasterId}
         onMasterChange={handleMasterChange}
+        initialInviteToken={inviteToken}
       />
     );
   }
