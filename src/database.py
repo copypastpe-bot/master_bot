@@ -2754,6 +2754,26 @@ async def mark_order_confirmed_by_client(order_id: int) -> None:
         await conn.close()
 
 
+async def confirm_order_by_client(order_id: int, client_id: int) -> bool:
+    """Confirm a client order using existing client_confirmed architecture."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            UPDATE orders
+            SET client_confirmed = 1
+            WHERE id = ?
+              AND client_id = ?
+              AND status IN ('new', 'confirmed')
+            """,
+            (order_id, client_id),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
 async def reset_order_for_reconfirmation(order_id: int) -> None:
     """Reset order flags for new confirmation cycle (used when rescheduling >24h away)."""
     conn = await get_connection()

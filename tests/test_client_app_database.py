@@ -204,3 +204,25 @@ class ClientAppDatabaseTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(profile["name"], "Анна Иванова")
         self.assertEqual(profile["review_count"], 0)
         self.assertGreaterEqual(profile["years_on_platform"], 0)
+
+    async def test_confirm_order_by_client_uses_client_confirmed_flag(self):
+        await self._seed_review_fixture()
+        conn = await db.get_connection()
+        try:
+            await conn.execute("UPDATE orders SET status = 'confirmed', client_confirmed = 0 WHERE id = 1")
+            await conn.commit()
+        finally:
+            await conn.close()
+
+        ok = await db.confirm_order_by_client(order_id=1, client_id=1)
+        self.assertTrue(ok)
+
+        conn = await db.get_connection()
+        try:
+            cursor = await conn.execute("SELECT status, client_confirmed FROM orders WHERE id = 1")
+            row = await cursor.fetchone()
+        finally:
+            await conn.close()
+
+        self.assertEqual(row["status"], "confirmed")
+        self.assertEqual(row["client_confirmed"], 1)
