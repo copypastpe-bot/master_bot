@@ -79,6 +79,7 @@ class MasterClient:
     notify_24h: bool = True
     notify_1h: bool = True
     notify_promos: bool = True
+    notify_bonuses: bool = True
     home_message_id: Optional[int] = None
 
 

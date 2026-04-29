@@ -50,7 +50,7 @@ ALLOWED_CLIENT_FIELDS = frozenset({
 ALLOWED_MASTER_CLIENT_FIELDS = frozenset({
     "bonus_balance", "total_spent", "note", "first_visit", "last_visit",
     "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
-    "home_message_id", "is_archived",
+    "notify_bonuses", "home_message_id", "is_archived",
 })
 
 ALLOWED_SERVICE_FIELDS = frozenset({
@@ -66,6 +66,7 @@ ALLOWED_ORDER_FIELDS = frozenset({
 
 ALLOWED_NOTIFICATION_FIELDS = frozenset({
     "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
+    "notify_bonuses",
 })
 
 
@@ -190,6 +191,7 @@ def _parse_master_client_row(row) -> MasterClient:
         notify_24h=bool(row["notify_24h"]) if "notify_24h" in row.keys() else True,
         notify_1h=bool(row["notify_1h"]) if "notify_1h" in row.keys() else True,
         notify_promos=bool(row["notify_promos"]) if "notify_promos" in row.keys() else True,
+        notify_bonuses=bool(row["notify_bonuses"]) if "notify_bonuses" in row.keys() else True,
         home_message_id=row["home_message_id"] if "home_message_id" in row.keys() else None,
     )
 
@@ -1523,6 +1525,49 @@ async def toggle_client_notification(master_id: int, client_id: int, field: str)
         )
         await conn.commit()
         return new_value
+    finally:
+        await conn.close()
+
+
+async def update_client_notification_settings(
+    master_id: int,
+    client_id: int,
+    notify_reminders: bool | None = None,
+    notify_marketing: bool | None = None,
+    notify_bonuses: bool | None = None,
+) -> bool:
+    """Update client notification settings for the redesigned Mini App."""
+    updates: dict[str, int] = {}
+
+    if notify_reminders is not None:
+        value = 1 if notify_reminders else 0
+        updates["notify_reminders"] = value
+        updates["notify_24h"] = value
+        updates["notify_1h"] = value
+
+    if notify_marketing is not None:
+        value = 1 if notify_marketing else 0
+        updates["notify_marketing"] = value
+        updates["notify_promos"] = value
+
+    if notify_bonuses is not None:
+        updates["notify_bonuses"] = 1 if notify_bonuses else 0
+
+    if not updates:
+        return True
+
+    _validate_fields(set(updates.keys()), ALLOWED_MASTER_CLIENT_FIELDS, "master_clients")
+    set_clause = ", ".join(f"{field} = ?" for field in updates)
+    values = list(updates.values()) + [master_id, client_id]
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            f"UPDATE master_clients SET {set_clause} WHERE master_id = ? AND client_id = ?",
+            values,
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
     finally:
         await conn.close()
 

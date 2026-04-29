@@ -112,3 +112,38 @@ class ClientAppDatabaseTest(unittest.IsolatedAsyncioTestCase):
 
         reviews_after_hide = await db.get_reviews(master_id=1, limit=20, offset=0)
         self.assertEqual(reviews_after_hide, [])
+
+    async def test_update_client_notification_settings_syncs_legacy_flags(self):
+        await self._seed_review_fixture()
+
+        ok = await db.update_client_notification_settings(
+            master_id=1,
+            client_id=1,
+            notify_reminders=False,
+            notify_marketing=False,
+            notify_bonuses=False,
+        )
+        self.assertTrue(ok)
+
+        conn = await db.get_connection()
+        try:
+            cursor = await conn.execute(
+                """
+                SELECT notify_reminders, notify_24h, notify_1h,
+                       notify_marketing, notify_promos, notify_bonuses
+                FROM master_clients
+                WHERE master_id = 1 AND client_id = 1
+                """
+            )
+            row = await cursor.fetchone()
+        finally:
+            await conn.close()
+
+        self.assertEqual(dict(row), {
+            "notify_reminders": 0,
+            "notify_24h": 0,
+            "notify_1h": 0,
+            "notify_marketing": 0,
+            "notify_promos": 0,
+            "notify_bonuses": 0,
+        })
