@@ -3201,7 +3201,6 @@ body.typeui-client-body .client-order-card-price {
   color: var(--tg-theme-hint-color, #8e99a4);
 }
 body.typeui-client-body .client-order-card-bonuses {
-  color: #4caf50;
   font-weight: 600;
 }
 body.typeui-client-body .client-order-card-bonuses.is-positive {
