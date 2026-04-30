@@ -49,6 +49,7 @@ def _format_order_detail(order: dict, items: list[dict], mc) -> dict:
         "services": items,
         "amount_total": order.get("amount_total") or 0,
         "status": order.get("status", "new"),
+        "client_confirmed": bool(order.get("client_confirmed", 0)),
         "address": order.get("address") or "",
         "bonus_spent": order.get("bonus_spent") or 0,
         "bonus_accrued": order.get("bonus_accrued") or 0,

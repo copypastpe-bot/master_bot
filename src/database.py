@@ -2864,7 +2864,8 @@ async def confirm_order_by_client(order_id: int, client_id: int) -> bool:
         cursor = await conn.execute(
             """
             UPDATE orders
-            SET client_confirmed = 1
+            SET client_confirmed = 1,
+                status = CASE WHEN status = 'new' THEN 'confirmed' ELSE status END
             WHERE id = ?
               AND client_id = ?
               AND status IN ('new', 'confirmed')

@@ -280,23 +280,14 @@ export default function App() {
     load().catch(() => setMasters([]));
   }, [role]);
 
-  // Auto-select when exactly 1 master
+  // Auto-select on load: prefer URL master_id (review deep link), else first master
   useEffect(() => {
-    if (!masters || masters.length !== 1) return;
-    const id = masters[0].master_id;
-    setActiveMasterId(id);       // module var in client.js
-    setActiveMasterIdState(id);  // React state for re-render
+    if (!masters || masters.length === 0 || activeMasterId) return;
+    const urlMaster = reviewMasterId && masters.find(m => m.master_id === reviewMasterId);
+    const id = urlMaster ? reviewMasterId : masters[0].master_id;
+    setActiveMasterId(id);
+    setActiveMasterIdState(id);
   }, [masters]);
-
-  // Auto-select master from URL when opening review deep link with multiple masters
-  useEffect(() => {
-    if (!masters || !reviewMasterId || activeMasterId) return;
-    const found = masters.find(m => m.master_id === reviewMasterId);
-    if (found) {
-      setActiveMasterId(reviewMasterId);
-      setActiveMasterIdState(reviewMasterId);
-    }
-  }, [masters, reviewMasterId]);
 
   const handleMasterChange = (masterId) => {
     setActiveMasterId(masterId);      // module var
