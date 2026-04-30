@@ -403,7 +403,7 @@ async def handle_feedback_rating(callback: CallbackQuery) -> None:
         if callback.message:
             await callback.message.answer(
                 "Большое спасибо! Оставьте, пожалуйста, отзыв — это поможет специалисту.",
-                reply_markup=review_keyboard(order_id),
+                reply_markup=review_keyboard(order_id, master_id=order.get("master_id")),
             )
     elif rating == 4:
         if callback.message:

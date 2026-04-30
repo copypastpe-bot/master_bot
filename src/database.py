@@ -1313,9 +1313,11 @@ async def get_client_orders_for_app(
             """
             SELECT
                 o.*,
+                m.currency,
                 GROUP_CONCAT(oi.name, ', ') as services,
                 CASE WHEN r.id IS NULL THEN 0 ELSE 1 END as has_review
             FROM orders o
+            JOIN masters m ON o.master_id = m.id
             LEFT JOIN order_items oi ON o.id = oi.order_id
             LEFT JOIN reviews r ON r.order_id = o.id
             WHERE o.master_id = ? AND o.client_id = ?
@@ -1467,6 +1469,7 @@ async def get_master_public_profile(master_id: int) -> Optional[dict]:
         "work_mode": master.work_mode,
         "work_address_default": master.work_address_default,
         "invite_token": master.invite_token,
+        "currency": master.currency,
         "review_count": review_count,
         "years_on_platform": years_on_platform,
         "created_at": created_dt.isoformat() if created_dt else None,
@@ -1869,6 +1872,7 @@ async def get_order_by_id_for_feedback(order_id: int) -> Optional[dict]:
             SELECT
                 o.id as order_id,
                 c.name as client_name,
+                m.id as master_id,
                 m.tg_id as master_tg_id,
                 m.feedback_reply_5,
                 m.review_buttons,
@@ -2613,7 +2617,7 @@ async def get_orders_for_reminder_24h() -> list[dict]:
               AND o.reminder_24h_sent = 0
               AND c.tg_id IS NOT NULL
               AND mc.notify_reminders = 1
-              AND o.scheduled_at BETWEEN datetime('now', '+23 hours') AND datetime('now', '+25 hours')
+              AND datetime(o.scheduled_at) BETWEEN datetime('now', '+26 hours') AND datetime('now', '+28 hours')
             GROUP BY o.id
             """
         )
@@ -2660,7 +2664,7 @@ async def get_orders_for_reminder_1h() -> list[dict]:
               AND o.reminder_1h_sent = 0
               AND c.tg_id IS NOT NULL
               AND mc.notify_reminders = 1
-              AND o.scheduled_at BETWEEN datetime('now', '+45 minutes') AND datetime('now', '+75 minutes')
+              AND datetime(o.scheduled_at) BETWEEN datetime('now', '+3 hours', '+45 minutes') AND datetime('now', '+3 hours', '+75 minutes')
             GROUP BY o.id
             """
         )

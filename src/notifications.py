@@ -75,12 +75,15 @@ def contact_keyboard(phone: str | None, telegram: str | None) -> InlineKeyboardM
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def review_keyboard(order_id: int) -> InlineKeyboardMarkup:
+def review_keyboard(order_id: int, master_id: int | None = None) -> InlineKeyboardMarkup:
+    params: dict[str, str | int] = {"review_order_id": order_id}
+    if master_id is not None:
+        params["master_id"] = master_id
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
                 text="Оставить отзыв",
-                web_app=WebAppInfo(url=_client_miniapp_url(review_order_id=order_id)),
+                web_app=WebAppInfo(url=_client_miniapp_url(**params)),
             )
         ],
     ])
