@@ -3479,6 +3479,15 @@ body.typeui-client-body .client-settings-row {
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 body.typeui-client-body .client-settings-row:last-child { border-bottom: none; }
+body.typeui-client-body .client-settings-row.is-toggle-row {
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+body.typeui-client-body .client-settings-row.is-toggle-row[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.7;
+}
 body.typeui-client-body .client-settings-row-copy { flex: 1; }
 body.typeui-client-body .client-settings-row-title {
   font-size: 15px;

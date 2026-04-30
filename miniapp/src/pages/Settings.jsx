@@ -9,12 +9,20 @@ const SUPPORT_TG = import.meta.env.VITE_SUPPORT_TG || 'crmfit_support';
 const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://crmfit.ru/privacy';
 
 function Toggle({ checked, onChange, disabled }) {
+  const handlePress = (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    if (disabled) return;
+    onChange(!checked);
+  };
+
   return (
     <button
       type="button"
       className={`client-toggle${checked ? ' is-checked' : ''}`}
       aria-pressed={checked}
-      onClick={() => onChange(!checked)}
+      onClick={handlePress}
+      onPointerUp={handlePress}
       disabled={disabled}
     >
       <span className="client-toggle-track" />
@@ -115,7 +123,19 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
                 { key: 'notify_marketing', titleKey: 'settings.notifyMarketing', hintKey: 'settings.notifyMarketingHint' },
                 { key: 'notify_bonuses',   titleKey: 'settings.notifyBonuses',   hintKey: 'settings.notifyBonusesHint' },
               ].map(({ key, titleKey, hintKey }) => (
-                <div key={key} className="client-settings-row">
+                <div
+                  key={key}
+                  className="client-settings-row is-toggle-row"
+                  role="button"
+                  tabIndex={saving === key ? -1 : 0}
+                  onClick={() => handleToggle(key, !settings?.[key])}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    handleToggle(key, !settings?.[key]);
+                  }}
+                  aria-disabled={saving === key}
+                >
                   <div className="client-settings-row-copy">
                     <div className="client-settings-row-title">{t(titleKey)}</div>
                     <div className="client-settings-row-hint">{t(hintKey)}</div>
