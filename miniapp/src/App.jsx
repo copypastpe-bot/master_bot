@@ -226,6 +226,12 @@ function extractReviewOrderId(startParamRaw, search = window.location.search) {
   return match ? Number(match[1]) : null;
 }
 
+function extractMasterIdParam(search = window.location.search) {
+  const params = new URLSearchParams(search || '');
+  const v = params.get('master_id');
+  return v && /^\d+$/.test(v) ? Number(v) : null;
+}
+
 function getForcedRole() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -249,6 +255,7 @@ export default function App() {
   const startParam = WebApp?.initDataUnsafe?.start_param;
   const inviteToken = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
   const reviewOrderId = extractReviewOrderId(startParam);
+  const reviewMasterId = reviewOrderId ? extractMasterIdParam() : null;
 
   useEffect(() => {
     getAuthRole()
@@ -280,6 +287,16 @@ export default function App() {
     setActiveMasterId(id);       // module var in client.js
     setActiveMasterIdState(id);  // React state for re-render
   }, [masters]);
+
+  // Auto-select master from URL when opening review deep link with multiple masters
+  useEffect(() => {
+    if (!masters || !reviewMasterId || activeMasterId) return;
+    const found = masters.find(m => m.master_id === reviewMasterId);
+    if (found) {
+      setActiveMasterId(reviewMasterId);
+      setActiveMasterIdState(reviewMasterId);
+    }
+  }, [masters, reviewMasterId]);
 
   const handleMasterChange = (masterId) => {
     setActiveMasterId(masterId);      // module var

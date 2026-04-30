@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getClientMasterSettings, patchClientMasterSettings, deleteClientProfile } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import { useI18n } from '../i18n';
@@ -8,24 +8,15 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 const SUPPORT_TG = import.meta.env.VITE_SUPPORT_TG || 'crmfit_support';
 const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://crmfit.ru/privacy';
 
-function Toggle({ checked, onChange, disabled }) {
-  const handlePress = (event) => {
-    event.stopPropagation();
-    if (disabled) return;
-    onChange(!checked);
-  };
-
+function Toggle({ checked, disabled }) {
   return (
-    <button
-      type="button"
-      className={`client-toggle${checked ? ' is-checked' : ''}`}
-      aria-pressed={checked}
-      onClick={handlePress}
-      disabled={disabled}
+    <span
+      className={`client-toggle${checked ? ' is-checked' : ''}${disabled ? ' is-disabled' : ''}`}
+      aria-hidden="true"
     >
       <span className="client-toggle-track" />
       <span className="client-toggle-thumb" />
-    </button>
+    </span>
   );
 }
 
@@ -48,6 +39,7 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
+  const savingRef = useRef(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -67,7 +59,8 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
   }, [activeMasterId]);
 
   const handleToggle = async (key, value) => {
-    if (!activeMasterId || saving === key) return;
+    if (!activeMasterId || savingRef.current === key) return;
+    savingRef.current = key;
     setSettings(prev => ({ ...prev, [key]: value }));
     setSaving(key);
     safeHaptic('impact', 'light');
@@ -77,6 +70,7 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
       setSettings(prev => ({ ...prev, [key]: !value }));
       safeHaptic('notification', 'error');
     } finally {
+      savingRef.current = null;
       setSaving(null);
     }
   };
@@ -154,7 +148,6 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
                   </div>
                   <Toggle
                     checked={!!settings?.[key]}
-                    onChange={v => handleToggle(key, v)}
                     disabled={saving === key}
                   />
                 </div>
