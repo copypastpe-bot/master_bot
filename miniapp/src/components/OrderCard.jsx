@@ -67,7 +67,8 @@ export default function OrderCard({ order, onConfirm, onReview, onRepeat, onCont
 
   const currency = order.currency || '₽';
   const price = order.price != null ? `${order.price} ${currency}` : null;
-  const bonuses = order.bonuses_earned ? `+${order.bonuses_earned}` : null;
+  const bonusEarned = order.bonus_accrued > 0 ? `+${order.bonus_accrued} бонусов` : null;
+  const bonusSpent = order.bonus_spent > 0 ? `−${order.bonus_spent} бонусов` : null;
 
   return (
     <div className="client-order-card">
@@ -82,10 +83,11 @@ export default function OrderCard({ order, onConfirm, onReview, onRepeat, onCont
         {order.services || order.service_name || '—'}
       </p>
 
-      {(price || bonuses) && (
+      {(price || bonusEarned || bonusSpent) && (
         <div className="client-order-card-meta">
-          <span className="client-order-card-price">{price}</span>
-          {bonuses && <span className="client-order-card-bonuses">{bonuses}</span>}
+          {price && <span className="client-order-card-price">{price}</span>}
+          {bonusEarned && <span className="client-order-card-bonuses is-positive">{bonusEarned}</span>}
+          {bonusSpent && <span className="client-order-card-bonuses is-negative">{bonusSpent}</span>}
         </div>
       )}
 
