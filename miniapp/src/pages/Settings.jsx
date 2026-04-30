@@ -11,7 +11,6 @@ const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://crmfit.ru/priva
 function Toggle({ checked, onChange, disabled }) {
   const handlePress = (event) => {
     event.stopPropagation();
-    event.preventDefault();
     if (disabled) return;
     onChange(!checked);
   };
@@ -22,13 +21,26 @@ function Toggle({ checked, onChange, disabled }) {
       className={`client-toggle${checked ? ' is-checked' : ''}`}
       aria-pressed={checked}
       onClick={handlePress}
-      onPointerUp={handlePress}
       disabled={disabled}
     >
       <span className="client-toggle-track" />
       <span className="client-toggle-thumb" />
     </button>
   );
+}
+
+function safeHaptic(kind, type) {
+  const feedback = WebApp?.HapticFeedback;
+  try {
+    if (kind === 'notification' && typeof feedback?.notificationOccurred === 'function') {
+      feedback.notificationOccurred(type);
+    }
+    if (kind === 'impact' && typeof feedback?.impactOccurred === 'function') {
+      feedback.impactOccurred(type);
+    }
+  } catch {
+    // Telegram haptics are optional and must not block settings persistence.
+  }
 }
 
 export default function Settings({ activeMasterId, onProfileDeleted }) {
@@ -55,15 +67,15 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
   }, [activeMasterId]);
 
   const handleToggle = async (key, value) => {
-    if (saving === key) return;
-    WebApp?.HapticFeedback?.impactOccurred('light');
+    if (!activeMasterId || saving === key) return;
     setSettings(prev => ({ ...prev, [key]: value }));
     setSaving(key);
+    safeHaptic('impact', 'light');
     try {
       await patchClientMasterSettings(activeMasterId, { [key]: value });
     } catch {
       setSettings(prev => ({ ...prev, [key]: !value }));
-      WebApp?.HapticFeedback?.notificationOccurred('error');
+      safeHaptic('notification', 'error');
     } finally {
       setSaving(null);
     }
@@ -73,10 +85,10 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
     setDeleting(true);
     try {
       await deleteClientProfile();
-      WebApp?.HapticFeedback?.notificationOccurred('success');
+      safeHaptic('notification', 'success');
       onProfileDeleted?.();
     } catch {
-      WebApp?.HapticFeedback?.notificationOccurred('error');
+      safeHaptic('notification', 'error');
     } finally {
       setDeleting(false);
     }
