@@ -10,11 +10,16 @@ const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://crmfit.ru/priva
 
 function Toggle({ checked, onChange, disabled }) {
   return (
-    <label className="client-toggle">
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)} disabled={disabled} />
+    <button
+      type="button"
+      className={`client-toggle${checked ? ' is-checked' : ''}`}
+      aria-pressed={checked}
+      onClick={() => onChange(!checked)}
+      disabled={disabled}
+    >
       <span className="client-toggle-track" />
       <span className="client-toggle-thumb" />
-    </label>
+    </button>
   );
 }
 

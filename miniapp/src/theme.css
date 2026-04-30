@@ -3505,16 +3505,20 @@ body.typeui-client-body .client-toggle {
   width: 50px;
   height: 28px;
   flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-body.typeui-client-body .client-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
 body.typeui-client-body .client-toggle-track {
   position: absolute; inset: 0;
   border-radius: 999px;
   background: rgba(255,255,255,0.12);
   transition: background 0.2s;
-  cursor: pointer;
+  pointer-events: none;
 }
-body.typeui-client-body .client-toggle input:checked + .client-toggle-track {
+body.typeui-client-body .client-toggle.is-checked .client-toggle-track {
   background: #4caf50;
 }
 body.typeui-client-body .client-toggle-thumb {
@@ -3526,8 +3530,12 @@ body.typeui-client-body .client-toggle-thumb {
   transition: transform 0.2s;
   pointer-events: none;
 }
-body.typeui-client-body .client-toggle input:checked ~ .client-toggle-thumb {
+body.typeui-client-body .client-toggle.is-checked .client-toggle-thumb {
   transform: translateX(22px);
+}
+body.typeui-client-body .client-toggle:disabled {
+  cursor: default;
+  opacity: 0.62;
 }
 
 /* Bottom sheet */
