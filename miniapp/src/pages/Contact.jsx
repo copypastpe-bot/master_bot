@@ -374,7 +374,7 @@ export default function Contact({ onNavigate, keyboardOpen, preselectedService, 
           subtitle={t('contact.booking.hint')}
           onBack={() => {
             haptic();
-            setMode(null);
+            initialMode ? onNavigate('home') : setMode(null);
           }}
           backLabel={t('common.back')}
         />
@@ -391,7 +391,7 @@ export default function Contact({ onNavigate, keyboardOpen, preselectedService, 
           subtitle={t('contact.question.hint')}
           onBack={() => {
             haptic();
-            setMode(null);
+            initialMode ? onNavigate('home') : setMode(null);
           }}
           backLabel={t('common.back')}
         />
