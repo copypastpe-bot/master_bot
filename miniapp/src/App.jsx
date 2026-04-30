@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Home from './pages/Home';
 import History from './pages/History';
@@ -8,12 +8,13 @@ import MasterLanding from './pages/MasterLanding';
 import Contact from './pages/Contact';
 import BottomNav from './components/BottomNav';
 import { Skeleton } from './components/Skeleton';
-import { getAuthRole, getClientMasters, setActiveMasterId } from './api/client';
+import { getAuthRole, getClientMasters, setActiveMasterId as setApiActiveMasterId } from './api/client';
 import MasterOnboarding from './master/pages/MasterOnboarding';
 import MasterSelectScreen from './pages/MasterSelectScreen';
 import MasterTypeUIProvider from './master/components/MasterTypeUIProvider';
 import { useI18n } from './i18n';
 const WebApp = window.Telegram?.WebApp;
+const LAST_CLIENT_MASTER_STORAGE_KEY = 'client_last_master_id';
 
 // Lazy-load master bundle — clients never download it
 const MasterApp = lazy(() => import('./master/MasterApp'));
@@ -95,7 +96,16 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
 
   const renderContent = () => {
     if (!activeMasterId && page !== 'landing') {
-      return <MasterSelectScreen masters={masters} onSelect={handleMasterSelectDone} />;
+      return (
+        <div className="client-page">
+          <div style={{ padding: '24px 16px' }}>
+            <Skeleton height={28} style={{ marginBottom: 12, width: '50%' }} />
+            <Skeleton height={16} style={{ marginBottom: 24, width: '35%' }} />
+            <Skeleton height={80} style={{ marginBottom: 12 }} />
+            <Skeleton height={80} />
+          </div>
+        </div>
+      );
     }
 
     if (page === 'master_select') {
@@ -168,7 +178,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
     <div className="client-shell">
       <div className="client-shell-content">
         {/* Specialist switcher header — shown on tab screens when multi-master */}
-        {!isSubScreen && activeMasterId && masters.length > 1 && (
+        {!isSubScreen && tab === 'home' && activeMasterId && masters.length > 1 && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0' }}>
             <button className="client-header-specialist-btn" onClick={() => navigate('master_select')}>
               <span>{activeMaster?.master_name}</span>
@@ -232,6 +242,34 @@ function extractMasterIdParam(search = window.location.search) {
   return v && /^\d+$/.test(v) ? Number(v) : null;
 }
 
+function readLastClientMasterId() {
+  try {
+    const v = localStorage.getItem(LAST_CLIENT_MASTER_STORAGE_KEY);
+    return v && /^\d+$/.test(v) ? Number(v) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastClientMasterId(masterId) {
+  try {
+    localStorage.setItem(LAST_CLIENT_MASTER_STORAGE_KEY, String(masterId));
+  } catch {
+    // Ignore storage restrictions in embedded WebViews.
+  }
+}
+
+function pickClientMasterId(masters, urlMasterId) {
+  const fromUrl = urlMasterId && masters.find(m => m.master_id === urlMasterId);
+  if (fromUrl) return urlMasterId;
+
+  const lastMasterId = readLastClientMasterId();
+  const fromStorage = lastMasterId && masters.find(m => m.master_id === lastMasterId);
+  if (fromStorage) return lastMasterId;
+
+  return masters[0]?.master_id ?? null;
+}
+
 function getForcedRole() {
   try {
     const params = new URLSearchParams(window.location.search);
@@ -248,6 +286,7 @@ export default function App() {
   const [role, setRole] = useState(null); // null = loading
   const [masters, setMasters] = useState(null); // null = not yet loaded
   const [activeMasterId, setActiveMasterIdState] = useState(null);
+  const activeMasterIdRef = useRef(null);
   const referralCode = extractReferralCode(WebApp?.initDataUnsafe?.start_param);
   const forcedRole = getForcedRole();
 
@@ -255,7 +294,7 @@ export default function App() {
   const startParam = WebApp?.initDataUnsafe?.start_param;
   const inviteToken = startParam?.startsWith('invite_') ? startParam.slice(7) : null;
   const reviewOrderId = extractReviewOrderId(startParam);
-  const reviewMasterId = reviewOrderId ? extractMasterIdParam() : null;
+  const urlMasterId = extractMasterIdParam();
 
   useEffect(() => {
     getAuthRole()
@@ -275,23 +314,30 @@ export default function App() {
     // Invite linking is now handled by MasterLanding — just load masters here
     const load = async () => {
       const data = await getClientMasters();
-      setMasters(data.masters || []);
+      const loadedMasters = data.masters || [];
+      setMasters(loadedMasters);
+
+      const currentMasterId = activeMasterIdRef.current;
+      const currentStillAvailable = currentMasterId &&
+        loadedMasters.some(m => m.master_id === currentMasterId);
+      if (loadedMasters.length > 0 && !currentStillAvailable) {
+        const id = pickClientMasterId(loadedMasters, urlMasterId);
+        if (id) {
+          setApiActiveMasterId(id);
+          activeMasterIdRef.current = id;
+          setActiveMasterIdState(id);
+          saveLastClientMasterId(id);
+        }
+      }
     };
     load().catch(() => setMasters([]));
-  }, [role]);
-
-  // Auto-select on load: prefer URL master_id (review deep link), else first master
-  useEffect(() => {
-    if (!masters || masters.length === 0 || activeMasterId) return;
-    const urlMaster = reviewMasterId && masters.find(m => m.master_id === reviewMasterId);
-    const id = urlMaster ? reviewMasterId : masters[0].master_id;
-    setActiveMasterId(id);
-    setActiveMasterIdState(id);
-  }, [masters]);
+  }, [role, urlMasterId]);
 
   const handleMasterChange = (masterId) => {
-    setActiveMasterId(masterId);      // module var
+    setApiActiveMasterId(masterId);   // module var
+    activeMasterIdRef.current = masterId;
     setActiveMasterIdState(masterId); // React state
+    saveLastClientMasterId(masterId);
   };
 
   if (role === null) return <RoleSkeleton />;

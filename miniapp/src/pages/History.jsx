@@ -22,21 +22,34 @@ export default function History({ activeMasterId, navigate, masterProfile, revie
   const [openedReviewOrderId, setOpenedReviewOrderId] = useState(null);
   const [contactMaster, setContactMaster] = useState(null);
   const triggerRef = useRef(null);
+  const scanningReviewOrderId = useRef(null);
+  const itemsRef = useRef([]);
+
+  const fetchPage = useCallback(async (off) => {
+    if (!activeMasterId) return { items: [] };
+    return getClientMasterHistory(activeMasterId, PAGE, off);
+  }, [activeMasterId]);
 
   const loadPage = useCallback(async (off) => {
-    if (!activeMasterId) return;
+    if (!activeMasterId) return [];
     setLoading(true);
     try {
-      const data = await getClientMasterHistory(activeMasterId, PAGE, off);
+      const data = await fetchPage(off);
+      const nextItems = data.items || [];
       if (off === 0) setBonusBalance(data.bonus_balance ?? null);
-      setItems(prev => off === 0 ? (data.items || []) : [...prev, ...(data.items || [])]);
-      setHasMore((data.items || []).length >= PAGE);
+      setItems(prev => off === 0 ? nextItems : [...prev, ...nextItems]);
+      setHasMore(nextItems.length >= PAGE);
+      return nextItems;
     } finally {
       setLoading(false);
     }
-  }, [activeMasterId]);
+  }, [activeMasterId, fetchPage]);
 
   useEffect(() => { setOffset(0); loadPage(0); }, [loadPage]);
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   useEffect(() => {
     if (!reviewOrderId || loading || openedReviewOrderId === reviewOrderId) return;
@@ -44,11 +57,71 @@ export default function History({ activeMasterId, navigate, masterProfile, revie
       item.type === 'order' &&
       Number(item.id) === Number(reviewOrderId)
     );
-    if (target && !target.has_review) {
-      setReviewOrder(target);
+    if (target) {
+      if (!target.has_review) setReviewOrder(target);
+      setOpenedReviewOrderId(reviewOrderId);
+      return;
+    }
+    if (!hasMore) {
       setOpenedReviewOrderId(reviewOrderId);
     }
-  }, [items, loading, openedReviewOrderId, reviewOrderId]);
+  }, [hasMore, items, loading, openedReviewOrderId, reviewOrderId]);
+
+  useEffect(() => {
+    if (!reviewOrderId || loading || openedReviewOrderId === reviewOrderId || !hasMore) return;
+    if (scanningReviewOrderId.current === reviewOrderId) return;
+    const existingTarget = itemsRef.current.find(item =>
+      item.type === 'order' &&
+      Number(item.id) === Number(reviewOrderId)
+    );
+    if (existingTarget) return;
+
+    let cancelled = false;
+    scanningReviewOrderId.current = reviewOrderId;
+
+    const scanHistory = async () => {
+      let nextOffset = offset + PAGE;
+      let lastLoadedOffset = offset;
+      let canContinue = hasMore;
+      try {
+        while (!cancelled && canContinue) {
+          const data = await fetchPage(nextOffset);
+          const nextItems = data.items || [];
+          if (cancelled) return;
+
+          itemsRef.current = [...itemsRef.current, ...nextItems];
+          setItems(itemsRef.current);
+          lastLoadedOffset = nextOffset;
+          setHasMore(nextItems.length >= PAGE);
+
+          const nextTarget = nextItems.find(item =>
+            item.type === 'order' &&
+            Number(item.id) === Number(reviewOrderId)
+          );
+          if (nextTarget) {
+            if (!nextTarget.has_review) setReviewOrder(nextTarget);
+            return;
+          }
+
+          canContinue = nextItems.length >= PAGE;
+          nextOffset += PAGE;
+        }
+      } finally {
+        if (!cancelled) {
+          setOffset(prev => Math.max(prev, lastLoadedOffset));
+          setOpenedReviewOrderId(reviewOrderId);
+        }
+        if (scanningReviewOrderId.current === reviewOrderId) {
+          scanningReviewOrderId.current = null;
+        }
+      }
+    };
+
+    scanHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchPage, hasMore, loading, offset, openedReviewOrderId, reviewOrderId]);
 
   // Intersection observer for lazy load
   useEffect(() => {

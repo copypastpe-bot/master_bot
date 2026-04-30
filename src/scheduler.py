@@ -89,7 +89,7 @@ async def send_reminders_24h(client_bot: Bot) -> None:
                 await client_bot.send_message(
                     chat_id=order["client_tg_id"],
                     text=text,
-                    reply_markup=reminder_24h_keyboard(order["order_id"])
+                    reply_markup=reminder_24h_keyboard(order["order_id"], master_id=order["master_id"])
                 )
 
                 await mark_reminder_sent(order["order_id"], "24h")

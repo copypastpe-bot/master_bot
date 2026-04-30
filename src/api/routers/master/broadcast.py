@@ -186,7 +186,7 @@ async def send_broadcast(
 
     sent = 0
     failed = 0
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[[open_app_button()]])
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=[[open_app_button(master_id=master.id)]])
 
     for client in recipients:
         tg_id = client.get("tg_id")

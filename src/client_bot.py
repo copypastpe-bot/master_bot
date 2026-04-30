@@ -481,7 +481,10 @@ async def handle_order_confirmation(callback: CallbackQuery) -> None:
     new_text += "\n\nЖдём вас!"
 
     if callback.message:
-        await callback.message.edit_text(text=new_text, reply_markup=order_action_keyboard(order_id))
+        await callback.message.edit_text(
+            text=new_text,
+            reply_markup=order_action_keyboard(order_id, master_id=order.get("master_id")),
+        )
 
     if master_bot and order.get("master_tg_id"):
         master_text = (
@@ -522,7 +525,11 @@ async def handle_contact_order(callback: CallbackQuery) -> None:
     if callback.message:
         await callback.message.edit_text(
             "\n".join(lines),
-            reply_markup=contact_keyboard(phone=phone, telegram=telegram),
+            reply_markup=contact_keyboard(
+                phone=phone,
+                telegram=telegram,
+                master_id=order.get("master_id"),
+            ),
         )
     await callback.answer()
 

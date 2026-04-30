@@ -1,24 +1,28 @@
+import importlib
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
-
-from src import database as db
 
 
 class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        from src import database as db
+
+        self.db = db
         self.tmp = tempfile.TemporaryDirectory()
-        self.old_db_path = db.DB_PATH
-        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
-        await db.init_db()
+        self.old_db_path = self.db.DB_PATH
+        self.db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await self.db.init_db()
         await self._seed()
 
     async def asyncTearDown(self):
-        db.DB_PATH = self.old_db_path
+        self.db.DB_PATH = self.old_db_path
         self.tmp.cleanup()
 
     async def _seed(self):
-        conn = await db.get_connection()
+        conn = await self.db.get_connection()
         try:
             await conn.execute(
                 """
@@ -70,7 +74,7 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
             await conn.close()
 
     async def test_get_order_notification_context_returns_contacts_and_settings(self):
-        context = await db.get_order_notification_context(10, client_tg_id=2001)
+        context = await self.db.get_order_notification_context(10, client_tg_id=2001)
 
         self.assertEqual(context["order_id"], 10)
         self.assertEqual(context["client_name"], "Мария Петрова")
@@ -83,14 +87,14 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context["client_confirmed"], 0)
 
     async def test_get_order_notification_context_rejects_wrong_client(self):
-        context = await db.get_order_notification_context(10, client_tg_id=9999)
+        context = await self.db.get_order_notification_context(10, client_tg_id=9999)
         self.assertIsNone(context)
 
     async def test_is_manual_bonus_notification_enabled_reads_notify_bonuses(self):
-        enabled = await db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
+        enabled = await self.db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
         self.assertTrue(enabled)
 
-        conn = await db.get_connection()
+        conn = await self.db.get_connection()
         try:
             await conn.execute(
                 "UPDATE master_clients SET notify_bonuses = 0 WHERE master_id = 1 AND client_id = 1"
@@ -99,11 +103,11 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
         finally:
             await conn.close()
 
-        disabled = await db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
+        disabled = await self.db.is_manual_bonus_notification_enabled(master_id=1, client_id=1)
         self.assertFalse(disabled)
 
     async def test_get_manual_bonus_notification_context_returns_balance_and_client_tg(self):
-        context = await db.get_manual_bonus_notification_context(master_id=1, client_id=1)
+        context = await self.db.get_manual_bonus_notification_context(master_id=1, client_id=1)
 
         self.assertEqual(context["client_tg_id"], 2001)
         self.assertEqual(context["master_name"], "Анна Иванова")
@@ -112,8 +116,26 @@ class ClientBotNotificationsDatabaseTest(unittest.IsolatedAsyncioTestCase):
 
 
 class ClientBotNotificationFormattingTest(unittest.TestCase):
+    def import_notifications(self):
+        sys.modules.pop("src.notifications", None)
+        original_database = sys.modules.get("src.database")
+        database_stub = types.ModuleType("src.database")
+
+        async def get_order_notification_context(*_args, **_kwargs):
+            return None
+
+        database_stub.get_order_notification_context = get_order_notification_context
+        sys.modules["src.database"] = database_stub
+        try:
+            return importlib.import_module("src.notifications")
+        finally:
+            if original_database is not None:
+                sys.modules["src.database"] = original_database
+            else:
+                sys.modules.pop("src.database", None)
+
     def test_contact_keyboard_uses_only_available_structured_contacts(self):
-        from src.notifications import contact_keyboard
+        contact_keyboard = self.import_notifications().contact_keyboard
 
         kb = contact_keyboard(phone="+79990001122", telegram="@anna_nails")
         rows = kb.inline_keyboard
@@ -126,7 +148,7 @@ class ClientBotNotificationFormattingTest(unittest.TestCase):
         self.assertIsNotNone(rows[2][0].web_app)
 
     def test_reminder_keyboard_has_confirm_contact_and_miniapp(self):
-        from src.notifications import reminder_24h_keyboard
+        reminder_24h_keyboard = self.import_notifications().reminder_24h_keyboard
 
         kb = reminder_24h_keyboard(order_id=10)
         buttons = [button for row in kb.inline_keyboard for button in row]
@@ -138,11 +160,34 @@ class ClientBotNotificationFormattingTest(unittest.TestCase):
         self.assertEqual(buttons[2].text, "Открыть приложение")
         self.assertIsNotNone(buttons[2].web_app)
 
-    def test_review_button_adds_order_id_to_client_miniapp_url(self):
-        from src.notifications import review_keyboard
+    def test_event_keyboards_add_master_id_to_client_miniapp_url(self):
+        notifications = self.import_notifications()
+        contact_keyboard = notifications.contact_keyboard
+        order_action_keyboard = notifications.order_action_keyboard
+        reminder_24h_keyboard = notifications.reminder_24h_keyboard
 
-        kb = review_keyboard(order_id=10)
+        keyboards = [
+            order_action_keyboard(order_id=10, master_id=1),
+            reminder_24h_keyboard(order_id=10, master_id=1),
+            contact_keyboard(phone="+79990001122", telegram="@anna_nails", master_id=1),
+        ]
+
+        for kb in keyboards:
+            open_button = [
+                button
+                for row in kb.inline_keyboard
+                for button in row
+                if button.text == "Открыть приложение"
+            ][0]
+            self.assertIn("app=client", open_button.web_app.url)
+            self.assertIn("master_id=1", open_button.web_app.url)
+
+    def test_review_button_adds_order_and_master_id_to_client_miniapp_url(self):
+        review_keyboard = self.import_notifications().review_keyboard
+
+        kb = review_keyboard(order_id=10, master_id=1)
         url = kb.inline_keyboard[0][0].web_app.url
 
         self.assertIn("app=client", url)
         self.assertIn("review_order_id=10", url)
+        self.assertIn("master_id=1", url)

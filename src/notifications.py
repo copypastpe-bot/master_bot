@@ -44,26 +44,30 @@ def open_app_button(**params: str | int) -> InlineKeyboardButton:
     )
 
 
-def order_action_keyboard(order_id: int) -> InlineKeyboardMarkup:
+def _master_param(master_id: int | None) -> dict[str, int]:
+    return {"master_id": master_id} if master_id is not None else {}
+
+
+def order_action_keyboard(order_id: int, master_id: int | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
-            open_app_button(),
+            open_app_button(**_master_param(master_id)),
         ],
     ])
 
 
-def reminder_24h_keyboard(order_id: int) -> InlineKeyboardMarkup:
+def reminder_24h_keyboard(order_id: int, master_id: int | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="Подтвердить", callback_data=f"confirm_order:{order_id}"),
             InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
         ],
-        [open_app_button()],
+        [open_app_button(**_master_param(master_id))],
     ])
 
 
-def contact_keyboard(phone: str | None, telegram: str | None) -> InlineKeyboardMarkup:
+def contact_keyboard(phone: str | None, telegram: str | None, master_id: int | None = None) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     phone_value = (phone or "").strip()
     telegram_value = (telegram or "").strip().lstrip("@")
@@ -71,7 +75,7 @@ def contact_keyboard(phone: str | None, telegram: str | None) -> InlineKeyboardM
         rows.append([InlineKeyboardButton(text="Позвонить", url=f"tel:{phone_value}")])
     if telegram_value:
         rows.append([InlineKeyboardButton(text="Написать в TG", url=f"https://t.me/{telegram_value}")])
-    rows.append([open_app_button()])
+    rows.append([open_app_button(**_master_param(master_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -124,7 +128,7 @@ async def notify_order_created(
         await (bot or client_bot).send_message(
             client.tg_id,
             text,
-            reply_markup=order_action_keyboard(order["id"]),
+            reply_markup=order_action_keyboard(order["id"], master_id=master.id),
         )
         logger.info("Notification sent to client %s: order created", client.id)
         return True
