@@ -28,12 +28,21 @@ export default function Settings({ activeMasterId, onProfileDeleted }) {
 
   useEffect(() => {
     if (!activeMasterId) return;
+    let cancelled = false;
+    setSettings(null);
+    setLoading(true);
     getClientMasterSettings(activeMasterId)
-      .then(data => setSettings(data))
-      .finally(() => setLoading(false));
+      .then(data => {
+        if (!cancelled) setSettings(data);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [activeMasterId]);
 
   const handleToggle = async (key, value) => {
+    if (saving === key) return;
     WebApp?.HapticFeedback?.impactOccurred('light');
     setSettings(prev => ({ ...prev, [key]: value }));
     setSaving(key);

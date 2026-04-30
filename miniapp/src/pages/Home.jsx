@@ -50,12 +50,11 @@ export default function Home({ activeMasterId, navigate, masterName, onProfileLo
   const qc = useQueryClient();
   const [reviewOrder, setReviewOrder] = useState(null);
   const [contactOrder, setContactOrder] = useState(null);
-  const [profile, setProfile] = useState(null);
 
   const results = useQueries({
     queries: [
       { queryKey: ['client-profile', activeMasterId], queryFn: () => getClientMasterProfile(activeMasterId), enabled: !!activeMasterId },
-      { queryKey: ['client-activity', activeMasterId], queryFn: () => getClientMasterActivity(activeMasterId, 3), enabled: !!activeMasterId },
+      { queryKey: ['client-activity', activeMasterId], queryFn: () => getClientMasterActivity(activeMasterId, 4), enabled: !!activeMasterId },
       { queryKey: ['client-services', activeMasterId], queryFn: () => getClientMasterServices(activeMasterId), enabled: !!activeMasterId },
       { queryKey: ['client-news', activeMasterId], queryFn: () => getClientMasterNews(activeMasterId), enabled: !!activeMasterId },
     ],
@@ -70,7 +69,6 @@ export default function Home({ activeMasterId, navigate, masterName, onProfileLo
   // Notify parent when profile is loaded (needed for History ContactSheet)
   useEffect(() => {
     if (prof) {
-      setProfile(prof);
       onProfileLoaded?.(prof);
     }
   }, [prof, onProfileLoaded]);
@@ -187,7 +185,7 @@ export default function Home({ activeMasterId, navigate, masterName, onProfileLo
         />
       )}
       {contactOrder && (
-        <ContactSheet master={profile} onClose={() => setContactOrder(null)} />
+        <ContactSheet master={prof} onClose={() => setContactOrder(null)} />
       )}
     </div>
   );
