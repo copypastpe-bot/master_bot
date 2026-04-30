@@ -3216,11 +3216,11 @@ body.typeui-client-body .client-order-card-actions {
 }
 body.typeui-client-body .client-order-card-btn {
   flex: 1;
-  min-width: 100px;
-  padding: 8px 12px;
+  min-width: 80px;
+  padding: 6px 10px;
   border-radius: 8px;
   border: none;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s;
