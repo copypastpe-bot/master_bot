@@ -34,7 +34,12 @@ export default function MasterSelectScreen({ masters, onSelect }) {
                 <span className="client-master-select-avatar">{initial}</span>
 
                 <span className="client-master-select-copy">
-                  <span className="client-master-select-name">{m.master_name}</span>
+                  <span className="client-master-select-name">
+                    {m.master_name}
+                    {m.pending_count > 0 && (
+                      <span className="client-master-badge">{m.pending_count}</span>
+                    )}
+                  </span>
 
                   {m.sphere && (
                     <span className="client-pill client-master-select-pill">{m.sphere}</span>

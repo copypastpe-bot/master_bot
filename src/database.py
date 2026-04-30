@@ -1628,13 +1628,16 @@ async def get_client_masters(client_id: int) -> list[dict]:
                    (SELECT COUNT(*) FROM orders
                     WHERE master_id = m.id AND client_id = ? AND status = 'done') as visit_count,
                    (SELECT COUNT(*) FROM orders
-                    WHERE master_id = m.id AND client_id = ? AND status = 'done') as order_count
+                    WHERE master_id = m.id AND client_id = ? AND status = 'done') as order_count,
+                   (SELECT COUNT(*) FROM orders
+                    WHERE master_id = m.id AND client_id = ?
+                      AND status IN ('new', 'reminder')) as pending_count
             FROM masters m
             JOIN master_clients mc ON m.id = mc.master_id
             WHERE mc.client_id = ?
             ORDER BY mc.last_visit DESC NULLS LAST
             """,
-            (client_id, client_id, client_id),
+            (client_id, client_id, client_id, client_id),
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
