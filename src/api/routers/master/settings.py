@@ -16,7 +16,10 @@ from src.api.dependencies import get_current_master
 from src.config import CLIENT_BOT_USERNAME
 from src import google_calendar
 from src.database import (
+    add_portfolio_photo,
+    delete_portfolio_photo,
     get_master_by_id,
+    get_master_portfolio,
     get_services,
     get_archived_services,
     get_service_by_id,
@@ -174,6 +177,8 @@ class ProfileUpdateBody(BaseModel):
     instagram: Optional[str] = None
     website: Optional[str] = None
     contact_address: Optional[str] = None
+    about: Optional[str] = None
+    avatar_file_id: Optional[str] = None
     work_mode: Optional[str] = None
     work_address_default: Optional[str] = None
     onboarding_banner_shown: Optional[bool] = None
@@ -264,6 +269,18 @@ class ProfileUpdateBody(BaseModel):
             raise ValueError("contact_address max 400 chars")
         return value
 
+    @field_validator("about")
+    @classmethod
+    def about_len(cls, v):
+        if v is None:
+            return v
+        value = v.strip()
+        if not value:
+            return ""
+        if len(value) > 1000:
+            raise ValueError("about max 1000 chars")
+        return value
+
 
 @router.put("/master/profile")
 async def update_master_profile(
@@ -276,7 +293,7 @@ async def update_master_profile(
     nullable_text_fields = {
         "sphere", "contacts", "socials", "work_hours", "phone",
         "telegram", "instagram", "website", "contact_address",
-        "work_address_default",
+        "work_address_default", "about", "avatar_file_id",
     }
     for key in nullable_text_fields:
         if key in kwargs and isinstance(kwargs[key], str):
@@ -637,6 +654,7 @@ async def get_master_services_all(
             "name": s.name,
             "price": s.price or 0,
             "description": s.description or "",
+            "show_on_landing": s.show_on_landing,
         }
 
     active_list = [_fmt(s) for s in active]
@@ -689,6 +707,7 @@ class ServiceUpdateBody(BaseModel):
     name: Optional[str] = None
     price: Optional[int] = None
     description: Optional[str] = None
+    show_on_landing: Optional[bool] = None
 
     @field_validator("price")
     @classmethod
@@ -711,6 +730,63 @@ async def update_master_service(
     kwargs = {k: v for k, v in body.model_dump().items() if v is not None}
     if kwargs:
         await update_service(service_id, **kwargs)
+    return {"ok": True}
+
+
+class PortfolioPhotoBody(BaseModel):
+    file_id: str
+
+    @field_validator("file_id")
+    @classmethod
+    def file_id_not_empty(cls, v):
+        value = v.strip()
+        if not value:
+            raise ValueError("file_id required")
+        if "/" in value or value.startswith(("http://", "https://")):
+            raise ValueError("invalid file_id")
+        return value
+
+
+def _portfolio_item_response(item: dict) -> dict:
+    return {
+        "id": item["id"],
+        "file_id": item["file_id"],
+        "sort_order": item.get("sort_order") or 0,
+        "url": f"/api/public/photo/{item['file_id']}",
+    }
+
+
+@router.get("/master/portfolio")
+async def get_master_portfolio_api(
+    master: Master = Depends(get_current_master),
+):
+    photos = await get_master_portfolio(master.id)
+    return [_portfolio_item_response(item) for item in photos]
+
+
+@router.post("/master/portfolio", status_code=201)
+async def add_master_portfolio_photo(
+    body: PortfolioPhotoBody,
+    master: Master = Depends(get_current_master),
+):
+    photo_id = await add_portfolio_photo(master.id, body.file_id)
+    if photo_id is None:
+        raise HTTPException(status_code=409, detail="Portfolio photo limit reached")
+    return {
+        "id": photo_id,
+        "file_id": body.file_id,
+        "url": f"/api/public/photo/{body.file_id}",
+    }
+
+
+@router.delete("/master/portfolio/{photo_id}")
+async def delete_master_portfolio_photo(
+    photo_id: int,
+    master: Master = Depends(get_current_master),
+):
+    ok = await delete_portfolio_photo(photo_id, master.id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Portfolio photo not found")
     return {"ok": True}
 
 

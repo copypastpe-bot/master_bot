@@ -1,5 +1,5 @@
 """API routers for Mini App."""
 
-from src.api.routers import client, orders, bonuses, promos, services
+from src.api.routers import client, orders, bonuses, promos, services, public
 
-__all__ = ["client", "orders", "bonuses", "promos", "services"]
+__all__ = ["client", "orders", "bonuses", "promos", "services", "public"]

@@ -19,7 +19,6 @@ from src.database import (
     get_master_by_id,
     get_master_client,
     get_master_public_profile,
-    get_master_by_invite_token_public,
     get_review_by_order,
     get_reviews,
     get_services,
@@ -222,13 +221,12 @@ class ReviewCreateRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
 
 
-@router.post("/client/orders/{order_id}/review")
-async def create_client_order_review(
-    order_id: int,
-    body: ReviewCreateRequest,
-    x_init_data: Optional[str] = Header(None, alias="X-Init-Data"),
-):
-    client = await _resolve_client(x_init_data)
+class ClientReviewCreateRequest(ReviewCreateRequest):
+    order_id: int
+
+
+async def _create_review_for_client_order(client: Client, order_id: int, body: ReviewCreateRequest) -> dict:
+    """Create a review after verifying that the order belongs to this client and is complete."""
     masters = await get_client_masters(client.id)
     order = None
     master_id = None
@@ -260,6 +258,25 @@ async def create_client_order_review(
     return {"ok": True, "review_id": review_id}
 
 
+@router.post("/client/orders/{order_id}/review")
+async def create_client_order_review(
+    order_id: int,
+    body: ReviewCreateRequest,
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data"),
+):
+    client = await _resolve_client(x_init_data)
+    return await _create_review_for_client_order(client, order_id, body)
+
+
+@router.post("/client/review", status_code=201)
+async def create_client_review(
+    body: ClientReviewCreateRequest,
+    x_init_data: Optional[str] = Header(None, alias="X-Init-Data"),
+):
+    client = await _resolve_client(x_init_data)
+    return await _create_review_for_client_order(client, body.order_id, body)
+
+
 @router.get("/client/master/{master_id}/reviews")
 async def get_client_master_reviews(
     master_id: int,
@@ -270,29 +287,6 @@ async def get_client_master_reviews(
     _client, master, _master_client = await _require_client_master(master_id, x_init_data)
     reviews = await get_reviews(master.id, limit=limit, offset=offset)
     return {"reviews": [_review_response(review) for review in reviews], "total": len(reviews)}
-
-
-@router.get("/public/master/{invite_token}")
-async def get_public_master(invite_token: str):
-    profile = await get_master_by_invite_token_public(invite_token)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Master not found")
-    services = await get_services(profile["id"], active_only=True)
-    reviews = await get_reviews(profile["id"], limit=10, offset=0)
-    return {
-        **profile,
-        "services": [
-            {
-                "id": service.id,
-                "name": service.name,
-                "price": service.price,
-                "description": service.description,
-                "currency": profile.get("currency"),
-            }
-            for service in services
-        ],
-        "reviews": [_review_response(review) for review in reviews],
-    }
 
 
 @router.delete("/client/profile")

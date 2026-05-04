@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import client, orders, bonuses, promos, services
+from src.api.routers import client, orders, bonuses, promos, services, public
 from src.api.routers import auth_router
 from src.api.routers import client_app
 from src.api.routers import client_masters
@@ -61,6 +61,7 @@ app.include_router(orders.router, prefix="/api")
 app.include_router(bonuses.router, prefix="/api")
 app.include_router(promos.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
+app.include_router(public.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(client_app.router, prefix="/api")
 app.include_router(client_masters.router, prefix="/api")
