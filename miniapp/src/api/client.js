@@ -299,6 +299,24 @@ export const createClientOrderReview = (orderId, body) =>
 export const deleteClientProfile = () =>
   api.delete('/api/client/profile').then(r => r.data);
 
+// V2 — Avatar upload/delete
+export const uploadMasterAvatar = (formData) =>
+  api.post('/api/master/avatar/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+export const deleteMasterAvatar = () =>
+  api.delete('/api/master/avatar').then(r => r.data);
+
+// V2 — Portfolio upload/list/delete
+export const uploadPortfolioPhoto = (formData) =>
+  api.post('/api/master/portfolio/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+export const getMasterPortfolio = () =>
+  api.get('/api/master/portfolio').then(r => r.data);
+export const deletePortfolioPhoto = (id) =>
+  api.delete(`/api/master/portfolio/${id}`).then(r => r.data);
+
 // Public — no X-Init-Data required (backend does not check it)
 const publicApi = axios.create({ baseURL: API_URL });
 export const getPublicMasterProfile = (inviteToken) =>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterMe,
@@ -6,7 +6,14 @@ import {
   updateMasterProfile,
   updateMasterTimezone,
   updateMasterCurrency,
+  uploadMasterAvatar,
+  deleteMasterAvatar,
+  uploadPortfolioPhoto,
+  getMasterPortfolio,
+  deletePortfolioPhoto,
 } from '../../api/client';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 import { useI18n } from '../../i18n';
 import { TIMEZONES, CURRENCIES, WORK_MODES, LANG_OPTIONS } from '../profileOptions';
 
@@ -111,6 +118,16 @@ const ChevronIcon = () => (
   </svg>
 );
 
+const FileTextIcon = () => (
+  <svg {...iconProps}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 2v6h6" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+    <path d="M10 9H8" />
+  </svg>
+);
+
 function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
 }
@@ -202,6 +219,8 @@ export default function Profile() {
   const [picker, setPicker] = useState(null);
   const [editor, setEditor] = useState(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const avatarInputRef = useRef(null);
+  const portfolioInputRef = useRef(null);
 
   const qc = useQueryClient();
 
@@ -217,11 +236,58 @@ export default function Profile() {
     staleTime: 5 * 60_000,
   });
 
+  const { data: portfolio = [] } = useQuery({
+    queryKey: ['master-portfolio'],
+    queryFn: getMasterPortfolio,
+    staleTime: 60_000,
+  });
+
   const showSuccess = (msg = t('profile.toasts.saved')) => {
     hapticNotify('success');
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(''), 1800);
   };
+
+  const avatarUploadMutation = useMutation({
+    mutationFn: uploadMasterAvatar,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      showSuccess(t('profile.toasts.avatarUpdated'));
+    },
+    onError: () => hapticNotify('error'),
+  });
+
+  const avatarDeleteMutation = useMutation({
+    mutationFn: deleteMasterAvatar,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      showSuccess(t('profile.toasts.avatarDeleted'));
+    },
+    onError: () => hapticNotify('error'),
+  });
+
+  const portfolioUploadMutation = useMutation({
+    mutationFn: uploadPortfolioPhoto,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-portfolio'] });
+      showSuccess(t('profile.toasts.photoAdded'));
+    },
+    onError: (err) => {
+      hapticNotify('error');
+      if (err?.response?.status === 409) {
+        WebApp?.showAlert?.('Максимум 10 фото в портфолио');
+      }
+    },
+  });
+
+  const portfolioDeleteMutation = useMutation({
+    mutationFn: deletePortfolioPhoto,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-portfolio'] });
+      showSuccess(t('profile.toasts.photoDeleted'));
+    },
+    onError: () => hapticNotify('error'),
+  });
 
   const profileMutation = useMutation({
     mutationFn: updateMasterProfile,
@@ -266,7 +332,7 @@ export default function Profile() {
         showSuccess(t('profile.toasts.linkCopied'));
         return;
       }
-    } catch (_) {
+    } catch {
       // Fallback to popup below.
     }
     if (typeof WebApp?.showPopup === 'function') {
@@ -340,6 +406,19 @@ export default function Profile() {
           value={master?.sphere}
           fallbackValue={t('common.notSpecified')}
           onClick={() => setEditor({ field: 'sphere', title: t('profile.fields.sphere'), value: master?.sphere || '', placeholder: t('profile.placeholders.sphere') })}
+        />
+        <Cell
+          icon={<FileTextIcon />}
+          label={t('profile.fields.about')}
+          value={master?.about ? (master.about.length > 40 ? master.about.slice(0, 40) + '…' : master.about) : null}
+          fallbackValue={t('common.notSpecified')}
+          onClick={() => setEditor({
+            field: 'about',
+            title: t('profile.fields.about'),
+            value: master?.about || '',
+            placeholder: t('profile.placeholders.about'),
+            multiline: true,
+          })}
         />
       </div>
 
@@ -453,6 +532,122 @@ export default function Profile() {
         >
           {t('common.copyLink')}
         </button>
+      </div>
+
+      <SectionTitle>{t('profile.sections.minisite')}</SectionTitle>
+      <div className="enterprise-cell-group">
+        {/* Avatar */}
+        <div className="enterprise-cell" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px', gap: 8 }}>
+          <span className="enterprise-cell-label">{t('profile.minisite.avatar')}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {master?.avatar_file_id ? (
+              <img
+                src={API_BASE + master.avatar_file_id}
+                alt="аватар"
+                style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+              />
+            ) : (
+              <div style={{
+                width: 60, height: 60, borderRadius: '50%', flexShrink: 0,
+                background: 'var(--tg-accent, #6c47ff)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, fontWeight: 700,
+              }}>
+                {(master?.name || '?')[0].toUpperCase()}
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button
+                className="enterprise-sheet-btn secondary"
+                style={{ padding: '6px 14px', fontSize: 13 }}
+                onClick={() => { haptic(); avatarInputRef.current?.click(); }}
+                disabled={avatarUploadMutation.isPending}
+              >
+                {avatarUploadMutation.isPending ? t('profile.minisite.uploading') : t('profile.minisite.upload')}
+              </button>
+              {master?.avatar_file_id && (
+                <button
+                  className="enterprise-sheet-btn secondary"
+                  style={{ padding: '6px 14px', fontSize: 13, color: 'var(--tg-destructive, #e53e3e)' }}
+                  onClick={() => { haptic(); avatarDeleteMutation.mutate(); }}
+                  disabled={avatarDeleteMutation.isPending}
+                >
+                  {t('profile.minisite.deleteAvatar')}
+                </button>
+              )}
+            </div>
+          </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const fd = new FormData();
+              fd.append('file', file);
+              avatarUploadMutation.mutate(fd);
+              e.target.value = '';
+            }}
+          />
+        </div>
+
+        {/* Portfolio */}
+        <div className="enterprise-cell" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+            <span className="enterprise-cell-label">{t('profile.minisite.portfolio')}</span>
+            <span style={{ fontSize: 12, color: 'var(--tg-hint)' }}>{portfolio.length}/10</span>
+          </div>
+          {portfolio.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, overflowX: 'auto', width: '100%', paddingBottom: 4 }}>
+              {portfolio.map((item) => (
+                <div key={item.id} style={{ position: 'relative', flexShrink: 0 }}>
+                  <img
+                    src={API_BASE + item.url}
+                    alt="портфолио"
+                    style={{ width: 72, height: 72, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                  />
+                  <button
+                    onClick={() => { haptic(); portfolioDeleteMutation.mutate(item.id); }}
+                    style={{
+                      position: 'absolute', top: -6, right: -6,
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: 'var(--tg-destructive, #e53e3e)', color: '#fff',
+                      border: 'none', cursor: 'pointer', fontSize: 11,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      lineHeight: 1, padding: 0,
+                    }}
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {portfolio.length < 10 && (
+            <button
+              className="enterprise-sheet-btn secondary"
+              style={{ padding: '6px 14px', fontSize: 13, alignSelf: 'flex-start' }}
+              onClick={() => { haptic(); portfolioInputRef.current?.click(); }}
+              disabled={portfolioUploadMutation.isPending}
+            >
+              {portfolioUploadMutation.isPending ? t('profile.minisite.uploading') : t('profile.minisite.addPhoto')}
+            </button>
+          )}
+          <input
+            ref={portfolioInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const fd = new FormData();
+              fd.append('file', file);
+              portfolioUploadMutation.mutate(fd);
+              e.target.value = '';
+            }}
+          />
+        </div>
       </div>
 
       {picker === 'work_mode' && (

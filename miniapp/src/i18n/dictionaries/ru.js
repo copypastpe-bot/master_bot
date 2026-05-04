@@ -141,6 +141,10 @@ const ru = {
       currencySaved: 'Валюта сохранена',
       languageSaved: 'Язык сохранён',
       linkCopied: 'Ссылка скопирована',
+      avatarUpdated: 'Аватар обновлён',
+      avatarDeleted: 'Аватар удалён',
+      photoAdded: 'Фото добавлено',
+      photoDeleted: 'Фото удалено',
     },
     errors: {
       saveFailed: 'Не удалось сохранить',
@@ -155,10 +159,12 @@ const ru = {
       region: 'Регион',
       invite: 'Инвайт',
       preferences: 'Настройки приложения',
+      minisite: 'Минисайт',
     },
     fields: {
       name: 'Имя',
       sphere: 'Сфера деятельности',
+      about: 'О себе',
       phone: 'Телефон',
       telegram: 'Telegram',
       instagram: 'Instagram',
@@ -176,6 +182,7 @@ const ru = {
     placeholders: {
       name: 'Введите имя',
       sphere: 'Например: барбер, мастер маникюра',
+      about: 'Расскажите о своём опыте и подходе к работе',
       phone: '+7 999 123-45-67',
       telegram: '@username или t.me/username',
       instagram: '@username или instagram.com/username',
@@ -185,6 +192,14 @@ const ru = {
       socials: '@username или ссылка',
       workHours: 'Пн-Пт 10:00-20:00',
       defaultAddress: 'Адрес дома / кабинета / салона',
+    },
+    minisite: {
+      avatar: 'Аватар',
+      portfolio: 'Портфолио',
+      upload: 'Загрузить',
+      uploading: 'Загрузка…',
+      deleteAvatar: 'Удалить аватар',
+      addPhoto: '+ Добавить фото',
     },
     values: {
       sphereNotSpecified: 'Сфера не указана',
@@ -357,6 +372,8 @@ const ru = {
       description: 'Описание',
       descriptionPlaceholder: 'Необязательно',
       archive: 'В архив',
+      showOnLanding: 'Показывать на минисайте',
+      showOnLandingHint: 'Услуга будет видна на вашем минисайте',
     },
   },
 

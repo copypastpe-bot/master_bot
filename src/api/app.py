@@ -55,6 +55,14 @@ BONUS_MEDIA_DIR = Path(os.getenv("BONUS_MEDIA_DIR", "/app/data/bonus_media"))
 BONUS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/bonus-media", StaticFiles(directory=str(BONUS_MEDIA_DIR)), name="bonus-media")
 
+AVATARS_DIR = Path(os.getenv("AVATARS_DIR", "/app/data/avatars"))
+AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/avatars", StaticFiles(directory=str(AVATARS_DIR)), name="avatars")
+
+PORTFOLIO_DIR = Path(os.getenv("PORTFOLIO_DIR", "/app/data/portfolio"))
+PORTFOLIO_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/portfolio", StaticFiles(directory=str(PORTFOLIO_DIR)), name="portfolio")
+
 # Include routers
 app.include_router(landing.router)  # /m/{invite_token} — no /api prefix
 app.include_router(client.router, prefix="/api")

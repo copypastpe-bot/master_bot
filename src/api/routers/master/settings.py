@@ -62,6 +62,10 @@ BONUS_MEDIA_DIR = Path("/app/data/bonus_media")
 MAX_BONUS_MEDIA_BYTES = 10 * 1024 * 1024
 BONUS_TYPES = {"welcome", "birthday"}
 
+AVATARS_DIR = Path("/app/data/avatars")
+PORTFOLIO_DIR = Path("/app/data/portfolio")
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+
 # Allowed image formats with their magic byte signatures.
 # SVG is intentionally excluded — it supports inline <script> tags.
 _IMAGE_MAGIC: list[tuple[bytes, str, str]] = [
@@ -748,11 +752,13 @@ class PortfolioPhotoBody(BaseModel):
 
 
 def _portfolio_item_response(item: dict) -> dict:
+    file_id = item["file_id"]
+    url = file_id if file_id.startswith("/") else f"/api/public/photo/{file_id}"
     return {
         "id": item["id"],
-        "file_id": item["file_id"],
+        "file_id": file_id,
         "sort_order": item.get("sort_order") or 0,
-        "url": f"/api/public/photo/{item['file_id']}",
+        "url": url,
     }
 
 
@@ -784,10 +790,98 @@ async def delete_master_portfolio_photo(
     photo_id: int,
     master: Master = Depends(get_current_master),
 ):
+    # Fetch before delete to get file path for disk cleanup
+    photos = await get_master_portfolio(master.id)
+    photo = next((p for p in photos if p["id"] == photo_id), None)
+
     ok = await delete_portfolio_photo(photo_id, master.id)
     if not ok:
         raise HTTPException(status_code=404, detail="Portfolio photo not found")
+
+    if photo and photo.get("file_id", "").startswith("/portfolio/"):
+        filename = photo["file_id"][len("/portfolio/"):]
+        path = (PORTFOLIO_DIR / filename).resolve()
+        try:
+            path.relative_to(PORTFOLIO_DIR.resolve())
+            if path.is_file():
+                path.unlink()
+        except Exception:
+            logger.warning("Failed to remove portfolio photo: %s", path)
+
     return {"ok": True}
+
+
+# =============================================================================
+# Avatar and portfolio upload (multipart)
+# =============================================================================
+
+@router.post("/master/avatar/upload")
+async def upload_master_avatar(
+    file: UploadFile = File(...),
+    master: Master = Depends(get_current_master),
+):
+    """Upload master avatar from Mini App (multipart)."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds 10 MB limit")
+    detected = _detect_image(data)
+    if detected is None:
+        raise HTTPException(status_code=415, detail="Unsupported format. Allowed: JPEG, PNG, GIF, WebP.")
+    ext, _ = detected
+    AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"master_{master.id}{ext}"
+    (AVATARS_DIR / filename).write_bytes(data)
+    avatar_url = f"/avatars/{filename}"
+    await update_master(master.id, avatar_file_id=avatar_url)
+    return {"avatar_url": avatar_url}
+
+
+@router.delete("/master/avatar")
+async def delete_master_avatar(
+    master: Master = Depends(get_current_master),
+):
+    """Delete master avatar."""
+    current = await get_master_by_id(master.id)
+    if current and current.avatar_file_id and current.avatar_file_id.startswith("/avatars/"):
+        filename = current.avatar_file_id[len("/avatars/"):]
+        path = (AVATARS_DIR / filename).resolve()
+        try:
+            path.relative_to(AVATARS_DIR.resolve())
+            if path.is_file():
+                path.unlink()
+        except Exception:
+            logger.warning("Failed to remove avatar: %s", path)
+    await update_master(master.id, avatar_file_id=None)
+    return {"ok": True}
+
+
+@router.post("/master/portfolio/upload", status_code=201)
+async def upload_master_portfolio_photo(
+    file: UploadFile = File(...),
+    master: Master = Depends(get_current_master),
+):
+    """Upload portfolio photo from Mini App (multipart)."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty file")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds 10 MB limit")
+    detected = _detect_image(data)
+    if detected is None:
+        raise HTTPException(status_code=415, detail="Unsupported format. Allowed: JPEG, PNG, GIF, WebP.")
+    ext, _ = detected
+    PORTFOLIO_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"master_{master.id}_{secrets.token_hex(8)}{ext}"
+    file_path = PORTFOLIO_DIR / filename
+    file_path.write_bytes(data)
+    photo_url = f"/portfolio/{filename}"
+    photo_id = await add_portfolio_photo(master.id, photo_url)
+    if photo_id is None:
+        file_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=409, detail="Portfolio photo limit reached")
+    return {"id": photo_id, "url": photo_url}
 
 
 @router.put("/master/services/{service_id}/archive")

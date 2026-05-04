@@ -19,6 +19,8 @@ def set_master_bot(bot) -> None:
 def _photo_url(file_id: str | None) -> str | None:
     if not file_id:
         return None
+    if file_id.startswith("/"):
+        return file_id
     return f"/api/public/photo/{file_id}"
 
 

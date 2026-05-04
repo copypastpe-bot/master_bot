@@ -141,6 +141,10 @@ const en = {
       currencySaved: 'Currency saved',
       languageSaved: 'Language saved',
       linkCopied: 'Link copied',
+      avatarUpdated: 'Avatar updated',
+      avatarDeleted: 'Avatar deleted',
+      photoAdded: 'Photo added',
+      photoDeleted: 'Photo deleted',
     },
     errors: {
       saveFailed: 'Failed to save',
@@ -155,10 +159,12 @@ const en = {
       region: 'Region',
       invite: 'Invite',
       preferences: 'App settings',
+      minisite: 'Mini-site',
     },
     fields: {
       name: 'Name',
       sphere: 'Business area',
+      about: 'About me',
       phone: 'Phone',
       telegram: 'Telegram',
       instagram: 'Instagram',
@@ -176,6 +182,7 @@ const en = {
     placeholders: {
       name: 'Enter name',
       sphere: 'For example: barber, nail technician',
+      about: 'Tell about your experience and approach to work',
       phone: '+1 555 123 45 67',
       telegram: '@username or t.me/username',
       instagram: '@username or instagram.com/username',
@@ -185,6 +192,14 @@ const en = {
       socials: '@username or URL',
       workHours: 'Mon-Fri 10:00-20:00',
       defaultAddress: 'Home / office / salon address',
+    },
+    minisite: {
+      avatar: 'Avatar',
+      portfolio: 'Portfolio',
+      upload: 'Upload',
+      uploading: 'Uploading…',
+      deleteAvatar: 'Delete avatar',
+      addPhoto: '+ Add photo',
     },
     values: {
       sphereNotSpecified: 'Business area not specified',
@@ -357,6 +372,8 @@ const en = {
       description: 'Description',
       descriptionPlaceholder: 'Optional',
       archive: 'Archive',
+      showOnLanding: 'Show on mini-site',
+      showOnLandingHint: 'Service will be visible on your mini-site',
     },
   },
 

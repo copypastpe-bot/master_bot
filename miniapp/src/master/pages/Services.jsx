@@ -72,6 +72,7 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
   const [name, setName] = useState(initial?.name || '');
   const [price, setPrice] = useState(String(initial?.price || ''));
   const [description, setDescription] = useState(initial?.description || '');
+  const [showOnLanding, setShowOnLanding] = useState(initial?.show_on_landing ?? true);
 
   const handleSave = () => {
     const parsedPrice = parseInt(price, 10);
@@ -84,6 +85,7 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
       name: name.trim(),
       price: parsedPrice,
       description: description.trim() || null,
+      show_on_landing: showOnLanding,
     });
   };
 
@@ -120,6 +122,33 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
           rows={3}
           className="enterprise-sheet-input"
         />
+
+        <div
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}
+          onClick={() => { haptic(); setShowOnLanding((v) => !v); }}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--tg-text)' }}>
+              {t('services.sheet.showOnLanding')}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--tg-hint)', marginTop: 2 }}>
+              {t('services.sheet.showOnLandingHint')}
+            </div>
+          </div>
+          <div
+            style={{
+              width: 44, height: 26, borderRadius: 13, flexShrink: 0,
+              background: showOnLanding ? 'var(--tg-accent, #6c47ff)' : 'var(--tg-section-separator, #ccc)',
+              position: 'relative', transition: 'background 0.2s', cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 3, left: showOnLanding ? 21 : 3,
+              width: 20, height: 20, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </div>
+        </div>
 
         <div className="enterprise-sheet-actions">
           {!isNew && (

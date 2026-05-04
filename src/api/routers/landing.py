@@ -39,6 +39,8 @@ def _fmt_date(s) -> str:
 
 
 def _photo_url(file_id: str) -> str:
+    if file_id.startswith("/"):
+        return file_id
     return f"/api/public/photo/{file_id}"
 
 
