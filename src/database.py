@@ -41,6 +41,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "onboarding_skipped_first_client", "onboarding_banner_shown",
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
     "feedback_delay_hours", "feedback_message", "feedback_reply_5", "review_buttons",
+    "about", "avatar_file_id",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -54,7 +55,7 @@ ALLOWED_MASTER_CLIENT_FIELDS = frozenset({
 })
 
 ALLOWED_SERVICE_FIELDS = frozenset({
-    "name", "price", "is_active", "description",
+    "name", "price", "is_active", "description", "show_on_landing",
 })
 
 ALLOWED_ORDER_FIELDS = frozenset({
@@ -171,6 +172,8 @@ def _parse_master_row(row) -> Master:
         feedback_message=row["feedback_message"] if "feedback_message" in row.keys() else None,
         feedback_reply_5=row["feedback_reply_5"] if "feedback_reply_5" in row.keys() else None,
         review_buttons=row["review_buttons"] if "review_buttons" in row.keys() else None,
+        about=row["about"] if "about" in row.keys() else None,
+        avatar_file_id=row["avatar_file_id"] if "avatar_file_id" in row.keys() else None,
         created_at=_parse_db_datetime(row["created_at"]),
     )
 
@@ -2263,6 +2266,7 @@ async def get_services(master_id: int, active_only: bool = True) -> list[Service
             price=row["price"],
             description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
+            show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
             created_at=row["created_at"],
         ) for row in rows]
     finally:
@@ -2285,6 +2289,7 @@ async def get_archived_services(master_id: int) -> list[Service]:
             price=row["price"],
             description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
+            show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
             created_at=row["created_at"],
         ) for row in rows]
     finally:
@@ -2308,6 +2313,7 @@ async def get_service_by_id(service_id: int) -> Optional[Service]:
                 price=row["price"],
                 description=row["description"] if "description" in row.keys() else None,
                 is_active=bool(row["is_active"]),
+                show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
                 created_at=row["created_at"],
             )
         return None
@@ -3992,3 +3998,115 @@ async def update_client_consent(client_id: int, consent_given_at: str) -> None:
         await conn.commit()
     finally:
         await conn.close()
+
+
+# =============================================================================
+# Portfolio CRUD
+# =============================================================================
+
+async def get_master_portfolio(master_id: int) -> list[dict]:
+    """Return portfolio photos for a master sorted by sort_order."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT id, file_id, sort_order FROM master_portfolio WHERE master_id = ? ORDER BY sort_order ASC",
+            (master_id,),
+        )
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def add_portfolio_photo(master_id: int, file_id: str) -> Optional[int]:
+    """Add a photo to portfolio. Returns new row id, or None if limit of 10 reached."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT COUNT(*) as cnt FROM master_portfolio WHERE master_id = ?",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        if row and row["cnt"] >= 10:
+            return None
+        cursor = await conn.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 as next_order FROM master_portfolio WHERE master_id = ?",
+            (master_id,),
+        )
+        order_row = await cursor.fetchone()
+        next_order = order_row["next_order"] if order_row else 0
+        cursor = await conn.execute(
+            "INSERT INTO master_portfolio (master_id, file_id, sort_order) VALUES (?, ?, ?)",
+            (master_id, file_id, next_order),
+        )
+        await conn.commit()
+        return cursor.lastrowid
+    finally:
+        await conn.close()
+
+
+async def delete_portfolio_photo(photo_id: int, master_id: int) -> bool:
+    """Delete a portfolio photo. Verifies ownership by master_id. Returns True if deleted."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "DELETE FROM master_portfolio WHERE id = ? AND master_id = ?",
+            (photo_id, master_id),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
+# =============================================================================
+# Landing data read model
+# =============================================================================
+
+async def get_master_reviews(master_id: int, limit: int = 5) -> list[dict]:
+    """Return the latest visible reviews for a master (for landing page)."""
+    return await get_reviews(master_id, limit=limit)
+
+
+async def get_landing_data(invite_token: str) -> Optional[dict]:
+    """Return all public data for a master's landing page by invite_token."""
+    master = await get_master_by_invite_token(invite_token)
+    if not master:
+        return None
+
+    portfolio = await get_master_portfolio(master.id)
+    reviews = await get_master_reviews(master.id, limit=5)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, name, price
+            FROM services
+            WHERE master_id = ? AND is_active = 1 AND show_on_landing = 1
+            ORDER BY name
+            """,
+            (master.id,),
+        )
+        rows = await cursor.fetchall()
+        services = [{"name": row["name"], "price": row["price"]} for row in rows]
+    finally:
+        await conn.close()
+
+    return {
+        "id": master.id,
+        "name": master.name,
+        "sphere": master.sphere,
+        "about": master.about,
+        "contacts": master.contacts,
+        "socials": master.socials,
+        "work_hours": master.work_hours,
+        "currency": master.currency,
+        "bonus_enabled": master.bonus_enabled,
+        "bonus_welcome": master.bonus_welcome,
+        "avatar_file_id": master.avatar_file_id,
+        "invite_token": master.invite_token,
+        "portfolio": portfolio,
+        "services": services,
+        "reviews": reviews,
+    }

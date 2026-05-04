@@ -48,6 +48,8 @@ class Master:
     feedback_message: Optional[str] = None
     feedback_reply_5: Optional[str] = None
     review_buttons: Optional[str] = None
+    about: Optional[str] = None
+    avatar_file_id: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -92,6 +94,7 @@ class Service:
     price: Optional[int] = None
     description: Optional[str] = None
     is_active: bool = True
+    show_on_landing: bool = True
     created_at: Optional[datetime] = None
 
 
