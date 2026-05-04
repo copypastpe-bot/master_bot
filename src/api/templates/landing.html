@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ og_title }}</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="{{ og_title }}">
+  <meta property="og:description" content="{{ og_description }}">
+  <meta property="og:type" content="profile">
+  {% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:       #6c47ff;
+      --primary-dark:  #5438cc;
+      --text:          #1a1a2e;
+      --text-sub:      #6b7280;
+      --bg:            #ffffff;
+      --bg-alt:        #f5f3ff;
+      --bg-card:       #f9fafb;
+      --border:        #e5e7eb;
+      --star-on:       #f59e0b;
+      --star-off:      #d1d5db;
+      --radius-lg:     16px;
+      --radius-md:     12px;
+      --radius-sm:     8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(160deg, var(--bg-alt) 0%, var(--bg) 60%);
+      padding: 48px 0 32px;
+      text-align: center;
+    }
+
+    .avatar {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      overflow: hidden;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -1px;
+    }
+
+    .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-name {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .hero-sphere {
+      font-size: 16px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    .hero-about {
+      font-size: 15px;
+      color: var(--text-sub);
+      margin-top: 12px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── CTA Button ── */
+    .cta-block {
+      padding: 24px 0;
+      text-align: center;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      padding: 16px 32px;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: background 0.15s, transform 0.1s;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    .cta-btn:active { background: var(--primary-dark); transform: scale(0.98); }
+
+    /* ── Section common ── */
+    .section {
+      padding: 28px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    /* ── Portfolio carousel ── */
+    .portfolio-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+
+    .portfolio-scroll::-webkit-scrollbar { display: none; }
+
+    .portfolio-item {
+      flex: 0 0 200px;
+      height: 200px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      scroll-snap-align: start;
+      background: var(--bg-card);
+    }
+
+    .portfolio-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Reviews ── */
+    .reviews-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .review-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .review-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .review-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .review-date {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-left: auto;
+    }
+
+    .review-stars {
+      font-size: 15px;
+      letter-spacing: 1px;
+    }
+
+    .review-text {
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ── Services ── */
+    .services-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .service-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg);
+      padding: 14px 16px;
+      gap: 12px;
+    }
+
+    .service-name {
+      font-size: 15px;
+      color: var(--text);
+    }
+
+    .service-price {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    /* ── Work hours ── */
+    .work-hours-text {
+      font-size: 15px;
+      color: var(--text);
+      background: var(--bg-card);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      white-space: pre-line;
+    }
+
+    /* ── Contacts ── */
+    .contacts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+    }
+
+    .contact-row a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .contact-icon {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+
+    /* ── Why block ── */
+    .why-section {
+      background: var(--bg-alt);
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .why-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .why-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 15px;
+    }
+
+    .why-icon {
+      font-size: 20px;
+      line-height: 1.2;
+      flex-shrink: 0;
+    }
+
+    /* ── For masters ── */
+    .masters-section {
+      background: var(--bg-card);
+      border-top: 2px solid var(--border);
+      padding: 28px 0 40px;
+      text-align: center;
+    }
+
+    .masters-title {
+      font-size: 15px;
+      color: var(--text-sub);
+      margin-bottom: 14px;
+    }
+
+    .masters-btn {
+      display: inline-block;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 28px;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .masters-btn:active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* ── Responsive desktop centering ── */
+    @media (min-width: 640px) {
+      .hero { padding: 64px 0 40px; }
+      .portfolio-scroll { margin: 0; padding-left: 0; padding-right: 0; }
+      .portfolio-item { flex: 0 0 220px; height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Block 1: Hero -->
+  <div class="hero">
+    <div class="wrap">
+      <div class="avatar">
+        {% if avatar_url %}
+          <img src="{{ avatar_url }}" alt="{{ name }}" loading="lazy">
+        {% else %}
+          {{ avatar_initials }}
+        {% endif %}
+      </div>
+      <h1 class="hero-name">{{ name }}</h1>
+      {% if sphere %}<p class="hero-sphere">{{ sphere }}</p>{% endif %}
+      {% if about %}<p class="hero-about">{{ about }}</p>{% endif %}
+    </div>
+  </div>
+
+  <!-- Block 2: CTA primary -->
+  <div class="wrap">
+    <div class="cta-block">
+      <a href="{{ cta_link }}" class="cta-btn">{{ cta_text }}</a>
+    </div>
+  </div>
+
+  {% if portfolio %}
+  <!-- Block 3: Portfolio -->
+  <div class="section">
+    <div class="wrap">
+      <p class="section-title">Портфолио</p>
+    </div>
+    <div class="wrap">
+      <div class="portfolio-scroll">
+        {% for photo in portfolio %}
+        <div class="portfolio-item">
+          <img src="{{ photo.url }}" alt="Работа" loading="lazy">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if reviews %}
+  <!-- Block 4: Reviews -->
+  <div class="section">
+    <div class="wrap">
+      <p class="section-title">Отзывы</p>
+      <div class="reviews-list">
+        {% for r in reviews %}
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-name">{{ r.client_name }}</span>
+            {% if r.created_at %}<span class="review-date">{{ r.created_at }}</span>{% endif %}
+          </div>
+          {% if r.rating %}
+          <div class="review-stars">
+            {% for i in range(1, 6) %}
+              {% if i <= r.rating %}★{% else %}☆{% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if r.text %}<p class="review-text" style="margin-top:6px">{{ r.text }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if services %}
+  <!-- Block 5: Services -->
+  <div class="section">
+    <div class="wrap">
+      <p class="section-title">Услуги и цены</p>
+      <div class="services-list">
+        {% for s in services %}
+        <div class="service-row">
+          <span class="service-name">{{ s.name }}</span>
+          {% if s.price is not none and s.price != '' %}
+          <span class="service-price">{{ s.price }} {{ currency_symbol }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if work_hours %}
+  <!-- Block 6: Work hours -->
+  <div class="section">
+    <div class="wrap">
+      <p class="section-title">Режим работы</p>
+      <p class="work-hours-text">{{ work_hours }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if contacts or socials %}
+  <!-- Block 7: Contacts -->
+  <div class="section">
+    <div class="wrap">
+      <p class="section-title">Контакты</p>
+      <div class="contacts-list">
+        {% if contacts %}
+        <div class="contact-row">
+          <span class="contact-icon">📞</span>
+          <a href="tel:{{ contacts }}">{{ contacts }}</a>
+        </div>
+        {% endif %}
+        {% if socials %}
+        <div class="contact-row">
+          <span class="contact-icon">✉️</span>
+          <span>{{ socials }}</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Block 8: Why subscribe (always shown) -->
+  <div class="why-section">
+    <div class="wrap">
+      <p class="section-title">Почему стоит подписаться?</p>
+      <ul class="why-list">
+        <li class="why-item"><span class="why-icon">💰</span><span>Бонусы за каждый визит</span></li>
+        <li class="why-item"><span class="why-icon">🔔</span><span>Напоминания о записи</span></li>
+        <li class="why-item"><span class="why-icon">🎁</span><span>Эксклюзивные акции и скидки</span></li>
+        <li class="why-item"><span class="why-icon">📋</span><span>Удобная история визитов</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Block 9: CTA final -->
+  <div class="wrap">
+    <div class="cta-block">
+      <a href="{{ cta_link }}" class="cta-btn">{{ cta_text }}</a>
+    </div>
+  </div>
+
+  <!-- Block 10: For masters -->
+  <div class="masters-section">
+    <div class="wrap">
+      <p class="masters-title">Вы тоже мастер? Создайте свой мини-сайт бесплатно</p>
+      <a href="{{ master_bot_link }}" class="masters-btn">Попробовать бесплатно</a>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import client, orders, bonuses, promos, services, public
+from src.api.routers import client, orders, bonuses, promos, services, public, landing
 from src.api.routers import auth_router
 from src.api.routers import client_app
 from src.api.routers import client_masters
@@ -56,6 +56,7 @@ BONUS_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/bonus-media", StaticFiles(directory=str(BONUS_MEDIA_DIR)), name="bonus-media")
 
 # Include routers
+app.include_router(landing.router)  # /m/{invite_token} — no /api prefix
 app.include_router(client.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
 app.include_router(bonuses.router, prefix="/api")
