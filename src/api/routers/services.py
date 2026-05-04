@@ -24,6 +24,7 @@ async def get_services_list(
             "name": service.name,
             "price": service.price,
             "description": service.description,
+            "currency": master.currency,
         }
         for service in services
     ]

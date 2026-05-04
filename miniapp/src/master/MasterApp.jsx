@@ -23,6 +23,7 @@ import Requests from './pages/Requests';
 import Subscription from './pages/Subscription';
 import { useI18n } from '../i18n';
 import AppHeader from './components/AppHeader';
+import { resetViewportScroll } from '../utils/scroll';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -36,16 +37,19 @@ export default function MasterApp() {
 
   const queryClient = useQueryClient();
 
-  const refreshBadge = useCallback(async () => {
-    try {
-      const data = await getMasterRequestsUnreadCount();
-      setRequestsBadge(data.count ?? 0);
-    } catch {
-      // badge is best-effort
-    }
+  useEffect(() => {
+    let ignore = false;
+    getMasterRequestsUnreadCount()
+      .then((data) => {
+        if (!ignore) setRequestsBadge(data.count ?? 0);
+      })
+      .catch(() => {
+        // badge is best-effort
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  useEffect(() => { refreshBadge(); }, []);
 
   useEffect(() => {
     document.body.classList.add('typeui-enterprise-body');
@@ -53,6 +57,25 @@ export default function MasterApp() {
       document.body.classList.remove('typeui-enterprise-body');
     };
   }, []);
+
+  // ---------------------------------------------------------------------------
+  // Navigation helpers
+  // ---------------------------------------------------------------------------
+  const push = (type, params = {}) => {
+    resetViewportScroll();
+    setNavStack(prev => [...prev, { type, ...params }]);
+  };
+
+  const handleBack = useCallback(() => {
+    resetViewportScroll();
+    setNavStack(prev => prev.slice(0, -1));
+  }, []);
+
+  const switchTab = (newTab) => {
+    resetViewportScroll();
+    setNavStack([]);
+    setTab(newTab);
+  };
 
   // ---------------------------------------------------------------------------
   // Telegram BackButton integration
@@ -69,23 +92,7 @@ export default function MasterApp() {
     } else {
       BackButton.hide();
     }
-  }, [navStack]);
-
-  // ---------------------------------------------------------------------------
-  // Navigation helpers
-  // ---------------------------------------------------------------------------
-  const push = (type, params = {}) => {
-    setNavStack(prev => [...prev, { type, ...params }]);
-  };
-
-  const handleBack = () => {
-    setNavStack(prev => prev.slice(0, -1));
-  };
-
-  const switchTab = (newTab) => {
-    setNavStack([]);
-    setTab(newTab);
-  };
+  }, [navStack.length, handleBack]);
 
   // ---------------------------------------------------------------------------
   // React Query invalidation helpers
@@ -136,7 +143,7 @@ export default function MasterApp() {
   const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : 'Master_bot';
 
   if (current) {
-    const { type, id, ...rest } = current;
+    const { type, id } = current;
 
     if (type === 'order') {
       return (

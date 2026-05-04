@@ -136,9 +136,11 @@ async def get_client_master_services(
                 "name": service.name,
                 "price": service.price,
                 "description": service.description,
+                "currency": master.currency,
             }
             for service in services
-        ]
+        ],
+        "currency": master.currency,
     }
 
 
@@ -285,6 +287,7 @@ async def get_public_master(invite_token: str):
                 "name": service.name,
                 "price": service.price,
                 "description": service.description,
+                "currency": profile.get("currency"),
             }
             for service in services
         ],

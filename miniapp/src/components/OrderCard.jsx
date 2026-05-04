@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../master/profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic(t = 'light') {
@@ -81,7 +82,7 @@ export default function OrderCard({ order, onConfirm, onReview, onRepeat, onCont
     );
   }
 
-  const currency = order.currency || '₽';
+  const currency = getCurrencySymbol(order.currency || DEFAULT_CURRENCY);
   const amount = order.amount_total ?? order.price;
   const price = amount != null ? `${amount} ${currency}` : null;
   const bonusEarned = order.bonus_accrued > 0 ? t('orderCard.bonusAccrued', { count: order.bonus_accrued }) : null;

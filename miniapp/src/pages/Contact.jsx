@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getServices, createOrderRequest, createQuestion } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import { useI18n } from '../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../master/profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -164,6 +165,7 @@ function BookingForm({ onSuccess, keyboardOpen, preselectedService }) {
     queryKey: ['services'],
     queryFn: getServices,
   });
+  const currencySymbol = getCurrencySymbol(preselectedService?.currency || services[0]?.currency || DEFAULT_CURRENCY);
 
   const handleSubmit = async () => {
     if (!selectedService) {
@@ -216,7 +218,7 @@ function BookingForm({ onSuccess, keyboardOpen, preselectedService }) {
                     }}
                   >
                     {s.name}
-                    {s.price ? ` · ${s.price} ₽` : ''}
+                    {s.price ? ` · ${s.price.toLocaleString(locale)} ${getCurrencySymbol(s.currency) || currencySymbol}` : ''}
                   </button>
                 );
               })}

@@ -7,6 +7,7 @@ import {
 } from '../api/client';
 import { Skeleton } from '../components/Skeleton';
 import { useI18n } from '../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../master/profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic() { WebApp?.HapticFeedback?.impactOccurred('light'); }
@@ -14,7 +15,7 @@ function haptic() { WebApp?.HapticFeedback?.impactOccurred('light'); }
 const CLIENT_BOT = import.meta.env.VITE_CLIENT_BOT_USERNAME || '';
 
 export default function MasterLanding({ mode, masterId, inviteToken, navigate, onLinked }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [profile, setProfile] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,6 +84,7 @@ export default function MasterLanding({ mode, masterId, inviteToken, navigate, o
   const avatarContent = profile?.photo_url
     ? <img src={profile.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
     : (profile?.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const currencySymbol = getCurrencySymbol(profile?.currency || DEFAULT_CURRENCY);
 
   const metrics = [
     profile?.review_count > 0 && t('masterLanding.reviewsMetric', { count: profile.review_count }),
@@ -157,7 +159,11 @@ export default function MasterLanding({ mode, masterId, inviteToken, navigate, o
                   borderBottom: i < profile.services.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
                 }}>
                   <span style={{ fontSize: 15 }}>{s.name}</span>
-                  {s.price != null && <span style={{ fontSize: 14, color: '#2481cc' }}>{s.price} ₽</span>}
+                  {s.price != null && (
+                    <span style={{ fontSize: 14, color: '#2481cc' }}>
+                      {s.price.toLocaleString(locale)} {getCurrencySymbol(s.currency) || currencySymbol}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

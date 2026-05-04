@@ -1243,6 +1243,24 @@ body.typeui-enterprise-body .master-nav-button:active {
   transform: scale(0.97);
 }
 
+body.typeui-enterprise-body .master-order-step {
+  padding-bottom: calc(108px + env(safe-area-inset-bottom));
+}
+
+body.typeui-enterprise-body .master-order-action-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 120;
+  padding: 10px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 18px;
+  background: rgba(15, 25, 37, 0.9);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--tg-enterprise-shadow);
+}
+
 body.typeui-enterprise-body .master-nav-icon-wrap {
   position: relative;
   display: inline-flex;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   searchMasterClients,
@@ -15,6 +15,7 @@ import { useBackButton } from '../hooks/useBackButton';
 import ClientAddSheet from '../components/ClientAddSheet';
 import { useI18n } from '../../i18n';
 import { DEFAULT_CURRENCY, getCurrencySymbol } from '../profileOptions';
+import { resetViewportScroll } from '../../utils/scroll';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -348,22 +349,83 @@ function StepServices({ selected, onSelect, onNext, onBack, currencySymbol }) {
   const canNext = selected.length > 0 && selected.every((s) => s.price > 0);
 
   return (
-    <div style={{ padding: '0 16px 16px' }}>
-      {services.map((svc) => {
-        const sel = isSelected(svc.id);
-        const noPrice = !svc.price;
-        return (
-          <div key={svc.id}>
+    <div className="master-order-step">
+      <div style={{ padding: '0 16px' }}>
+        {services.map((svc) => {
+          const sel = isSelected(svc.id);
+          const noPrice = !svc.price;
+          return (
+            <div key={svc.id}>
+              <button
+                onClick={() => toggleService(svc)}
+                style={{
+                  width: '100%',
+                  padding: '11px 12px',
+                  background: sel ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+                  color: sel ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                  border: 'none',
+                  borderRadius: noPrice && sel ? '10px 10px 0 0' : 10,
+                  marginBottom: noPrice && sel ? 0 : 6,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>
+                  {sel ? '✓ ' : ''}{svc.name}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {svc.price ? `${svc.price.toLocaleString(locale)} ${currencySymbol}` : tr('цена не указана', 'price not specified')}
+                </span>
+              </button>
+              {sel && noPrice && (
+                <div style={{
+                  background: 'var(--tg-button)',
+                  borderRadius: '0 0 10px 10px',
+                  padding: '0 12px 10px',
+                  marginBottom: 6,
+                }}>
+                  <input
+                    type="number"
+                    placeholder={tr(`Введите цену ${currencySymbol}`, `Enter price ${currencySymbol}`)}
+                    value={priceOverrides[svc.id] || ''}
+                    onChange={(e) => updateServicePrice(svc.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px',
+                      fontSize: 14,
+                      background: 'rgba(255,255,255,0.2)',
+                      color: 'var(--tg-button-text)',
+                      border: '1px solid rgba(255,255,255,0.4)',
+                      borderRadius: 8,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {customList.map((item, idx) => {
+          const key = `custom_${idx}`;
+          const isSel = selected.some((s) => s._key === key);
+          return (
             <button
-              onClick={() => toggleService(svc)}
+              key={key}
+              onClick={() => toggleCustom(idx)}
               style={{
                 width: '100%',
                 padding: '11px 12px',
-                background: sel ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
-                color: sel ? 'var(--tg-button-text)' : 'var(--tg-text)',
-                border: 'none',
-                borderRadius: noPrice && sel ? '10px 10px 0 0' : 10,
-                marginBottom: noPrice && sel ? 0 : 6,
+                background: isSel ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
+                color: isSel ? 'var(--tg-button-text)' : 'var(--tg-text)',
+                border: '1px dashed var(--tg-hint)',
+                borderRadius: 10,
+                marginBottom: 6,
                 textAlign: 'left',
                 cursor: 'pointer',
                 display: 'flex',
@@ -371,107 +433,28 @@ function StepServices({ selected, onSelect, onNext, onBack, currencySymbol }) {
                 alignItems: 'center',
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: sel ? 600 : 400 }}>
-                {sel ? '✓ ' : ''}{svc.name}
+              <span style={{ fontSize: 14, fontWeight: isSel ? 600 : 400 }}>
+                {isSel ? '✓ ' : ''}{item.name}
               </span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                {svc.price ? `${svc.price.toLocaleString(locale)} ${currencySymbol}` : tr('цена не указана', 'price not specified')}
-              </span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString(locale)} {currencySymbol}</span>
             </button>
-            {sel && noPrice && (
-              <div style={{
-                background: 'var(--tg-button)',
-                borderRadius: '0 0 10px 10px',
-                padding: '0 12px 10px',
-                marginBottom: 6,
-              }}>
-                <input
-                  type="number"
-                  placeholder={tr(`Введите цену ${currencySymbol}`, `Enter price ${currencySymbol}`)}
-                  value={priceOverrides[svc.id] || ''}
-                  onChange={(e) => updateServicePrice(svc.id, e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    width: '100%',
-                    padding: '6px 10px',
-                    fontSize: 14,
-                    background: 'rgba(255,255,255,0.2)',
-                    color: 'var(--tg-button-text)',
-                    border: '1px solid rgba(255,255,255,0.4)',
-                    borderRadius: 8,
-                    outline: 'none',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
 
-      {customList.map((item, idx) => {
-        const key = `custom_${idx}`;
-        const isSel = selected.some((s) => s._key === key);
-        return (
-          <button
-            key={key}
-            onClick={() => toggleCustom(idx)}
-            style={{
-              width: '100%',
-              padding: '11px 12px',
-              background: isSel ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',
-              color: isSel ? 'var(--tg-button-text)' : 'var(--tg-text)',
-              border: '1px dashed var(--tg-hint)',
-              borderRadius: 10,
-              marginBottom: 6,
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}
-          >
-            <span style={{ fontSize: 14, fontWeight: isSel ? 600 : 400 }}>
-              {isSel ? '✓ ' : ''}{item.name}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{item.price.toLocaleString(locale)} {currencySymbol}</span>
-          </button>
-        );
-      })}
-
-      {showCustom ? (
-        <div style={{
-          padding: 12,
-          background: 'var(--tg-secondary-bg)',
-          borderRadius: 10,
-          marginBottom: 8,
-        }}>
-          <input
-            type="text"
-            placeholder={tr('Название услуги', 'Service name')}
-            value={custom.name}
-            onChange={(e) => setCustom({ ...custom, name: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              fontSize: 14,
-              background: 'var(--tg-bg)',
-              color: 'var(--tg-text)',
-              border: '1px solid var(--tg-hint)',
-              borderRadius: 8,
-              outline: 'none',
-              marginBottom: 8,
-              boxSizing: 'border-box',
-            }}
-          />
-          <div style={{ display: 'flex', gap: 8 }}>
+        {showCustom ? (
+          <div style={{
+            padding: 12,
+            background: 'var(--tg-secondary-bg)',
+            borderRadius: 10,
+            marginBottom: 8,
+          }}>
             <input
-              type="number"
-              placeholder={tr(`Цена ${currencySymbol}`, `Price ${currencySymbol}`)}
-              value={custom.price}
-              onChange={(e) => setCustom({ ...custom, price: e.target.value })}
+              type="text"
+              placeholder={tr('Название услуги', 'Service name')}
+              value={custom.name}
+              onChange={(e) => setCustom({ ...custom, name: e.target.value })}
               style={{
-                flex: 1,
+                width: '100%',
                 padding: '8px 10px',
                 fontSize: 14,
                 background: 'var(--tg-bg)',
@@ -479,63 +462,82 @@ function StepServices({ selected, onSelect, onNext, onBack, currencySymbol }) {
                 border: '1px solid var(--tg-hint)',
                 borderRadius: 8,
                 outline: 'none',
+                marginBottom: 8,
                 boxSizing: 'border-box',
               }}
             />
-            <button
-              onClick={addCustom}
-              disabled={!custom.name.trim() || !custom.price}
-              style={{
-                padding: '8px 16px',
-                background: 'var(--tg-button)',
-                color: 'var(--tg-button-text)',
-                border: 'none',
-                borderRadius: 8,
-                fontSize: 14,
-                cursor: 'pointer',
-                opacity: (!custom.name.trim() || !custom.price) ? 0.5 : 1,
-              }}
-            >
-              {tr('Добавить', 'Add')}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number"
+                placeholder={tr(`Цена ${currencySymbol}`, `Price ${currencySymbol}`)}
+                value={custom.price}
+                onChange={(e) => setCustom({ ...custom, price: e.target.value })}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  fontSize: 14,
+                  background: 'var(--tg-bg)',
+                  color: 'var(--tg-text)',
+                  border: '1px solid var(--tg-hint)',
+                  borderRadius: 8,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                onClick={addCustom}
+                disabled={!custom.name.trim() || !custom.price}
+                style={{
+                  padding: '8px 16px',
+                  background: 'var(--tg-button)',
+                  color: 'var(--tg-button-text)',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  opacity: (!custom.name.trim() || !custom.price) ? 0.5 : 1,
+                }}
+              >
+                {tr('Добавить', 'Add')}
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <button
-          onClick={() => { haptic(); setShowCustom(true); }}
-          style={{
-            width: '100%',
-            padding: '10px',
-            background: 'none',
-            color: 'var(--tg-button)',
-            border: '1px dashed var(--tg-button)',
-            borderRadius: 10,
-            fontSize: 14,
-            cursor: 'pointer',
-            marginBottom: 8,
-          }}
-        >
-          {tr('+ Произвольная услуга', '+ Custom service')}
-        </button>
-      )}
+        ) : (
+          <button
+            onClick={() => { haptic(); setShowCustom(true); }}
+            style={{
+              width: '100%',
+              padding: '10px',
+              background: 'none',
+              color: 'var(--tg-button)',
+              border: '1px dashed var(--tg-button)',
+              borderRadius: 10,
+              fontSize: 14,
+              cursor: 'pointer',
+              marginBottom: 8,
+            }}
+          >
+            {tr('+ Произвольная услуга', '+ Custom service')}
+          </button>
+        )}
+      </div>
 
-      {selected.length > 0 && (
-        <div style={{
-          padding: '10px 12px',
-          background: 'var(--tg-secondary-bg)',
-          borderRadius: 10,
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginBottom: 12,
-        }}>
-          <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{tr('Итого', 'Total')}</span>
-          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--tg-text)' }}>
-            {total.toLocaleString(locale)} {currencySymbol}
-          </span>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+      <div className="master-order-action-bar">
+        {selected.length > 0 && (
+          <div style={{
+            padding: '0 2px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 10,
+          }}>
+            <span style={{ color: 'var(--tg-hint)', fontSize: 14 }}>{tr('Итого', 'Total')}</span>
+            <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--tg-text)' }}>
+              {total.toLocaleString(locale)} {currencySymbol}
+            </span>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={() => { haptic(); onBack(); }}
           style={{
@@ -569,6 +571,7 @@ function StepServices({ selected, onSelect, onNext, onBack, currencySymbol }) {
         >
           {tr('Далее →', 'Next ->')}
         </button>
+      </div>
       </div>
     </div>
   );
@@ -611,7 +614,7 @@ function StepDateTime({
     enabled: !!clientId && !isHomeMode,
     staleTime: 60 * 1000,
   });
-  const savedAddresses = addressesData?.addresses || [];
+  const savedAddresses = useMemo(() => addressesData?.addresses || [], [addressesData?.addresses]);
 
   const saveClientAddressMutation = useMutation({
     mutationFn: (payload) => createMasterClientAddress(clientId, payload),
@@ -674,7 +677,7 @@ function StepDateTime({
         label: addressLabel || undefined,
         make_default: false,
       });
-    } catch (_) {
+    } catch {
       // Error is handled in mutation onError.
     }
   };
@@ -701,7 +704,7 @@ function StepDateTime({
   };
 
   return (
-    <div style={{ padding: '0 16px 16px' }}>
+    <div className="master-order-step" style={{ padding: '0 16px' }}>
       {/* Mini calendar: 2 weeks grid */}
       <p style={{ color: 'var(--tg-hint)', fontSize: 12, margin: '0 0 6px' }}>{tr('Дата', 'Date')}</p>
       <div style={{
@@ -884,7 +887,7 @@ function StepDateTime({
         </p>
       )}
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div className="master-order-action-bar" style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={() => { haptic(); onBack(); }}
           style={{
@@ -970,43 +973,8 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated,
     mutation.mutate(payload);
   }, [mutation, client, services, date, time, address]);
 
-  // MainButton setup
-  useEffect(() => {
-    if (typeof WebApp?.MainButton?.setText === 'function') {
-      WebApp.MainButton.setText(tr('Создать заказ', 'Create order'));
-    }
-    if (typeof WebApp?.MainButton?.show === 'function') {
-      WebApp.MainButton.show();
-    }
-    if (typeof WebApp?.MainButton?.enable === 'function') {
-      WebApp.MainButton.enable();
-    }
-    if (typeof WebApp?.MainButton?.onClick === 'function') {
-      WebApp.MainButton.onClick(handleCreate);
-    }
-    return () => {
-      if (typeof WebApp?.MainButton?.hide === 'function') {
-        WebApp.MainButton.hide();
-      }
-      if (typeof WebApp?.MainButton?.offClick === 'function') {
-        WebApp.MainButton.offClick(handleCreate);
-      }
-    };
-  }, [handleCreate, tr]);
-
-  // Loading state
-  useEffect(() => {
-    if (mutation.isPending) {
-      if (typeof WebApp?.MainButton?.disable === 'function') WebApp.MainButton.disable();
-      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText(tr('Создаём...', 'Creating...'));
-    } else if (!mutation.isSuccess) {
-      if (typeof WebApp?.MainButton?.enable === 'function') WebApp.MainButton.enable();
-      if (typeof WebApp?.MainButton?.setText === 'function') WebApp.MainButton.setText(tr('Создать заказ', 'Create order'));
-    }
-  }, [mutation.isPending, mutation.isSuccess, tr]);
-
   return (
-    <div style={{ padding: '0 16px 16px' }}>
+    <div className="master-order-step" style={{ padding: '0 16px' }}>
       <div style={{
         background: 'var(--tg-secondary-bg)',
         borderRadius: 12,
@@ -1070,23 +1038,43 @@ function StepSummary({ client, services, date, time, address, onBack, onCreated,
         </div>
       )}
 
-      <button
-        onClick={() => { haptic(); onBack(); }}
-        disabled={mutation.isPending}
-        style={{
-          width: '100%',
-          padding: '13px',
-          background: 'var(--tg-secondary-bg)',
-          color: 'var(--tg-text)',
-          border: 'none',
-          borderRadius: 12,
-          fontSize: 15,
-          cursor: 'pointer',
-          opacity: mutation.isPending ? 0.5 : 1,
-        }}
-      >
-        {tr('← Назад', '← Back')}
-      </button>
+      <div className="master-order-action-bar" style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => { haptic(); onBack(); }}
+          disabled={mutation.isPending}
+          style={{
+            flex: 1,
+            padding: '13px',
+            background: 'var(--tg-secondary-bg)',
+            color: 'var(--tg-text)',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 15,
+            cursor: 'pointer',
+            opacity: mutation.isPending ? 0.5 : 1,
+          }}
+        >
+          {tr('← Назад', '← Back')}
+        </button>
+        <button
+          onClick={handleCreate}
+          disabled={mutation.isPending}
+          style={{
+            flex: 2,
+            padding: '13px',
+            background: 'var(--tg-button)',
+            color: 'var(--tg-button-text)',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: mutation.isPending ? 'not-allowed' : 'pointer',
+            opacity: mutation.isPending ? 0.65 : 1,
+          }}
+        >
+          {mutation.isPending ? tr('Создаём...', 'Creating...') : tr('Создать заказ', 'Create order')}
+        </button>
+      </div>
     </div>
   );
 }
@@ -1175,6 +1163,7 @@ export default function OrderCreate({ params, onBack, onCreated }) {
   const [createdOrder, setCreatedOrder] = useState(null);
 
   const handleBack = useCallback(() => {
+    resetViewportScroll();
     if (step > 1) {
       setStep(s => s - 1);
     } else {
@@ -1186,22 +1175,21 @@ export default function OrderCreate({ params, onBack, onCreated }) {
 
   const goToStep = (n) => {
     haptic();
+    resetViewportScroll();
     setStep(n);
   };
 
   const handleCreated = (order) => {
+    resetViewportScroll();
     setCreatedOrder(order);
     onCreated(order);
   };
 
-  // Hide MainButton when not on step 4
   useEffect(() => {
-    if (step !== 4) {
-      if (typeof WebApp?.MainButton?.hide === 'function') {
-        WebApp.MainButton.hide();
-      }
+    if (typeof WebApp?.MainButton?.hide === 'function') {
+      WebApp.MainButton.hide();
     }
-  }, [step]);
+  }, []);
 
   const TITLES = [
     tr('Выбор клиента', 'Client selection'),

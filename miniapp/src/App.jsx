@@ -13,6 +13,7 @@ import MasterOnboarding from './master/pages/MasterOnboarding';
 import MasterSelectScreen from './pages/MasterSelectScreen';
 import MasterTypeUIProvider from './master/components/MasterTypeUIProvider';
 import { useI18n } from './i18n';
+import { resetViewportScroll } from './utils/scroll';
 const WebApp = window.Telegram?.WebApp;
 const LAST_CLIENT_MASTER_STORAGE_KEY = 'client_last_master_id';
 
@@ -49,6 +50,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
   }, []);
 
   const navigate = (pageId, params = {}) => {
+    resetViewportScroll();
     if (pageId === 'home' || pageId === 'history' || pageId === 'news' || pageId === 'settings') {
       setTab(pageId);
       setPage(pageId);
@@ -75,7 +77,7 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
 
   const handleTabNav = (tabId) => {
     if (tabId === tab && !SUB_SCREENS.has(page) && page !== 'master_select') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      resetViewportScroll();
     } else {
       navigate(tabId);
     }

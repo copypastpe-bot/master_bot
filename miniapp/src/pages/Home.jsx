@@ -12,12 +12,13 @@ import OrderCard from '../components/OrderCard';
 import ReviewModal from '../components/ReviewModal';
 import ContactSheet from '../components/ContactSheet';
 import { useI18n } from '../i18n';
+import { DEFAULT_CURRENCY, getCurrencySymbol } from '../master/profileOptions';
 
 const WebApp = window.Telegram?.WebApp;
 function haptic(t = 'light') { WebApp?.HapticFeedback?.impactOccurred(t); }
 
-function Accordion({ services, onBook }) {
-  const { t } = useI18n();
+function Accordion({ services, onBook, currencySymbol }) {
+  const { t, locale } = useI18n();
   const [openId, setOpenId] = useState(null);
   if (!services.length) return <p style={{ color: 'var(--tg-theme-hint-color)', fontSize: 14 }}>{t('clientHome.noServices')}</p>;
   return (
@@ -27,7 +28,11 @@ function Accordion({ services, onBook }) {
           <button className="client-accordion-trigger" onClick={() => { haptic(); setOpenId(openId === s.id ? null : s.id); }}>
             <span className="client-accordion-trigger-name">{s.name}</span>
             <span className="client-accordion-trigger-right">
-              {s.price != null && <span className="client-accordion-trigger-price">{s.price} ₽</span>}
+              {s.price != null && (
+                <span className="client-accordion-trigger-price">
+                  {s.price.toLocaleString(locale)} {getCurrencySymbol(s.currency) || currencySymbol}
+                </span>
+              )}
               <span className={`client-accordion-chevron${openId === s.id ? ' is-open' : ''}`}>▸</span>
             </span>
           </button>
@@ -64,6 +69,7 @@ export default function Home({ activeMasterId, navigate, masterName, onProfileLo
   const prof = profRes.data;
   const activity = actRes.data?.items || [];
   const services = svcRes.data?.services || [];
+  const currencySymbol = getCurrencySymbol(svcRes.data?.currency || prof?.currency || DEFAULT_CURRENCY);
   const news = newsRes.data?.publications?.[0] || null;
 
   // Notify parent when profile is loaded (needed for History ContactSheet)
@@ -151,7 +157,11 @@ export default function Home({ activeMasterId, navigate, masterName, onProfileLo
         <span className="client-section-header-title">{t('clientHome.servicesTitle')}</span>
       </div>
       {svcRes.isLoading ? <Skeleton height={50} /> : (
-        <Accordion services={services} onBook={s => navigate('create_order', { service: s })} />
+        <Accordion
+          services={services}
+          onBook={s => navigate('create_order', { service: s })}
+          currencySymbol={currencySymbol}
+        />
       )}
 
       {/* News preview */}
