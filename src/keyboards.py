@@ -1,7 +1,6 @@
 """Inline keyboards for Master CRM Bot."""
 
 import calendar
-import re
 from datetime import date
 from typing import Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
@@ -512,15 +511,6 @@ def client_promos_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def _has_phone(phone: str | None) -> bool:
-    phone_value = (phone or "").strip()
-    if not phone_value:
-        return False
-    compact = re.sub(r"[^\d+]", "", phone_value)
-    digits = re.sub(r"\D", "", compact)
-    return len(digits) >= 7
-
-
 def _telegram_url(telegram: str | None, master_tg_id: int | None = None) -> str | None:
     telegram_value = (telegram or "").strip()
     if telegram_value:
@@ -546,13 +536,8 @@ def client_master_info_kb(
     rows: list[list[InlineKeyboardButton]] = []
     message_url = _telegram_url(telegram, master_tg_id)
 
-    contact_row = []
-    if _has_phone(phone):
-        contact_row.append(InlineKeyboardButton(text="📞 Позвонить", callback_data="master_call"))
     if message_url:
-        contact_row.append(InlineKeyboardButton(text="💬 Написать", url=message_url))
-    if contact_row:
-        rows.append(contact_row)
+        rows.append([InlineKeyboardButton(text="💬 Написать", url=message_url)])
 
     rows.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
