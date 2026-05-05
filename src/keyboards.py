@@ -514,7 +514,7 @@ def client_promos_kb() -> InlineKeyboardMarkup:
 def _telegram_url(telegram: str | None, master_tg_id: int | None = None) -> str | None:
     telegram_value = (telegram or "").strip()
     if telegram_value:
-        if telegram_value.startswith(("http://", "https://", "tg://")):
+        if telegram_value.startswith(("http://", "https://")):
             return telegram_value
         username = telegram_value.lstrip("@").strip()
         if username.startswith("t.me/"):
@@ -523,8 +523,6 @@ def _telegram_url(telegram: str | None, master_tg_id: int | None = None) -> str 
             return f"https://{username}"
         if username:
             return f"https://t.me/{username}"
-    if master_tg_id:
-        return f"tg://user?id={master_tg_id}"
     return None
 
 

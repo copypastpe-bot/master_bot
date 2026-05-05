@@ -54,6 +54,5 @@ class ClientBotKeyboardTest(unittest.TestCase):
         kb = client_master_info_kb(phone=None, telegram=None, master_tg_id=1001)
         buttons = [button for row in kb.inline_keyboard for button in row]
 
-        self.assertEqual(buttons[0].text, "💬 Написать")
-        self.assertEqual(buttons[0].url, "tg://user?id=1001")
-        self.assertEqual(buttons[1].callback_data, "home")
+        self.assertEqual(len(buttons), 1)
+        self.assertEqual(buttons[0].callback_data, "home")
