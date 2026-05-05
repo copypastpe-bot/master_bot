@@ -702,6 +702,7 @@ async def cb_master_info(callback: CallbackQuery) -> None:
         await callback.answer("Ошибка")
         return
 
+    phone_link = normalize_phone(master.phone or "") or normalize_phone(master.contacts or "")
     phone = master.phone or master.contacts or "—"
     socials = master.telegram or master.socials or "—"
     text = (
@@ -714,7 +715,15 @@ async def cb_master_info(callback: CallbackQuery) -> None:
         f"🕐 {master.work_hours or '—'}\n"
         "━━━━━━━━━━━━━━━"
     )
-    await edit_home_message(callback, text, client_master_info_kb())
+    await edit_home_message(
+        callback,
+        text,
+        client_master_info_kb(
+            phone=phone_link or master.phone,
+            telegram=master.telegram,
+            master_tg_id=master.tg_id,
+        ),
+    )
     await callback.answer()
 
 

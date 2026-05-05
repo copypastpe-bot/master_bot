@@ -37,3 +37,25 @@ class ClientBotKeyboardTest(unittest.TestCase):
         self.assertEqual(buttons[3].text, "❌ Акции")
         self.assertEqual(buttons[3].callback_data, "notifications:toggle:notify_promos")
         self.assertEqual(buttons[4].callback_data, "client_settings")
+
+    def test_master_info_keyboard_has_call_and_message_links(self):
+        from src.keyboards import client_master_info_kb
+
+        kb = client_master_info_kb(phone="+7 (999) 000-11-22", telegram="@anna_nails", master_tg_id=1001)
+        buttons = [button for row in kb.inline_keyboard for button in row]
+
+        self.assertEqual(buttons[0].text, "📞 Позвонить")
+        self.assertEqual(buttons[0].url, "tel:+79990001122")
+        self.assertEqual(buttons[1].text, "💬 Написать")
+        self.assertEqual(buttons[1].url, "https://t.me/anna_nails")
+        self.assertEqual(buttons[2].callback_data, "home")
+
+    def test_master_info_keyboard_falls_back_to_telegram_id_for_message(self):
+        from src.keyboards import client_master_info_kb
+
+        kb = client_master_info_kb(phone=None, telegram=None, master_tg_id=1001)
+        buttons = [button for row in kb.inline_keyboard for button in row]
+
+        self.assertEqual(buttons[0].text, "💬 Написать")
+        self.assertEqual(buttons[0].url, "tg://user?id=1001")
+        self.assertEqual(buttons[1].callback_data, "home")

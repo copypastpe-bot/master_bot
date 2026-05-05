@@ -1,6 +1,7 @@
 """Inline keyboards for Master CRM Bot."""
 
 import calendar
+import re
 from datetime import date
 from typing import Optional
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
@@ -511,10 +512,55 @@ def client_promos_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def client_master_info_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
-    ])
+def _tel_url(phone: str | None) -> str | None:
+    phone_value = (phone or "").strip()
+    if not phone_value:
+        return None
+    compact = re.sub(r"[^\d+]", "", phone_value)
+    if compact.count("+") > 1 or ("+" in compact and not compact.startswith("+")):
+        compact = compact.replace("+", "")
+    digits = re.sub(r"\D", "", compact)
+    if len(digits) < 7:
+        return None
+    return f"tel:{compact}"
+
+
+def _telegram_url(telegram: str | None, master_tg_id: int | None = None) -> str | None:
+    telegram_value = (telegram or "").strip()
+    if telegram_value:
+        if telegram_value.startswith(("http://", "https://", "tg://")):
+            return telegram_value
+        username = telegram_value.lstrip("@").strip()
+        if username.startswith("t.me/"):
+            return f"https://{username}"
+        if username.startswith("telegram.me/"):
+            return f"https://{username}"
+        if username:
+            return f"https://t.me/{username}"
+    if master_tg_id:
+        return f"tg://user?id={master_tg_id}"
+    return None
+
+
+def client_master_info_kb(
+    phone: str | None = None,
+    telegram: str | None = None,
+    master_tg_id: int | None = None,
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    call_url = _tel_url(phone)
+    message_url = _telegram_url(telegram, master_tg_id)
+
+    contact_row = []
+    if call_url:
+        contact_row.append(InlineKeyboardButton(text="📞 Позвонить", url=call_url))
+    if message_url:
+        contact_row.append(InlineKeyboardButton(text="💬 Написать", url=message_url))
+    if contact_row:
+        rows.append(contact_row)
+
+    rows.append([InlineKeyboardButton(text="🏠 Главная", callback_data="home")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def client_settings_kb() -> InlineKeyboardMarkup:
