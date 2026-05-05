@@ -68,6 +68,7 @@ async def landing_page(request: Request, invite_token: str):
     avatar_file_id = data.get("avatar_file_id") or ""
 
     avatar_url = _photo_url(avatar_file_id) if avatar_file_id else None
+    landing_theme = data.get("landing_theme") or "sunset"
     avatar_initials = _initials(name)
     currency_symbol = _CURRENCY_SYMBOLS.get(currency, currency)
 
@@ -119,4 +120,5 @@ async def landing_page(request: Request, invite_token: str):
         "og_title": og_title,
         "og_description": og_description,
         "og_image": og_image,
+        "landing_theme": landing_theme,
     })

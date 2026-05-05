@@ -41,7 +41,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "onboarding_skipped_first_client", "onboarding_banner_shown",
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
     "feedback_delay_hours", "feedback_message", "feedback_reply_5", "review_buttons",
-    "about", "avatar_file_id",
+    "about", "avatar_file_id", "landing_theme",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
