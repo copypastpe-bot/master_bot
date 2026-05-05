@@ -16,6 +16,7 @@ class ClientBotRuntimeTest(unittest.TestCase):
             "cb_history",
             "cb_promos",
             "cb_master_info",
+            "cb_master_call",
             "cb_client_settings",
             "cb_notifications",
             "cb_notifications_toggle",

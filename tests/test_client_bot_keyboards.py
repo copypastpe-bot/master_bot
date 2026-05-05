@@ -45,7 +45,8 @@ class ClientBotKeyboardTest(unittest.TestCase):
         buttons = [button for row in kb.inline_keyboard for button in row]
 
         self.assertEqual(buttons[0].text, "📞 Позвонить")
-        self.assertEqual(buttons[0].url, "tel:+79990001122")
+        self.assertEqual(buttons[0].callback_data, "master_call")
+        self.assertIsNone(buttons[0].url)
         self.assertEqual(buttons[1].text, "💬 Написать")
         self.assertEqual(buttons[1].url, "https://t.me/anna_nails")
         self.assertEqual(buttons[2].callback_data, "home")

@@ -512,17 +512,13 @@ def client_promos_kb() -> InlineKeyboardMarkup:
     ])
 
 
-def _tel_url(phone: str | None) -> str | None:
+def _has_phone(phone: str | None) -> bool:
     phone_value = (phone or "").strip()
     if not phone_value:
-        return None
+        return False
     compact = re.sub(r"[^\d+]", "", phone_value)
-    if compact.count("+") > 1 or ("+" in compact and not compact.startswith("+")):
-        compact = compact.replace("+", "")
     digits = re.sub(r"\D", "", compact)
-    if len(digits) < 7:
-        return None
-    return f"tel:{compact}"
+    return len(digits) >= 7
 
 
 def _telegram_url(telegram: str | None, master_tg_id: int | None = None) -> str | None:
@@ -548,12 +544,11 @@ def client_master_info_kb(
     master_tg_id: int | None = None,
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
-    call_url = _tel_url(phone)
     message_url = _telegram_url(telegram, master_tg_id)
 
     contact_row = []
-    if call_url:
-        contact_row.append(InlineKeyboardButton(text="📞 Позвонить", url=call_url))
+    if _has_phone(phone):
+        contact_row.append(InlineKeyboardButton(text="📞 Позвонить", callback_data="master_call"))
     if message_url:
         contact_row.append(InlineKeyboardButton(text="💬 Написать", url=message_url))
     if contact_row:

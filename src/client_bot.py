@@ -727,6 +727,27 @@ async def cb_master_info(callback: CallbackQuery) -> None:
     await callback.answer()
 
 
+@router.callback_query(F.data == "master_call")
+async def cb_master_call(callback: CallbackQuery) -> None:
+    """Send current master's contact card for calling."""
+    _client, master, _master_client = await get_client_context(callback.from_user.id, _active_masters.get(callback.from_user.id))
+    if not master:
+        await callback.answer("Ошибка", show_alert=True)
+        return
+
+    phone = normalize_phone(master.phone or "") or normalize_phone(master.contacts or "")
+    if not phone:
+        await callback.answer("Телефон мастера не указан", show_alert=True)
+        return
+
+    if callback.message:
+        await callback.message.answer_contact(
+            phone_number=phone,
+            first_name=master.name or "Мастер",
+        )
+    await callback.answer("Контакт отправлен")
+
+
 @router.callback_query(F.data == "client_settings")
 async def cb_client_settings(callback: CallbackQuery) -> None:
     """Show client settings menu."""
