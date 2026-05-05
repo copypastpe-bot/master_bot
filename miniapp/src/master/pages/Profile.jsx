@@ -340,6 +340,25 @@ export default function Profile() {
     }
   };
 
+  const handleCopyMinisite = async () => {
+    const token = inviteData?.invite_token;
+    if (!token) return;
+    const url = `${API_BASE}/m/${token}`;
+    haptic('medium');
+    try {
+      if (typeof navigator?.clipboard?.writeText === 'function') {
+        await navigator.clipboard.writeText(url);
+        showSuccess(t('profile.toasts.minisiteCopied'));
+        return;
+      }
+    } catch {
+      // Fallback to popup below.
+    }
+    if (typeof WebApp?.showPopup === 'function') {
+      WebApp.showPopup({ title: t('profile.minisite.shareTitle'), message: url, buttons: [{ type: 'ok' }] });
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--tg-hint)' }}>
@@ -535,6 +554,18 @@ export default function Profile() {
       </div>
 
       <SectionTitle>{t('profile.sections.minisite')}</SectionTitle>
+      <div className="enterprise-profile-invite">
+        <div className="enterprise-profile-invite-link">
+          {inviteData?.invite_token ? `${API_BASE}/m/${inviteData.invite_token}` : t('common.dash')}
+        </div>
+        <button
+          className="enterprise-profile-copy-btn"
+          onClick={handleCopyMinisite}
+          disabled={!inviteData?.invite_token}
+        >
+          {t('profile.minisite.shareBtn')}
+        </button>
+      </div>
       <div className="enterprise-cell-group">
         {/* Avatar */}
         <div className="enterprise-cell" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 16px', gap: 8 }}>

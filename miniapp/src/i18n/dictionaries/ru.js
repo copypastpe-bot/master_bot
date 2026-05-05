@@ -141,6 +141,7 @@ const ru = {
       currencySaved: 'Валюта сохранена',
       languageSaved: 'Язык сохранён',
       linkCopied: 'Ссылка скопирована',
+      minisiteCopied: 'Ссылка на минисайт скопирована',
       avatarUpdated: 'Аватар обновлён',
       avatarDeleted: 'Аватар удалён',
       photoAdded: 'Фото добавлено',
@@ -200,6 +201,8 @@ const ru = {
       uploading: 'Загрузка…',
       deleteAvatar: 'Удалить аватар',
       addPhoto: '+ Добавить фото',
+      shareBtn: 'Поделиться минисайтом',
+      shareTitle: 'Ссылка на минисайт',
     },
     values: {
       sphereNotSpecified: 'Сфера не указана',

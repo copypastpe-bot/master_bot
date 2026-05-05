@@ -141,6 +141,7 @@ const en = {
       currencySaved: 'Currency saved',
       languageSaved: 'Language saved',
       linkCopied: 'Link copied',
+      minisiteCopied: 'Mini-site link copied',
       avatarUpdated: 'Avatar updated',
       avatarDeleted: 'Avatar deleted',
       photoAdded: 'Photo added',
@@ -200,6 +201,8 @@ const en = {
       uploading: 'Uploading…',
       deleteAvatar: 'Delete avatar',
       addPhoto: '+ Add photo',
+      shareBtn: 'Share mini-site',
+      shareTitle: 'Mini-site link',
     },
     values: {
       sphereNotSpecified: 'Business area not specified',
