@@ -153,3 +153,7 @@ class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(portfolio_result["id"], 2)
         self.assertEqual(portfolio[-1]["file_id"], "new_portfolio")
         self.assertFalse(service.show_on_landing)
+
+    async def test_landing_theme_default(self):
+        data = await db.get_landing_data("invite_anna")
+        self.assertEqual(data["landing_theme"], "sunset")

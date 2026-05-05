@@ -174,6 +174,7 @@ def _parse_master_row(row) -> Master:
         review_buttons=row["review_buttons"] if "review_buttons" in row.keys() else None,
         about=row["about"] if "about" in row.keys() else None,
         avatar_file_id=row["avatar_file_id"] if "avatar_file_id" in row.keys() else None,
+        landing_theme=row["landing_theme"] if "landing_theme" in row.keys() else "sunset",
         created_at=_parse_db_datetime(row["created_at"]),
     )
 
@@ -4105,6 +4106,7 @@ async def get_landing_data(invite_token: str) -> Optional[dict]:
         "bonus_enabled": master.bonus_enabled,
         "bonus_welcome": master.bonus_welcome,
         "avatar_file_id": master.avatar_file_id,
+        "landing_theme": master.landing_theme,
         "invite_token": master.invite_token,
         "portfolio": portfolio,
         "services": services,

@@ -50,6 +50,7 @@ class Master:
     review_buttons: Optional[str] = None
     about: Optional[str] = None
     avatar_file_id: Optional[str] = None
+    landing_theme: str = "sunset"
     created_at: Optional[datetime] = None
 
 
