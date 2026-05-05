@@ -119,7 +119,7 @@
       border-radius: 12px; object-fit: cover;
       scroll-snap-align: start;
     }
-    @media (min-width: 640px) {
+    @media (min-width: 600px) {
       .hero { padding: 64px 0 40px; }
       .portfolio-img { width: 220px; height: 220px; }
     }
@@ -226,7 +226,7 @@
       {% for s in services %}
       <div class="service-row">
         <span>{{ s.name }}</span>
-        <span class="service-price">{{ s.price }} {{ currency_symbol }}</span>
+        <span class="service-price">{{ s.price }} {{ currency_symbol | default('₽') }}</span>
       </div>
       {% endfor %}
     </div>
