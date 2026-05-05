@@ -5,7 +5,7 @@ import logging
 from typing import Optional
 
 from aiogram.exceptions import TelegramForbiddenError
-from aiogram.types import BufferedInputFile, InlineKeyboardMarkup
+from aiogram.types import BufferedInputFile
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 
@@ -14,7 +14,6 @@ from src.api.ratelimit import broadcast_limiter
 from src.config import CLIENT_BOT_USERNAME
 from src.database import get_clients_by_segment, save_campaign, get_broadcast_recipients_count
 from src.models import Master
-from src.notifications import open_app_button
 
 logger = logging.getLogger(__name__)
 
@@ -186,8 +185,6 @@ async def send_broadcast(
 
     sent = 0
     failed = 0
-    reply_markup = InlineKeyboardMarkup(inline_keyboard=[[open_app_button(master_id=master.id)]])
-
     for client in recipients:
         tg_id = client.get("tg_id")
         if not tg_id:
@@ -198,12 +195,12 @@ async def send_broadcast(
             personalized = f"{master.name}:\n\n{personalized_body}"
             if media_bytes and media_type == "photo":
                 file_obj = BufferedInputFile(media_bytes, filename="photo.jpg")
-                await client_bot.send_photo(chat_id=tg_id, photo=file_obj, caption=personalized, reply_markup=reply_markup)
+                await client_bot.send_photo(chat_id=tg_id, photo=file_obj, caption=personalized)
             elif media_bytes and media_type == "video":
                 file_obj = BufferedInputFile(media_bytes, filename="video.mp4")
-                await client_bot.send_video(chat_id=tg_id, video=file_obj, caption=personalized, reply_markup=reply_markup)
+                await client_bot.send_video(chat_id=tg_id, video=file_obj, caption=personalized)
             else:
-                await client_bot.send_message(chat_id=tg_id, text=personalized, reply_markup=reply_markup)
+                await client_bot.send_message(chat_id=tg_id, text=personalized)
             sent += 1
             await asyncio.sleep(0.05)  # 50 ms rate-limit pause
         except TelegramForbiddenError:

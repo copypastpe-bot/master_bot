@@ -471,6 +471,80 @@ def request_notify_kb(request_id: int, client_tg_id: int = None) -> InlineKeyboa
     ])
 
 
+# =============================================================================
+# Client Bot Keyboards
+# =============================================================================
+
+def home_client_kb(multi_master: bool = False) -> InlineKeyboardMarkup:
+    """Client home screen keyboard."""
+    buttons = [
+        [
+            InlineKeyboardButton(text="💰 Мои бонусы", callback_data="bonuses"),
+            InlineKeyboardButton(text="📋 История", callback_data="history"),
+        ],
+        [
+            InlineKeyboardButton(text="🎁 Акции", callback_data="promos"),
+            InlineKeyboardButton(text="👨‍🔧 Мой мастер", callback_data="master_info"),
+        ],
+        [InlineKeyboardButton(text="⚙️ Настройки", callback_data="client_settings")],
+    ]
+    if multi_master:
+        buttons.append([InlineKeyboardButton(text="👥 Сменить мастера", callback_data="change_master")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def client_bonuses_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_bot_history_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_promos_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_master_info_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_settings_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔔 Уведомления", callback_data="notifications")],
+        [InlineKeyboardButton(text="💬 Поддержка", callback_data="client_support")],
+        [InlineKeyboardButton(text="🗑 Удалить профиль", callback_data="client_delete_profile")],
+        [InlineKeyboardButton(text="🏠 Главная", callback_data="home")],
+    ])
+
+
+def client_notifications_back_kb(
+    notify_24h: bool,
+    notify_1h: bool,
+    notify_marketing: bool,
+    notify_promos: bool,
+) -> InlineKeyboardMarkup:
+    """Client notification toggles with back button."""
+    def toggle_text(label: str, value: bool) -> str:
+        return f"{'✅' if value else '❌'} {label}"
+
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=toggle_text("Напоминание за 24ч", notify_24h), callback_data="notifications:toggle:notify_24h")],
+        [InlineKeyboardButton(text=toggle_text("Напоминание за 1ч", notify_1h), callback_data="notifications:toggle:notify_1h")],
+        [InlineKeyboardButton(text=toggle_text("Маркетинг", notify_marketing), callback_data="notifications:toggle:notify_marketing")],
+        [InlineKeyboardButton(text=toggle_text("Акции", notify_promos), callback_data="notifications:toggle:notify_promos")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="client_settings")],
+    ])
+
+
 def settings_kb() -> InlineKeyboardMarkup:
     """Settings section keyboard."""
     return InlineKeyboardMarkup(inline_keyboard=[

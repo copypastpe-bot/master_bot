@@ -144,23 +144,21 @@ class ClientBotNotificationFormattingTest(unittest.TestCase):
         self.assertEqual(rows[0][0].url, "tel:+79990001122")
         self.assertEqual(rows[1][0].text, "Написать в TG")
         self.assertEqual(rows[1][0].url, "https://t.me/anna_nails")
-        self.assertEqual(rows[2][0].text, "Открыть приложение")
-        self.assertIsNotNone(rows[2][0].web_app)
+        self.assertEqual(len(rows), 2)
 
-    def test_reminder_keyboard_has_confirm_contact_and_miniapp(self):
+    def test_reminder_keyboard_has_only_confirm_and_contact(self):
         reminder_24h_keyboard = self.import_notifications().reminder_24h_keyboard
 
         kb = reminder_24h_keyboard(order_id=10)
         buttons = [button for row in kb.inline_keyboard for button in row]
 
+        self.assertEqual(len(buttons), 2)
         self.assertEqual(buttons[0].text, "Подтвердить")
         self.assertEqual(buttons[0].callback_data, "confirm_order:10")
         self.assertEqual(buttons[1].text, "Связаться")
         self.assertEqual(buttons[1].callback_data, "contact_order:10")
-        self.assertEqual(buttons[2].text, "Открыть приложение")
-        self.assertIsNotNone(buttons[2].web_app)
 
-    def test_event_keyboards_add_master_id_to_client_miniapp_url(self):
+    def test_event_keyboards_do_not_include_miniapp_buttons(self):
         notifications = self.import_notifications()
         contact_keyboard = notifications.contact_keyboard
         order_action_keyboard = notifications.order_action_keyboard
@@ -173,21 +171,10 @@ class ClientBotNotificationFormattingTest(unittest.TestCase):
         ]
 
         for kb in keyboards:
-            open_button = [
-                button
-                for row in kb.inline_keyboard
-                for button in row
-                if button.text == "Открыть приложение"
-            ][0]
-            self.assertIn("app=client", open_button.web_app.url)
-            self.assertIn("master_id=1", open_button.web_app.url)
+            buttons = [button for row in kb.inline_keyboard for button in row]
+            self.assertNotIn("Открыть приложение", [button.text for button in buttons])
+            self.assertTrue(all(getattr(button, "web_app", None) is None for button in buttons))
 
-    def test_review_button_adds_order_and_master_id_to_client_miniapp_url(self):
-        review_keyboard = self.import_notifications().review_keyboard
-
-        kb = review_keyboard(order_id=10, master_id=1)
-        url = kb.inline_keyboard[0][0].web_app.url
-
-        self.assertIn("app=client", url)
-        self.assertIn("review_order_id=10", url)
-        self.assertIn("master_id=1", url)
+    def test_review_keyboard_is_removed(self):
+        notifications = self.import_notifications()
+        self.assertFalse(hasattr(notifications, "review_keyboard"))

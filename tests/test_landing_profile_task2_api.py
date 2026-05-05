@@ -13,13 +13,27 @@ class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_db_path = db.DB_PATH
+        self.old_bonus_media_dir = os.environ.get("BONUS_MEDIA_DIR")
+        self.old_avatars_dir = os.environ.get("AVATARS_DIR")
+        self.old_portfolio_dir = os.environ.get("PORTFOLIO_DIR")
         db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
         os.environ["BONUS_MEDIA_DIR"] = self.tmp.name
+        os.environ["AVATARS_DIR"] = self.tmp.name
+        os.environ["PORTFOLIO_DIR"] = self.tmp.name
         await db.init_db()
         await self._seed_landing_fixture()
 
     async def asyncTearDown(self):
         db.DB_PATH = self.old_db_path
+        for key, old_value in {
+            "BONUS_MEDIA_DIR": self.old_bonus_media_dir,
+            "AVATARS_DIR": self.old_avatars_dir,
+            "PORTFOLIO_DIR": self.old_portfolio_dir,
+        }.items():
+            if old_value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old_value
         self.tmp.cleanup()
 
     async def _seed_landing_fixture(self):

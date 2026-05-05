@@ -2,13 +2,12 @@
 
 import logging
 from datetime import datetime
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from src.config import CLIENT_BOT_TOKEN, CLIENT_MINIAPP_URL
+from src.config import CLIENT_BOT_TOKEN
 from src.database import get_order_notification_context
 from src.models import Client, Order, Master
 from src.utils import get_currency_symbol
@@ -29,31 +28,9 @@ def format_datetime(dt: datetime) -> str:
     return f"{dt.day} {MONTHS_RU[dt.month]} в {dt.strftime('%H:%M')}"
 
 
-def _client_miniapp_url(**params: str | int) -> str:
-    parts = urlsplit(CLIENT_MINIAPP_URL)
-    query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    for key, value in params.items():
-        query[key] = str(value)
-    return urlunsplit(parts._replace(query=urlencode(query)))
-
-
-def open_app_button(**params: str | int) -> InlineKeyboardButton:
-    return InlineKeyboardButton(
-        text="Открыть приложение",
-        web_app=WebAppInfo(url=_client_miniapp_url(**params)),
-    )
-
-
-def _master_param(master_id: int | None) -> dict[str, int]:
-    return {"master_id": master_id} if master_id is not None else {}
-
-
 def order_action_keyboard(order_id: int, master_id: int | None = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
-            open_app_button(**_master_param(master_id)),
-        ],
+        [InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}")],
     ])
 
 
@@ -63,7 +40,6 @@ def reminder_24h_keyboard(order_id: int, master_id: int | None = None) -> Inline
             InlineKeyboardButton(text="Подтвердить", callback_data=f"confirm_order:{order_id}"),
             InlineKeyboardButton(text="Связаться", callback_data=f"contact_order:{order_id}"),
         ],
-        [open_app_button(**_master_param(master_id))],
     ])
 
 
@@ -75,22 +51,7 @@ def contact_keyboard(phone: str | None, telegram: str | None, master_id: int | N
         rows.append([InlineKeyboardButton(text="Позвонить", url=f"tel:{phone_value}")])
     if telegram_value:
         rows.append([InlineKeyboardButton(text="Написать в TG", url=f"https://t.me/{telegram_value}")])
-    rows.append([open_app_button(**_master_param(master_id))])
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
-
-def review_keyboard(order_id: int, master_id: int | None = None) -> InlineKeyboardMarkup:
-    params: dict[str, str | int] = {"review_order_id": order_id}
-    if master_id is not None:
-        params["master_id"] = master_id
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(
-                text="Оставить отзыв",
-                web_app=WebAppInfo(url=_client_miniapp_url(**params)),
-            )
-        ],
-    ])
 
 
 async def notify_order_created(

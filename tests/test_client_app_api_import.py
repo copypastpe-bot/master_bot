@@ -8,6 +8,8 @@ class ClientAppApiImportTest(unittest.TestCase):
     def test_client_app_router_is_registered(self):
         with tempfile.TemporaryDirectory() as tmp:
             os.environ["BONUS_MEDIA_DIR"] = tmp
+            os.environ["AVATARS_DIR"] = tmp
+            os.environ["PORTFOLIO_DIR"] = tmp
 
             app_module = importlib.import_module("src.api.app")
             importlib.reload(app_module)
