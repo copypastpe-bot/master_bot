@@ -1,12 +1,14 @@
 """Async database layer for Master CRM Bot."""
 
 import calendar
+import json
 import logging
 import random
+import re
 import string
 from datetime import datetime, date, timedelta
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import aiosqlite
 from dateutil.relativedelta import relativedelta
@@ -68,6 +70,13 @@ ALLOWED_ORDER_FIELDS = frozenset({
 ALLOWED_NOTIFICATION_FIELDS = frozenset({
     "notify_reminders", "notify_marketing", "notify_24h", "notify_1h", "notify_promos",
     "notify_bonuses",
+})
+
+ALLOWED_PROMO_PAGE_FIELDS = frozenset({
+    "slug", "category_id", "style_id", "display_name", "specialization", "tagline",
+    "badge_text", "service_name", "service_price", "promo_text", "promo_enabled",
+    "advantages", "sub_button_text", "photo_path", "photo_url", "qr_path", "qr_url",
+    "is_published", "views_count", "clicks_count",
 })
 
 
@@ -4112,3 +4121,431 @@ async def get_landing_data(invite_token: str) -> Optional[dict]:
         "services": services,
         "reviews": reviews,
     }
+
+
+# =============================================================================
+# Promo Pages
+# =============================================================================
+
+PROMO_RESERVED_SLUGS = frozenset({
+    "admin", "api", "app", "auth", "bot", "dashboard", "help", "login", "media",
+    "privacy", "settings", "static", "support", "terms", "test", "www",
+})
+
+_CYRILLIC_TRANSLIT = str.maketrans({
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ё": "e",
+    "ж": "zh", "з": "z", "и": "i", "й": "y", "к": "k", "л": "l", "м": "m",
+    "н": "n", "о": "o", "п": "p", "р": "r", "с": "s", "т": "t", "у": "u",
+    "ф": "f", "х": "h", "ц": "ts", "ч": "ch", "ш": "sh", "щ": "sch",
+    "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "yu", "я": "ya",
+})
+
+
+def _json_loads_default(value: Any, default: Any) -> Any:
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        return value
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _json_dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def generate_promo_slug(name: str) -> str:
+    """Generate URL-safe promo page slug from a display name."""
+    text = (name or "").strip().lower().translate(_CYRILLIC_TRANSLIT)
+    slug = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    slug = re.sub(r"-{2,}", "-", slug)[:50].strip("-")
+    if not slug:
+        slug = "master"
+    if slug in PROMO_RESERVED_SLUGS:
+        slug = f"{slug}-page"
+    return slug
+
+
+def validate_promo_slug(slug: str) -> str:
+    """Normalize and validate a manually entered promo page slug."""
+    normalized = (slug or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])", normalized):
+        raise ValueError("Slug must be 3-50 chars: latin letters, digits, hyphens")
+    if normalized in PROMO_RESERVED_SLUGS:
+        raise ValueError("Slug is reserved")
+    return normalized
+
+
+def _serialize_promo_page_fields(fields: dict) -> dict:
+    data = dict(fields)
+    if "advantages" in data and not isinstance(data["advantages"], str):
+        data["advantages"] = _json_dumps(data["advantages"])
+    if "promo_enabled" in data:
+        data["promo_enabled"] = 1 if data["promo_enabled"] else 0
+    if "is_published" in data:
+        data["is_published"] = 1 if data["is_published"] else 0
+    return data
+
+
+def _parse_promo_page_row(row) -> dict:
+    item = dict(row)
+    item["promo_enabled"] = bool(item.get("promo_enabled"))
+    item["is_published"] = bool(item.get("is_published"))
+    item["advantages"] = _json_loads_default(item.get("advantages"), [])
+    if "style_config" in item:
+        item["style_config"] = _json_loads_default(item.get("style_config"), {})
+    return item
+
+
+async def get_promo_categories() -> list[dict]:
+    """Return active promo categories with styles and advantage presets."""
+    conn = await get_connection()
+    try:
+        cat_cur = await conn.execute(
+            """
+            SELECT id, slug, name, icon, sort_order
+            FROM promo_categories
+            WHERE is_active = 1
+            ORDER BY sort_order ASC, id ASC
+            """
+        )
+        categories = [dict(row) for row in await cat_cur.fetchall()]
+
+        style_cur = await conn.execute(
+            """
+            SELECT id, category_id, slug, name, config, sort_order
+            FROM promo_styles
+            WHERE is_active = 1
+            ORDER BY sort_order ASC, id ASC
+            """
+        )
+        styles_by_category: dict[int, list[dict]] = {}
+        for row in await style_cur.fetchall():
+            style = dict(row)
+            style["config"] = _json_loads_default(style.get("config"), {})
+            styles_by_category.setdefault(style["category_id"], []).append(style)
+
+        advantage_cur = await conn.execute(
+            """
+            SELECT id, category_id, text, icon, sort_order
+            FROM promo_advantages
+            WHERE is_active = 1
+            ORDER BY sort_order ASC, id ASC
+            """
+        )
+        advantages_by_category: dict[int, list[dict]] = {}
+        for row in await advantage_cur.fetchall():
+            advantage = dict(row)
+            advantages_by_category.setdefault(advantage["category_id"], []).append(advantage)
+
+        for category in categories:
+            category["styles"] = styles_by_category.get(category["id"], [])
+            category["advantages"] = advantages_by_category.get(category["id"], [])
+        return categories
+    finally:
+        await conn.close()
+
+
+async def get_promo_style(style_id: int) -> Optional[dict]:
+    """Return an active promo style by id."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, category_id, slug, name, config, sort_order
+            FROM promo_styles
+            WHERE id = ? AND is_active = 1
+            """,
+            (style_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        style = dict(row)
+        style["config"] = _json_loads_default(style.get("config"), {})
+        return style
+    finally:
+        await conn.close()
+
+
+async def promo_style_belongs_to_category(style_id: int, category_id: int) -> bool:
+    """Return True if active style belongs to active category."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT 1
+            FROM promo_styles s
+            JOIN promo_categories c ON c.id = s.category_id
+            WHERE s.id = ? AND s.category_id = ? AND s.is_active = 1 AND c.is_active = 1
+            LIMIT 1
+            """,
+            (style_id, category_id),
+        )
+        return await cursor.fetchone() is not None
+    finally:
+        await conn.close()
+
+
+async def promo_slug_exists(slug: str, exclude_master_id: Optional[int] = None) -> bool:
+    """Check whether a promo slug is already used."""
+    conn = await get_connection()
+    try:
+        if exclude_master_id is None:
+            cursor = await conn.execute(
+                "SELECT 1 FROM promo_pages WHERE slug = ? LIMIT 1",
+                (slug,),
+            )
+        else:
+            cursor = await conn.execute(
+                "SELECT 1 FROM promo_pages WHERE slug = ? AND master_id != ? LIMIT 1",
+                (slug, exclude_master_id),
+            )
+        return await cursor.fetchone() is not None
+    finally:
+        await conn.close()
+
+
+async def ensure_unique_promo_slug(slug: str, exclude_master_id: Optional[int] = None) -> str:
+    """Return a valid unique promo slug, adding numeric suffixes on collisions."""
+    try:
+        base_slug = validate_promo_slug(slug)
+    except ValueError:
+        base_slug = generate_promo_slug(slug)
+    if len(base_slug) < 3:
+        base_slug = f"{base_slug}-page"
+    base_slug = base_slug[:50].strip("-")
+
+    candidate = base_slug
+    counter = 1
+    while await promo_slug_exists(candidate, exclude_master_id=exclude_master_id):
+        suffix = f"-{counter}"
+        candidate = f"{base_slug[:50 - len(suffix)].rstrip('-')}{suffix}"
+        counter += 1
+    return candidate
+
+
+async def get_promo_slug_suggestions(slug: str, exclude_master_id: Optional[int] = None, limit: int = 3) -> list[str]:
+    """Return available slug suggestions for a requested slug."""
+    base_slug = await ensure_unique_promo_slug(slug, exclude_master_id=exclude_master_id)
+    suggestions = [base_slug]
+    counter = 1
+    while len(suggestions) < limit:
+        suffix = f"-{counter}"
+        candidate = f"{base_slug[:50 - len(suffix)].rstrip('-')}{suffix}"
+        if candidate not in suggestions and not await promo_slug_exists(candidate, exclude_master_id=exclude_master_id):
+            suggestions.append(candidate)
+        counter += 1
+    return suggestions
+
+
+async def get_promo_page_by_master(master_id: int) -> Optional[dict]:
+    """Return promo page for a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            "SELECT * FROM promo_pages WHERE master_id = ? LIMIT 1",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+        return _parse_promo_page_row(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def get_promo_page_by_slug(slug: str, published_only: bool = False) -> Optional[dict]:
+    """Return promo page by slug."""
+    conn = await get_connection()
+    try:
+        if published_only:
+            cursor = await conn.execute(
+                "SELECT * FROM promo_pages WHERE slug = ? AND is_published = 1 LIMIT 1",
+                (slug,),
+            )
+        else:
+            cursor = await conn.execute(
+                "SELECT * FROM promo_pages WHERE slug = ? LIMIT 1",
+                (slug,),
+            )
+        row = await cursor.fetchone()
+        return _parse_promo_page_row(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def create_promo_page(master_id: int, **kwargs) -> dict:
+    """Create a promo page for a master and return the saved row."""
+    required = {
+        "category_id", "style_id", "display_name", "specialization", "tagline",
+        "service_name", "service_price", "advantages",
+    }
+    missing = required - set(kwargs.keys())
+    if missing:
+        raise ValueError(f"Missing promo page fields: {missing}")
+    _validate_fields(set(kwargs.keys()), ALLOWED_PROMO_PAGE_FIELDS, "promo_pages")
+
+    data = _serialize_promo_page_fields(kwargs)
+    data["slug"] = await ensure_unique_promo_slug(data.get("slug") or data["display_name"])
+    data.setdefault("sub_button_text", "Бонусы и уведомления в Telegram")
+
+    conn = await get_connection()
+    try:
+        columns = ["master_id", *data.keys()]
+        placeholders = ", ".join("?" for _ in columns)
+        await conn.execute(
+            f"INSERT INTO promo_pages ({', '.join(columns)}) VALUES ({placeholders})",
+            [master_id, *data.values()],
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+    page = await get_promo_page_by_master(master_id)
+    if page is None:
+        raise RuntimeError("Promo page was not created")
+    return page
+
+
+async def update_promo_page(master_id: int, **kwargs) -> Optional[dict]:
+    """Update a master's promo page and return the saved row."""
+    if not kwargs:
+        return await get_promo_page_by_master(master_id)
+    _validate_fields(set(kwargs.keys()), ALLOWED_PROMO_PAGE_FIELDS, "promo_pages")
+
+    data = _serialize_promo_page_fields(kwargs)
+    if "slug" in data:
+        data["slug"] = validate_promo_slug(data["slug"])
+        if await promo_slug_exists(data["slug"], exclude_master_id=master_id):
+            raise ValueError("Slug is already taken")
+
+    conn = await get_connection()
+    try:
+        set_clause = ", ".join(f"{key} = ?" for key in data.keys())
+        values = [*data.values(), master_id]
+        cursor = await conn.execute(
+            f"""
+            UPDATE promo_pages
+            SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+            WHERE master_id = ?
+            """,
+            values,
+        )
+        await conn.commit()
+        if cursor.rowcount == 0:
+            return None
+    finally:
+        await conn.close()
+
+    return await get_promo_page_by_master(master_id)
+
+
+async def update_promo_page_media(
+    master_id: int,
+    *,
+    photo_path: Optional[str] = None,
+    photo_url: Optional[str] = None,
+    qr_path: Optional[str] = None,
+    qr_url: Optional[str] = None,
+) -> Optional[dict]:
+    """Update promo page media paths/URLs."""
+    updates = {
+        key: value for key, value in {
+            "photo_path": photo_path,
+            "photo_url": photo_url,
+            "qr_path": qr_path,
+            "qr_url": qr_url,
+        }.items() if value is not None
+    }
+    return await update_promo_page(master_id, **updates)
+
+
+async def set_promo_page_published(master_id: int, is_published: bool) -> Optional[dict]:
+    """Publish or unpublish a master's promo page."""
+    return await update_promo_page(master_id, is_published=is_published)
+
+
+async def increment_promo_page_views(slug: str) -> bool:
+    """Increment public promo page views by slug."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            UPDATE promo_pages
+            SET views_count = views_count + 1, updated_at = CURRENT_TIMESTAMP
+            WHERE slug = ? AND is_published = 1
+            """,
+            (slug,),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
+async def increment_promo_page_clicks(slug: str) -> bool:
+    """Increment public promo page CTA clicks by slug."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            UPDATE promo_pages
+            SET clicks_count = clicks_count + 1, updated_at = CURRENT_TIMESTAMP
+            WHERE slug = ? AND is_published = 1
+            """,
+            (slug,),
+        )
+        await conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        await conn.close()
+
+
+async def get_promo_public_data(slug: str, increment_view: bool = False) -> Optional[dict]:
+    """Return public read model for a published promo page."""
+    if increment_view:
+        await increment_promo_page_views(slug)
+
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT
+                p.*,
+                c.slug AS category_slug,
+                c.name AS category_name,
+                c.icon AS category_icon,
+                s.slug AS style_slug,
+                s.name AS style_name,
+                s.config AS style_config,
+                m.name AS master_name
+            FROM promo_pages p
+            JOIN promo_categories c ON c.id = p.category_id
+            JOIN promo_styles s ON s.id = p.style_id
+            JOIN masters m ON m.id = p.master_id
+            WHERE p.slug = ? AND p.is_published = 1
+            LIMIT 1
+            """,
+            (slug,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+
+        item = _parse_promo_page_row(row)
+        item["style"] = {
+            "id": item["style_id"],
+            "slug": item.pop("style_slug"),
+            "name": item.pop("style_name"),
+            "config": item.pop("style_config"),
+        }
+        item["category"] = {
+            "id": item["category_id"],
+            "slug": item.pop("category_slug"),
+            "name": item.pop("category_name"),
+            "icon": item.pop("category_icon"),
+        }
+        return item
+    finally:
+        await conn.close()
