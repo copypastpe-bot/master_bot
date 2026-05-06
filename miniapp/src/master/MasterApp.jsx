@@ -18,6 +18,7 @@ import Services from './pages/Services';
 import PromosList from './pages/PromosList';
 import PromoCreate from './pages/PromoCreate';
 import PromoCard from './pages/PromoCard';
+import PromoPageBuilder from './pages/PromoPageBuilder';
 import Reports from './pages/Reports';
 import Requests from './pages/Requests';
 import Subscription from './pages/Subscription';
@@ -134,6 +135,7 @@ export default function MasterApp() {
     promos:        t('masterApp.titles.promos'),
     promo_new:     t('masterApp.titles.promoNew'),
     promo:         t('masterApp.titles.promo'),
+    promo_page:    t('masterApp.titles.promoPage'),
     reports:       t('masterApp.titles.reports'),
     requests:      t('masterApp.titles.requests'),
     subscription:  t('masterApp.titles.subscription'),
@@ -272,6 +274,15 @@ export default function MasterApp() {
         <div className="master-shell">
           <AppHeader title={currentTitle} />
           <PromoCard promo={promo} onBack={handleBack} />
+        </div>
+      );
+    }
+
+    if (type === 'promo_page') {
+      return (
+        <div className="master-shell">
+          <AppHeader title={currentTitle} />
+          <PromoPageBuilder />
         </div>
       );
     }

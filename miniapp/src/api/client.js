@@ -232,6 +232,31 @@ export const deactivateMasterPromo = (id) =>
 export const getPromoRecipientsCount = () =>
   api.get('/api/master/promos/recipients-count').then(r => r.data);
 
+// Promo page constructor
+export const getPromoPageCategories = () =>
+  api.get('/api/promo/categories').then(r => r.data);
+export const getPromoPage = () =>
+  api.get('/api/promo/page').then(r => r.data);
+export const createPromoPage = (data) =>
+  api.post('/api/promo/page', data).then(r => r.data);
+export const updatePromoPage = (data) =>
+  api.put('/api/promo/page', data).then(r => r.data);
+export const publishPromoPage = () =>
+  api.post('/api/promo/page/publish').then(r => r.data);
+export const unpublishPromoPage = () =>
+  api.post('/api/promo/page/unpublish').then(r => r.data);
+export const updatePromoPageSlug = (slug) =>
+  api.put('/api/promo/page/slug', { slug }).then(r => r.data);
+export const checkPromoPageSlug = (slug) =>
+  api.get('/api/promo/slug/check', { params: { slug } }).then(r => r.data);
+export const uploadPromoPagePhoto = (file) => {
+  const fd = new FormData();
+  fd.append('file', file, file.name || 'promo-photo.jpg');
+  return api.post('/api/promo/photo', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then(r => r.data);
+};
+
 // Reports
 // params: { period: 'week'|'month'|'today' } or { date_from: 'YYYY-MM-DD', date_to: 'YYYY-MM-DD' }
 export const getMasterReports = (params) =>

@@ -293,7 +293,7 @@ export default function More({ onNavigate }) {
       if (typeof navigator?.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(link);
       }
-    } catch (_) {
+    } catch {
       // non-critical
     }
     trackMasterReferralLinkCopied('more-paywall').catch(() => {});
@@ -355,6 +355,13 @@ export default function More({ onNavigate }) {
           value={isSubscriptionActive ? undefined : '🔒'}
           hideChevron={!isSubscriptionActive}
           onClick={isSubscriptionActive ? () => onNavigate('promos') : handleLockedTap}
+        />
+        <Cell
+          icon={<LinkIcon />}
+          label={t('more.cells.promoPage')}
+          value={isSubscriptionActive ? undefined : '🔒'}
+          hideChevron={!isSubscriptionActive}
+          onClick={isSubscriptionActive ? () => onNavigate('promo_page') : handleLockedTap}
         />
       </div>
 
