@@ -219,6 +219,10 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Мария Иванова", promo_html)
         self.assertIn("navigator.sendBeacon('/api/promo/public/mariya-ivanova/click')", promo_html)
         self.assertIn('property="og:title"', promo_html)
+        self.assertIn('class="hero__photo"', promo_html)
+        self.assertIn('class="service-card__price-value"', promo_html)
+        self.assertIn("@media (max-width: 360px)", promo_html)
+        self.assertIn("@media (min-width: 481px)", promo_html)
 
         legacy_request = self._request("/m/invite_maria")
         legacy_response = await landing.landing_page(legacy_request, "invite_maria")
