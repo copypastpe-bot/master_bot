@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from src.api.routers import client, orders, bonuses, promos, services, public, landing
+from src.api.routers import client, orders, bonuses, promos, services, public, landing, promo_pages
 from src.api.routers import auth_router
 from src.api.routers import client_app
 from src.api.routers import client_masters
@@ -63,12 +63,21 @@ PORTFOLIO_DIR = Path(os.getenv("PORTFOLIO_DIR", "/app/data/portfolio"))
 PORTFOLIO_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/portfolio", StaticFiles(directory=str(PORTFOLIO_DIR)), name="portfolio")
 
+PROMO_MEDIA_DIR = Path(os.getenv("PROMO_MEDIA_DIR", "/app/data/promo"))
+try:
+    PROMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+except PermissionError:
+    PROMO_MEDIA_DIR = Path("/tmp/master_bot_promo_media")
+    PROMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media/promo", StaticFiles(directory=str(PROMO_MEDIA_DIR)), name="promo-media")
+
 # Include routers
 app.include_router(landing.router)  # /m/{invite_token} — no /api prefix
 app.include_router(client.router, prefix="/api")
 app.include_router(orders.router, prefix="/api")
 app.include_router(bonuses.router, prefix="/api")
 app.include_router(promos.router, prefix="/api")
+app.include_router(promo_pages.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")

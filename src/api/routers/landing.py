@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from src.config import CLIENT_BOT_USERNAME, MASTER_BOT_USERNAME
-from src.database import get_landing_data
+from src.database import get_landing_data, get_promo_public_data
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -49,10 +49,81 @@ def _initials(name: str) -> str:
     return "".join(w[0].upper() for w in words[:2]) if words else "?"
 
 
-@router.get("/m/{invite_token}", response_class=HTMLResponse)
-async def landing_page(request: Request, invite_token: str):
-    """Render public master landing page by invite token."""
-    data = await get_landing_data(invite_token)
+def _absolute_url(request: Request, url: str | None) -> str | None:
+    if not url:
+        return None
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    return str(request.base_url).rstrip("/") + url
+
+
+def _is_dark_style(style: dict) -> bool:
+    bg = (style.get("bg_color") or "#ffffff").lstrip("#")
+    if len(bg) != 6:
+        return False
+    try:
+        red = int(bg[0:2], 16) / 255
+        green = int(bg[2:4], 16) / 255
+        blue = int(bg[4:6], 16) / 255
+    except ValueError:
+        return False
+    return (0.2126 * red + 0.7152 * green + 0.0722 * blue) < 0.3
+
+
+def _style_with_defaults(style: dict | None) -> dict:
+    data = dict(style or {})
+    defaults = {
+        "primary_color": "#2E7D32",
+        "secondary_color": "#E8F5E9",
+        "accent_color": "#1B5E20",
+        "text_color": "#212121",
+        "text_color_light": "#FFFFFF",
+        "bg_color": "#FFFFFF",
+        "badge_bg": "#2E7D32",
+        "badge_text": "#FFFFFF",
+        "button_bg": "#2E7D32",
+        "button_text": "#FFFFFF",
+        "card_bg": "#F1F8E9",
+        "gradient": "linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)",
+    }
+    return {**defaults, **data}
+
+
+@router.get("/m/{page_key}", response_class=HTMLResponse)
+async def landing_page(request: Request, page_key: str):
+    """Render public promo page by slug, or legacy master landing by invite token."""
+    promo = await get_promo_public_data(page_key, increment_view=True)
+    if promo is not None:
+        style = _style_with_defaults(promo.get("style", {}).get("config"))
+        photo_url = promo.get("photo_url") or ""
+        absolute_photo_url = _absolute_url(request, photo_url)
+        page_url = str(request.url)
+        bot_link = f"https://t.me/{CLIENT_BOT_USERNAME}?start=promo_{promo['master_id']}"
+        return templates.TemplateResponse(
+            request=request,
+            name="promo_page.html",
+            context={
+                "slug": promo["slug"],
+                "page_url": page_url,
+                "display_name": promo["display_name"],
+                "specialization": promo["specialization"],
+                "tagline": promo["tagline"],
+                "badge_text": promo.get("badge_text"),
+                "service_name": promo["service_name"],
+                "service_price": promo["service_price"],
+                "promo_enabled": promo.get("promo_enabled", False),
+                "promo_text": promo.get("promo_text"),
+                "advantages": promo.get("advantages", []),
+                "sub_button_text": promo.get("sub_button_text") or "Бонусы и уведомления в Telegram",
+                "photo_url": photo_url,
+                "absolute_photo_url": absolute_photo_url,
+                "style": style,
+                "is_dark_style": _is_dark_style(style),
+                "bot_link": bot_link,
+            },
+        )
+
+    data = await get_landing_data(page_key)
     if data is None:
         return HTMLResponse(content=_404_HTML, status_code=404)
 
@@ -72,7 +143,7 @@ async def landing_page(request: Request, invite_token: str):
     avatar_initials = _initials(name)
     currency_symbol = _CURRENCY_SYMBOLS.get(currency, currency)
 
-    cta_link = f"https://t.me/{CLIENT_BOT_USERNAME}?start={invite_token}"
+    cta_link = f"https://t.me/{CLIENT_BOT_USERNAME}?start={page_key}"
     master_bot_link = f"https://t.me/{MASTER_BOT_USERNAME}?start=from_landing"
 
     if bonus_enabled and bonus_welcome > 0:
