@@ -115,13 +115,13 @@ function styleVars(styleConfig = {}) {
   const primary = styleConfig.primary_color || '#2E7D32';
   const accent = styleConfig.accent_color || '#1B5E20';
   const secondary = styleConfig.secondary_color || '#E8F5E9';
-  const bg = styleConfig.bg_color || '#FAFCFA';
+  const bg = styleConfig.bg_color || '#FFFFFF';
   const textColor = styleConfig.text_color || '#17211B';
   const cardBg = styleConfig.card_bg || '#F1F8E9';
   const btnBg = styleConfig.button_bg || primary;
   const btnText = styleConfig.button_text || '#FFFFFF';
   return {
-    // Legacy --promo-* used by style swatches in step 2
+    // --promo-* vars: used by style swatches (step 2)
     '--promo-primary': primary,
     '--promo-secondary': secondary,
     '--promo-accent': accent,
@@ -132,25 +132,19 @@ function styleVars(styleConfig = {}) {
     '--promo-button': btnBg,
     '--promo-button-text': btnText,
     '--promo-gradient': styleConfig.gradient || `linear-gradient(135deg, ${primary}, ${accent})`,
-    // Template --screen-* vars used by .promo-lp preview
-    '--screen-bg': bg,
-    '--screen-fg': textColor,
-    '--screen-accent': primary,
-    '--screen-muted': '#6B7280',
-    '--photo-fallback': secondary,
-    '--badge-bg': 'rgba(255,255,255,0.82)',
-    '--badge-fg': accent,
-    '--badge-border': 'rgba(255,255,255,0.68)',
+    // Exact CSS vars from promo_page.html — preview matches real page
+    '--primary': primary,
+    '--primary-dark': accent,
+    '--secondary': secondary,
+    '--text-main': textColor,
+    '--text-light': styleConfig.text_color_light || '#FFFFFF',
+    '--bg-color': bg,
+    '--badge-bg': styleConfig.badge_bg || secondary,
+    '--badge-text': styleConfig.badge_text || accent,
+    '--button-bg': btnBg,
+    '--button-text': btnText,
     '--card-bg': cardBg,
-    '--card-border': secondary,
-    '--pill-bg': secondary,
-    '--pill-border': secondary,
-    '--offer-bg': secondary,
-    '--offer-border': secondary,
-    '--offer-fg': accent,
-    '--cta-bg': btnBg,
-    '--cta-fg': btnText,
-    '--cta-shadow': 'rgba(0,0,0,0.14)',
+    '--gradient': styleConfig.gradient || `linear-gradient(135deg, ${primary}, ${accent})`,
   };
 }
 
@@ -175,52 +169,59 @@ function Field({ label, children, hint, error }) {
   );
 }
 
-function PromoPreview({ form, category, style, photoPreview }) {
-  const vars = styleVars(style?.config);
-  if (photoPreview) vars['--photo-image'] = `url("${photoPreview}")`;
+function PromoPreview({ form, styleVars: vars, photoPreview }) {
   const advantages = form.advantages.filter((item) => item.text.trim()).slice(0, 3);
   return (
-    <article className="promo-lp" style={vars}>
-      <section className="prlp-hero" aria-label="Фото мастера">
-        <div className="prlp-badge">{form.badge_text || category?.name || 'CRM Fit'}</div>
-      </section>
+    <div className="prlp-page" style={vars}>
+      <div className="prlp-hero">
+        {photoPreview
+          ? <img className="prlp-hero__photo" src={photoPreview} alt="" />
+          : <div className="prlp-hero__placeholder" />
+        }
+        <div className="prlp-hero__overlay" />
+        {form.badge_text && <div className="prlp-hero__badge">{form.badge_text}</div>}
+      </div>
 
-      <section className="prlp-content">
-        <header className="prlp-identity">
-          <h1>{form.display_name || 'Имя мастера'}</h1>
-          <p>{form.specialization || 'Специализация'}</p>
-        </header>
+      <div className="prlp-identity">
+        <h1 className="prlp-identity__name">{form.display_name || 'Имя мастера'}</h1>
+        <p className="prlp-identity__role">{form.specialization || 'Специализация'}</p>
+      </div>
 
-        <p className="prlp-tagline">{form.tagline || 'Короткое предложение для новых клиентов'}</p>
+      <div className="prlp-tagline">
+        <p>{form.tagline || 'Короткое предложение для новых клиентов'}</p>
+      </div>
 
-        <section className="prlp-service">
-          <span className="prlp-service-label">Популярная услуга</span>
-          <p className="prlp-service-title">{form.service_name || 'Название услуги'}</p>
-          <p className="prlp-price"><strong>{form.service_price || 'от 0'}</strong></p>
-        </section>
+      <div className="prlp-service-card">
+        <span className="prlp-service-card__label">Популярная услуга</span>
+        <p className="prlp-service-card__name">{form.service_name || 'Название услуги'}</p>
+        <p className="prlp-service-card__price">
+          <span className="prlp-service-card__price-value">{form.service_price || 'от 0'}</span>
+        </p>
+      </div>
 
-        {form.promo_enabled && form.promo_text && (
-          <section className="prlp-offer">
-            <span className="prlp-offer-mark icon-discount" aria-hidden="true" />
-            <span>{form.promo_text}</span>
-          </section>
-        )}
+      {form.promo_enabled && form.promo_text && (
+        <div className="prlp-banner">
+          <span className="prlp-banner__icon">🔥</span>
+          <span className="prlp-banner__text">{form.promo_text}</span>
+        </div>
+      )}
 
-        <section className="prlp-benefits">
-          {advantages.map((item, index) => (
-            <div key={`${item.text}-${index}`} className="prlp-benefit">
-              <span className="prlp-benefit-icon">{item.icon || '✓'}</span>
-              <span>{item.text}</span>
+      <div className="prlp-advantages">
+        {advantages.map((item, index) => (
+          <div key={`${item.text}-${index}`} className="prlp-advantage">
+            <div className="prlp-advantage__icon-wrap">
+              <span className="prlp-advantage__icon">{item.icon || '✓'}</span>
             </div>
-          ))}
-        </section>
+            <p className="prlp-advantage__text">{item.text}</p>
+          </div>
+        ))}
+      </div>
 
-        <button type="button" className="prlp-cta">
-          {form.sub_button_text || EMPTY_FORM.sub_button_text}
-        </button>
-        <p className="prlp-subtext">Бонусы и уведомления в Telegram</p>
-      </section>
-    </article>
+      <div className="prlp-cta-section">
+        <button type="button" className="prlp-cta-button">Забрать бонусы и подписаться</button>
+        <p className="prlp-cta-subtext">{form.sub_button_text || EMPTY_FORM.sub_button_text}</p>
+      </div>
+    </div>
   );
 }
 
@@ -468,8 +469,7 @@ export default function PromoPageBuilder() {
           </div>
           <PromoPreview
             form={form}
-            category={currentCategory}
-            style={currentStyle}
+            styleVars={styleVars(currentStyle?.config)}
             photoPreview={existingPhotoUrl}
           />
         </section>
@@ -638,7 +638,7 @@ export default function PromoPageBuilder() {
 
       {step === 3 && (
         <section className="promo-builder-preview-wrap">
-          <PromoPreview form={form} category={currentCategory} style={currentStyle} photoPreview={previewUrl} />
+          <PromoPreview form={form} styleVars={styleVars(currentStyle?.config)} photoPreview={previewUrl} />
         </section>
       )}
 
