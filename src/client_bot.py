@@ -63,11 +63,13 @@ from src.keyboards import (
 from src.notifications import contact_keyboard, order_action_keyboard
 from src.states import ClientDeletion, ClientRegistration
 from src.utils import (
+    DEFAULT_WELCOME_MESSAGE,
     DEFAULT_FEEDBACK_REPLY_5,
     format_phone,
     get_currency_symbol,
     normalize_phone,
     parse_date,
+    render_bonus_message,
     render_feedback_message,
 )
 
@@ -86,6 +88,44 @@ MONTHS_RU = [
     "", "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
 ]
+
+
+def parse_start_payload(payload: str | None) -> tuple[str, str | int | None]:
+    """Parse client bot /start payload into a known entry source."""
+    if not payload:
+        return "empty", None
+
+    payload = payload.strip()
+    if payload.startswith("promo_"):
+        master_id = payload[6:]
+        if master_id.isdigit() and int(master_id) > 0:
+            return "promo", int(master_id)
+        return "invalid_promo", None
+
+    if payload.startswith("invite_"):
+        return "invite", payload[7:]
+
+    return "invite", payload
+
+
+async def send_master_welcome(bot: Bot, chat_id: int, client, master, master_client) -> None:
+    """Send a welcome text after promo-link registration or first connection."""
+    if master.welcome_message or master.bonus_welcome > 0:
+        text = render_bonus_message(
+            template=master.welcome_message,
+            default=DEFAULT_WELCOME_MESSAGE,
+            client_name=client.name,
+            master_name=master.name,
+            bonus_amount=master.bonus_welcome,
+            balance=master_client.bonus_balance,
+            currency=get_currency_symbol(master.currency),
+            welcome_bonus=master.bonus_welcome,
+            birthday_bonus=master.bonus_birthday,
+        )
+    else:
+        text = f"Вы подключились к специалисту {master.name}."
+
+    await bot.send_message(chat_id, text)
 
 
 async def build_home_text(client, master, master_client) -> str:
@@ -248,14 +288,19 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
 
     tg_id = message.from_user.id
     args = message.text.split(maxsplit=1)
-    invite_token = args[1].strip() if len(args) >= 2 else None
-    if invite_token and invite_token.startswith("invite_"):
-        invite_token = invite_token[7:]
+    start_payload = args[1].strip() if len(args) >= 2 else None
+    entry_source, entry_value = parse_start_payload(start_payload)
 
     client = await get_client_by_tg_id(tg_id)
 
-    if invite_token:
-        master = await get_master_by_invite_token(invite_token)
+    if entry_source in {"invite", "promo", "invalid_promo"}:
+        if entry_source == "promo":
+            master = await get_master_by_id(int(entry_value))
+        elif entry_source == "invite":
+            master = await get_master_by_invite_token(str(entry_value))
+        else:
+            master = None
+
         if not master:
             await bot.send_message(
                 message.chat.id,
@@ -265,7 +310,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
             return
 
         if not client:
-            await state.update_data(master_id=master.id)
+            await state.update_data(master_id=master.id, entry_source=entry_source)
             await bot.send_message(
                 message.chat.id,
                 "Привет!\n\n"
@@ -284,7 +329,11 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         if not existing_link:
             await link_existing_client_to_master(client.id, master.id)
             await accrue_welcome_bonus(master.id, client.id)
-            await bot.send_message(message.chat.id, f"Вы подключились к специалисту {master.name}!")
+            master_client = await get_master_client(master.id, client.id)
+            if master_client and entry_source == "promo":
+                await send_master_welcome(bot, message.chat.id, client, master, master_client)
+            else:
+                await bot.send_message(message.chat.id, f"Вы подключились к специалисту {master.name}!")
         else:
             await bot.send_message(message.chat.id, f"Вы уже подключены к специалисту {master.name}")
 
@@ -529,6 +578,7 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     master_client = await link_client_to_master(master_id, client.id)
     master = await get_master_by_id(master_id)
     await accrue_welcome_bonus(master_id, client.id)
+    master_client = await get_master_client(master_id, client.id) or master_client
     await state.clear()
     _active_masters[tg_id] = master_id
 
@@ -540,7 +590,10 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
     await ensure_home_reply_keyboard(bot, message.chat.id)
 
     if master:
-        await bot.send_message(message.chat.id, f"Вы подключились к специалисту {master.name}.")
+        if data.get("entry_source") == "promo":
+            await send_master_welcome(bot, message.chat.id, client, master, master_client)
+        else:
+            await bot.send_message(message.chat.id, f"Вы подключились к специалисту {master.name}.")
         await show_home(bot, client, master, master_client, message.chat.id, force_new=True)
 
 
