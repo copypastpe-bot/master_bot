@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "title": "Минилендинг мастера — выход конструктора",
+    "description": "Canonical generated landing page for a Telegram mini app constructor preview."
+  },
+  "constructor": {
+    "outputType": "master_promo_landing",
+    "schemaVersion": "promo_landing_v1",
+    "themeId": "fresh_green",
+    "categoryId": "cleaning",
+    "iconSetId": "service_soft_v1"
+  },
+  "landing": {
+    "themeClass": "theme-fresh",
+    "photoClass": "photo-cleaning",
+    "badge": "ЧИСТО • БЫСТРО • НАДЕЖНО",
+    "masterName": "Мария Иванова",
+    "specialization": "частный клинер",
+    "tagline": "Уборка без лишнего шума: приезжаю вовремя, беру свои средства и оставляю понятный результат.",
+    "serviceLabel": "Популярная услуга",
+    "serviceName": "Уборка квартиры до 50 м²",
+    "pricePrefix": "от",
+    "price": "4 000",
+    "currency": "дин",
+    "offerText": "Скидка на первую уборку при записи через Telegram",
+    "offerIconClass": "icon-discount",
+    "benefitOneText": "Приезжаю вовремя",
+    "benefitOneIconClass": "icon-clock",
+    "benefitTwoText": "Свои средства",
+    "benefitTwoIconClass": "icon-sparkle",
+    "benefitThreeText": "Напомню о записи",
+    "benefitThreeIconClass": "icon-bell",
+    "ctaText": "Забрать бонус и подписаться",
+    "ctaHref": "#subscribe",
+    "subtext": "Бонусы и напоминания придут в Telegram."
+  }
+}

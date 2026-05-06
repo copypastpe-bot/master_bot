@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-05-06T10:42:00+02:00",
+  "generatedBy": "agent",
+  "notes": "Converted the earlier comparison prototype into a canonical constructor output: one generated Telegram mini-landing with compact data, fixed layout, selectable theme class, promotional icon, benefit icons, photo-backed hero, and a single CTA. The gallery wrapper was removed so this can later be connected to the app constructor as the generated result.",
+  "sources": [
+    {
+      "label": "Promo page design specification",
+      "type": "local_file",
+      "ref": "mots0glf-DESIGN_SPEC_PROMO_PAGE.md"
+    },
+    {
+      "label": "Constructor and promo-page visual reference",
+      "type": "local_file",
+      "ref": "mots7c6t-2026-05-05-16.46.22.jpg"
+    },
+    {
+      "label": "Working brand extraction",
+      "type": "derived",
+      "ref": "brand-spec.md"
+    }
+  ]
+}

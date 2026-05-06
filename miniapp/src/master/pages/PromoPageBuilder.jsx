@@ -112,17 +112,45 @@ function buildInitialForm(page, categories) {
 }
 
 function styleVars(styleConfig = {}) {
+  const primary = styleConfig.primary_color || '#2E7D32';
+  const accent = styleConfig.accent_color || '#1B5E20';
+  const secondary = styleConfig.secondary_color || '#E8F5E9';
+  const bg = styleConfig.bg_color || '#FAFCFA';
+  const textColor = styleConfig.text_color || '#17211B';
+  const cardBg = styleConfig.card_bg || '#F1F8E9';
+  const btnBg = styleConfig.button_bg || primary;
+  const btnText = styleConfig.button_text || '#FFFFFF';
   return {
-    '--promo-primary': styleConfig.primary_color || '#2E7D32',
-    '--promo-secondary': styleConfig.secondary_color || '#E8F5E9',
-    '--promo-accent': styleConfig.accent_color || '#1B5E20',
-    '--promo-text': styleConfig.text_color || '#17211B',
+    // Legacy --promo-* used by style swatches in step 2
+    '--promo-primary': primary,
+    '--promo-secondary': secondary,
+    '--promo-accent': accent,
+    '--promo-text': textColor,
     '--promo-light': styleConfig.text_color_light || '#FFFFFF',
-    '--promo-bg': styleConfig.bg_color || '#FFFFFF',
-    '--promo-card': styleConfig.card_bg || '#F1F8E9',
-    '--promo-button': styleConfig.button_bg || styleConfig.primary_color || '#2E7D32',
-    '--promo-button-text': styleConfig.button_text || '#FFFFFF',
-    '--promo-gradient': styleConfig.gradient || `linear-gradient(135deg, ${styleConfig.primary_color || '#2E7D32'}, ${styleConfig.accent_color || '#1B5E20'})`,
+    '--promo-bg': bg,
+    '--promo-card': cardBg,
+    '--promo-button': btnBg,
+    '--promo-button-text': btnText,
+    '--promo-gradient': styleConfig.gradient || `linear-gradient(135deg, ${primary}, ${accent})`,
+    // Template --screen-* vars used by .promo-lp preview
+    '--screen-bg': bg,
+    '--screen-fg': textColor,
+    '--screen-accent': primary,
+    '--screen-muted': '#6B7280',
+    '--photo-fallback': secondary,
+    '--badge-bg': 'rgba(255,255,255,0.82)',
+    '--badge-fg': accent,
+    '--badge-border': 'rgba(255,255,255,0.68)',
+    '--card-bg': cardBg,
+    '--card-border': secondary,
+    '--pill-bg': secondary,
+    '--pill-border': secondary,
+    '--offer-bg': secondary,
+    '--offer-border': secondary,
+    '--offer-fg': accent,
+    '--cta-bg': btnBg,
+    '--cta-fg': btnText,
+    '--cta-shadow': 'rgba(0,0,0,0.14)',
   };
 }
 
@@ -149,43 +177,50 @@ function Field({ label, children, hint, error }) {
 
 function PromoPreview({ form, category, style, photoPreview }) {
   const vars = styleVars(style?.config);
+  if (photoPreview) vars['--photo-image'] = `url("${photoPreview}")`;
   const advantages = form.advantages.filter((item) => item.text.trim()).slice(0, 3);
   return (
-    <div className="promo-preview-shell" style={vars}>
-      <section className="promo-preview-hero">
-        <div className="promo-preview-badge">{form.badge_text || category?.name || 'CRM Fit'}</div>
-        <h3>{form.display_name || 'Имя мастера'}</h3>
-        <p>{form.specialization || 'Специализация'}</p>
-        <strong>{form.tagline || 'Короткое предложение для новых клиентов'}</strong>
-        <div className="promo-preview-photo">
-          {photoPreview ? <img src={photoPreview} alt="" /> : <span>Фото</span>}
-        </div>
+    <article className="promo-lp" style={vars}>
+      <section className="prlp-hero" aria-label="Фото мастера">
+        <div className="prlp-badge">{form.badge_text || category?.name || 'CRM Fit'}</div>
       </section>
 
-      <section className="promo-preview-service">
-        <div>
-          <span>Популярная услуга</span>
-          <b>{form.service_name || 'Название услуги'}</b>
-        </div>
-        <strong>{form.service_price || 'от 0'}</strong>
+      <section className="prlp-content">
+        <header className="prlp-identity">
+          <h1>{form.display_name || 'Имя мастера'}</h1>
+          <p>{form.specialization || 'Специализация'}</p>
+        </header>
+
+        <p className="prlp-tagline">{form.tagline || 'Короткое предложение для новых клиентов'}</p>
+
+        <section className="prlp-service">
+          <span className="prlp-service-label">Популярная услуга</span>
+          <p className="prlp-service-title">{form.service_name || 'Название услуги'}</p>
+          <p className="prlp-price"><strong>{form.service_price || 'от 0'}</strong></p>
+        </section>
+
+        {form.promo_enabled && form.promo_text && (
+          <section className="prlp-offer">
+            <span className="prlp-offer-mark icon-discount" aria-hidden="true" />
+            <span>{form.promo_text}</span>
+          </section>
+        )}
+
+        <section className="prlp-benefits">
+          {advantages.map((item, index) => (
+            <div key={`${item.text}-${index}`} className="prlp-benefit">
+              <span className="prlp-benefit-icon">{item.icon || '✓'}</span>
+              <span>{item.text}</span>
+            </div>
+          ))}
+        </section>
+
+        <button type="button" className="prlp-cta">
+          {form.sub_button_text || EMPTY_FORM.sub_button_text}
+        </button>
+        <p className="prlp-subtext">Бонусы и уведомления в Telegram</p>
       </section>
-
-      {form.promo_enabled && form.promo_text && (
-        <section className="promo-preview-offer">{form.promo_text}</section>
-      )}
-
-      <section className="promo-preview-advantages">
-        {advantages.map((item, index) => (
-          <div key={`${item.text}-${index}`}>
-            <span>{item.icon || '✓'}</span>
-            <b>{item.text}</b>
-          </div>
-        ))}
-      </section>
-
-      <button type="button" className="promo-preview-cta">Забрать бонусы и подписаться</button>
-      <p className="promo-preview-sub">{form.sub_button_text || EMPTY_FORM.sub_button_text}</p>
-    </div>
+    </article>
   );
 }
 

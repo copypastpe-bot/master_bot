@@ -1,0 +1,73 @@
+{
+  "title": "Master Promo Mini-Landing Output",
+  "slug": "master-promo-mini-landing-output",
+  "pinned": true,
+  "status": "active",
+  "preview": {
+    "type": "html",
+    "entry": "index.html"
+  },
+  "document": {
+    "format": "html_template_v1",
+    "templatePath": "template.html",
+    "generatedPreviewPath": "index.html",
+    "dataPath": "data.json",
+    "dataJson": {
+      "meta": {
+        "title": "Минилендинг мастера — выход конструктора",
+        "description": "Canonical generated landing page for a Telegram mini app constructor preview."
+      },
+      "constructor": {
+        "outputType": "master_promo_landing",
+        "schemaVersion": "promo_landing_v1",
+        "themeId": "fresh_green",
+        "categoryId": "cleaning",
+        "iconSetId": "service_soft_v1"
+      },
+      "landing": {
+        "themeClass": "theme-fresh",
+        "photoClass": "photo-cleaning",
+        "badge": "ЧИСТО • БЫСТРО • НАДЕЖНО",
+        "masterName": "Мария Иванова",
+        "specialization": "частный клинер",
+        "tagline": "Уборка без лишнего шума: приезжаю вовремя, беру свои средства и оставляю понятный результат.",
+        "serviceLabel": "Популярная услуга",
+        "serviceName": "Уборка квартиры до 50 м²",
+        "pricePrefix": "от",
+        "price": "4 000",
+        "currency": "дин",
+        "offerText": "Скидка на первую уборку при записи через Telegram",
+        "offerIconClass": "icon-discount",
+        "benefitOneText": "Приезжаю вовремя",
+        "benefitOneIconClass": "icon-clock",
+        "benefitTwoText": "Свои средства",
+        "benefitTwoIconClass": "icon-sparkle",
+        "benefitThreeText": "Напомню о записи",
+        "benefitThreeIconClass": "icon-bell",
+        "ctaText": "Забрать бонус и подписаться",
+        "ctaHref": "#subscribe",
+        "subtext": "Бонусы и напоминания придут в Telegram."
+      }
+    },
+    "sourceJson": {
+      "type": "local_file",
+      "input": {
+        "files": [
+          "mots0glf-DESIGN_SPEC_PROMO_PAGE.md",
+          "mots7c6t-2026-05-05-16.46.22.jpg",
+          "brand-spec.md"
+        ],
+        "purpose": "constructor_output_preview"
+      },
+      "outputMapping": {
+        "dataPaths": [
+          {
+            "from": "constructor_preview_fields",
+            "to": "landing"
+          }
+        ]
+      },
+      "refreshPermission": "manual_refresh_granted_for_read_only"
+    }
+  }
+}
