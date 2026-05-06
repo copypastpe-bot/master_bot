@@ -44,3 +44,4 @@ prompts/
 
 # Claude Code local config
 .claude/
+.pycache_local/
