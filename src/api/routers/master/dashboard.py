@@ -59,6 +59,7 @@ async def get_master_me(
         "bonus_welcome": master.bonus_welcome,
         "gc_connected": master.gc_connected,
         "client_count": client_count,
+        "promo_page_started_at": master.promo_page_started_at.isoformat() if master.promo_page_started_at else None,
     }
 
 

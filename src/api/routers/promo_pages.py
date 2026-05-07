@@ -21,6 +21,7 @@ from src.database import (
     get_promo_public_data,
     get_promo_slug_suggestions,
     increment_promo_page_clicks,
+    mark_promo_page_started,
     promo_slug_exists,
     promo_style_belongs_to_category,
     set_promo_page_published,
@@ -240,6 +241,14 @@ async def get_promo_page_api(master: Master = Depends(get_current_master)):
     if not page:
         raise HTTPException(status_code=404, detail="Promo page not found")
     return _page_response(page)
+
+
+@router.post("/promo/page/start")
+async def start_promo_page_api(master: Master = Depends(get_current_master)):
+    started_at = await mark_promo_page_started(master.id)
+    if not started_at:
+        raise HTTPException(status_code=404, detail="Master not found")
+    return {"promo_page_started_at": started_at.isoformat()}
 
 
 @router.post("/promo/page", status_code=201)

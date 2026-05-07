@@ -195,6 +195,22 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(unsupported.exception.status_code, 415)
 
+    async def test_start_promo_page_is_account_level_and_does_not_create_page(self):
+        first = await self.promo_pages.start_promo_page_api(master=self.master)
+        self.assertIn("promo_page_started_at", first)
+        self.assertIsNotNone(first["promo_page_started_at"])
+
+        self.assertIsNone(await db.get_promo_page_by_master(self.master.id))
+
+        second = await self.promo_pages.start_promo_page_api(master=self.master)
+        self.assertEqual(second, first)
+
+        from src.api.routers.master import dashboard
+
+        reloaded_dashboard = importlib.reload(dashboard)
+        me = await reloaded_dashboard.get_master_me(master=await db.get_master_by_id(self.master.id))
+        self.assertEqual(me["promo_page_started_at"], first["promo_page_started_at"])
+
     async def test_app_routes_static_mount_and_ssr_promo_page(self):
         await self._create_page()
         await self.promo_pages.upload_promo_photo_api(file=self._upload_image(), master=self.master)
