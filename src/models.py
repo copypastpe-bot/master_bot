@@ -51,6 +51,7 @@ class Master:
     about: Optional[str] = None
     avatar_file_id: Optional[str] = None
     landing_theme: str = "sunset"
+    promo_page_started_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
 

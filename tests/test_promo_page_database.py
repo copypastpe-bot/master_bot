@@ -134,3 +134,16 @@ class PromoPageDatabaseTest(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaises(ValueError):
             await db.update_promo_page(1, slug="кириллица")
+
+    async def test_mark_promo_page_started_is_idempotent(self):
+        await self._seed_masters()
+
+        first = await db.mark_promo_page_started(1)
+        self.assertIsNotNone(first)
+
+        second = await db.mark_promo_page_started(1)
+        self.assertEqual(second, first)
+
+        masters = await db.get_masters()
+        master = next(item for item in masters if item.id == 1)
+        self.assertEqual(master.promo_page_started_at, first)

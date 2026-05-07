@@ -43,7 +43,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "onboarding_skipped_first_client", "onboarding_banner_shown",
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
     "feedback_delay_hours", "feedback_message", "feedback_reply_5", "review_buttons",
-    "about", "avatar_file_id", "landing_theme",
+    "about", "avatar_file_id", "landing_theme", "promo_page_started_at",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -184,6 +184,7 @@ def _parse_master_row(row) -> Master:
         about=row["about"] if "about" in row.keys() else None,
         avatar_file_id=row["avatar_file_id"] if "avatar_file_id" in row.keys() else None,
         landing_theme=row["landing_theme"] if "landing_theme" in row.keys() else "sunset",
+        promo_page_started_at=_parse_db_datetime(row["promo_page_started_at"]) if "promo_page_started_at" in row.keys() else None,
         created_at=_parse_db_datetime(row["created_at"]),
     )
 
@@ -4353,6 +4354,31 @@ async def get_promo_page_by_master(master_id: int) -> Optional[dict]:
         return _parse_promo_page_row(row) if row else None
     finally:
         await conn.close()
+
+
+async def mark_promo_page_started(master_id: int) -> Optional[datetime]:
+    """Mark that a master started minisite creation and return the timestamp."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """
+            UPDATE masters
+            SET promo_page_started_at = COALESCE(promo_page_started_at, CURRENT_TIMESTAMP)
+            WHERE id = ?
+            """,
+            (master_id,),
+        )
+        await conn.commit()
+        cursor = await conn.execute(
+            "SELECT promo_page_started_at FROM masters WHERE id = ?",
+            (master_id,),
+        )
+        row = await cursor.fetchone()
+    finally:
+        await conn.close()
+    if not row:
+        return None
+    return _parse_db_datetime(row["promo_page_started_at"])
 
 
 async def get_promo_page_by_slug(slug: str, published_only: bool = False) -> Optional[dict]:
