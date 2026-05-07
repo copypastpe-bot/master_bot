@@ -20,29 +20,34 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --primary: {{ style.primary_color }};
-      --primary-dark: {{ style.accent_color }};
-      --secondary: {{ style.secondary_color }};
-      --text-main: {{ style.text_color }};
-      --text-light: {{ style.text_color_light }};
-      --bg-color: {{ style.bg_color }};
+      --screen-bg: {{ style.screen_bg }};
+      --screen-fg: {{ style.screen_fg }};
+      --screen-muted: {{ style.screen_muted }};
+      --screen-accent: {{ style.screen_accent }};
       --badge-bg: {{ style.badge_bg }};
-      --badge-text: {{ style.badge_text }};
-      --button-bg: {{ style.button_bg }};
-      --button-text: {{ style.button_text }};
+      --badge-fg: {{ style.badge_fg }};
+      --badge-border: {{ style.badge_border }};
       --card-bg: {{ style.card_bg }};
-      --gradient: {{ style.gradient }};
+      --card-border: {{ style.card_border }};
+      --pill-bg: {{ style.pill_bg }};
+      --pill-border: {{ style.pill_border }};
+      --offer-bg: {{ style.offer_bg }};
+      --offer-border: {{ style.offer_border }};
+      --offer-fg: {{ style.offer_fg }};
+      --cta-bg: {{ style.cta_bg }};
+      --cta-fg: {{ style.cta_fg }};
+      --cta-shadow: {{ style.cta_shadow }};
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+    html { font-size: 16px; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
     body {
-      font-family: 'Inter', sans-serif;
-      background: #F5F5F5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #F0F0F0;
       min-height: 100vh;
       display: flex;
       justify-content: center;
@@ -53,7 +58,8 @@
     .promo-page {
       width: 100%;
       max-width: 430px;
-      background: var(--bg-color);
+      background: var(--screen-bg);
+      color: var(--screen-fg);
       min-height: 100vh;
       position: relative;
       overflow: hidden;
@@ -62,201 +68,216 @@
     .hero {
       position: relative;
       width: 100%;
-      height: 420px;
+      height: 315px;
       overflow: hidden;
+      background-color: #ccc;
+      background-image: url('{{ photo_url }}');
+      background-position: center;
+      background-size: cover;
     }
 
-    .hero__photo {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      object-position: center top;
-      display: block;
-    }
-
-    .hero__overlay {
+    .hero__grad {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 50%;
-      background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, var(--bg-color) 100%);
+      inset: 0;
+      background:
+        radial-gradient(circle at 72% 28%, rgba(255,255,255,.15), transparent 7rem),
+        linear-gradient(125deg, transparent 0 40%, rgba(255,255,255,.1) 40% 54%, transparent 54%),
+        linear-gradient(180deg, {% if is_dark_style %}rgba(0,0,0,.3){% else %}rgba(0,0,0,.1){% endif %}, {% if is_dark_style %}rgba(0,0,0,.4) 52%{% else %}rgba(0,0,0,.25) 52%{% endif %}, var(--screen-bg) 100%);
+    }
+
+    .hero__fade {
+      position: absolute;
+      inset: auto 0 0;
+      height: 92px;
+      background: linear-gradient(180deg, transparent, var(--screen-bg));
     }
 
     .hero__badge {
       position: absolute;
-      top: 20px;
+      top: 50px;
       left: 16px;
-      max-width: calc(100% - 32px);
+      z-index: 1;
+      border: 1px solid var(--badge-border);
+      border-radius: 999px;
       background: var(--badge-bg);
-      color: var(--badge-text);
+      color: var(--badge-fg);
+      padding: 8px 11px;
       font-family: 'Montserrat', sans-serif;
+      font-size: 9px;
       font-weight: 800;
-      font-size: 10px;
-      letter-spacing: 2px;
+      letter-spacing: .12em;
+      line-height: 1;
       text-transform: uppercase;
-      padding: 8px 14px;
-      border-radius: 6px;
-      line-height: 1.2;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 8px 22px rgba(0,0,0,.12);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      max-width: calc(100% - 32px);
       overflow-wrap: anywhere;
     }
 
-    .identity {
-      padding: 0 24px;
-      margin-top: -40px;
+    .content {
       position: relative;
-      z-index: 2;
+      margin-top: -46px;
+      padding: 0 18px 20px;
     }
 
+    .identity { padding: 0 6px 13px; }
+
     .identity__name {
+      margin: 0 0 5px;
       font-family: 'Montserrat', sans-serif;
+      font-size: 29px;
       font-weight: 700;
-      font-size: 28px;
-      line-height: 1.15;
-      color: var(--text-main);
-      margin-bottom: 4px;
+      line-height: 1.02;
+      letter-spacing: 0;
       overflow-wrap: anywhere;
     }
 
     .identity__role {
+      margin: 0;
+      color: var(--screen-accent);
       font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 1.5px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .11em;
+      line-height: 1;
       text-transform: uppercase;
-      color: var(--primary);
       overflow-wrap: anywhere;
     }
 
     .tagline {
-      padding: 12px 24px 0;
-    }
-
-    .tagline p {
-      font-family: 'Inter', sans-serif;
-      font-weight: 400;
-      font-size: 15px;
-      line-height: 1.5;
-      color: var(--text-main);
-      opacity: 0.8;
+      margin: 0 6px 16px;
+      color: var(--screen-muted);
+      font-size: 14px;
+      line-height: 1.45;
       overflow-wrap: anywhere;
     }
 
     .service-card {
-      margin: 20px 24px 0;
+      border: 1px solid var(--card-border);
+      border-radius: 19px;
       background: var(--card-bg);
-      border-radius: 16px;
-      padding: 20px;
+      padding: 16px;
     }
 
     .service-card__label {
-      display: inline-block;
-      background: var(--secondary);
-      color: var(--primary);
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      font-size: 11px;
-      letter-spacing: 0.5px;
-      padding: 5px 12px;
-      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
       margin-bottom: 12px;
-      border: 1px solid var(--primary);
+      border: 1px solid var(--pill-border);
+      border-radius: 999px;
+      background: var(--pill-bg);
+      color: var(--screen-accent);
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1;
     }
 
     .service-card__name {
-      font-family: 'Inter', sans-serif;
-      font-weight: 500;
-      font-size: 16px;
-      line-height: 1.3;
-      color: var(--text-main);
-      margin-bottom: 8px;
+      margin: 0 0 8px;
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1.25;
       overflow-wrap: anywhere;
     }
 
     .service-card__price {
       display: flex;
       align-items: baseline;
-      flex-wrap: wrap;
       gap: 6px;
-    }
-
-    .service-card__price-value {
+      margin: 0;
+      color: var(--screen-accent);
       font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 32px;
-      line-height: 1;
-      color: var(--primary);
-      overflow-wrap: anywhere;
+      font-weight: 800;
     }
 
-    .promo-banner {
-      margin: 16px 24px 0;
-      background: var(--secondary);
-      border-radius: 12px;
-      padding: 14px 18px;
+    .service-card__price small {
+      color: var(--screen-muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .service-card__price strong {
+      font-size: 34px;
+      line-height: .9;
+      letter-spacing: 0;
+    }
+
+    .offer-card {
       display: flex;
       align-items: center;
       gap: 10px;
-      border-left: 4px solid var(--primary);
-    }
-
-    .promo-banner__icon {
-      font-size: 20px;
-      flex-shrink: 0;
-    }
-
-    .promo-banner__text {
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--primary-dark);
-      line-height: 1.3;
+      margin-top: 12px;
+      border: 1px solid var(--offer-border);
+      border-radius: 15px;
+      background: var(--offer-bg);
+      color: var(--offer-fg);
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.25;
       overflow-wrap: anywhere;
     }
 
+    .offer-card__icon {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 9px;
+      border: 1px solid currentColor;
+      flex: 0 0 auto;
+    }
+
+    .offer-card__icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
     .advantages {
-      margin: 24px 24px 0;
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 9px;
+      margin-top: 14px;
     }
 
     .advantage {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      background: var(--card-bg);
+      display: grid;
+      justify-items: center;
+      gap: 8px;
+      min-height: 96px;
+      border: 1px solid var(--card-border);
       border-radius: 16px;
-      padding: 16px 8px 14px;
-      min-width: 0;
-    }
-
-    .advantage__icon-wrap {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: var(--secondary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      background: var(--card-bg);
+      padding: 12px 7px 10px;
+      text-align: center;
     }
 
     .advantage__icon {
-      font-size: 22px;
-      line-height: 1;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: var(--pill-bg);
+      color: var(--screen-accent);
+    }
+
+    .advantage__icon svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
     }
 
     .advantage__text {
-      font-family: 'Inter', sans-serif;
-      font-weight: 500;
-      font-size: 11px;
-      line-height: 1.3;
-      color: var(--text-main);
-      opacity: 0.85;
+      color: var(--screen-muted);
+      font-size: 10.5px;
+      font-weight: 650;
+      line-height: 1.2;
       display: -webkit-box;
       -webkit-line-clamp: 3;
       -webkit-box-orient: vertical;
@@ -264,140 +285,123 @@
       overflow-wrap: anywhere;
     }
 
-    .cta-section {
-      margin: 28px 24px 0;
-      padding-bottom: 32px;
-    }
-
     .cta-button {
       display: block;
-      width: 100%;
-      padding: 18px 24px;
-      background: var(--button-bg);
-      color: var(--button-text);
-      font-family: 'Montserrat', sans-serif;
-      font-weight: 700;
-      font-size: 15px;
+      margin-top: 16px;
+      border-radius: 16px;
+      background: var(--cta-bg);
+      color: var(--cta-fg);
+      padding: 17px 16px;
       text-align: center;
       text-decoration: none;
-      border-radius: 14px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      box-shadow: 0 12px 24px var(--cta-shadow);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       overflow-wrap: anywhere;
     }
 
     .cta-button:active {
       transform: scale(0.98);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      box-shadow: 0 6px 12px var(--cta-shadow);
     }
 
     .cta-subtext {
-      font-family: 'Inter', sans-serif;
-      font-weight: 400;
-      font-size: 12px;
-      color: var(--text-main);
-      opacity: 0.5;
+      margin: 10px 18px 0;
+      color: var(--screen-muted);
+      font-size: 11px;
+      line-height: 1.35;
       text-align: center;
-      margin-top: 12px;
-      line-height: 1.4;
       overflow-wrap: anywhere;
     }
 
-    {% if is_dark_style %}
-    .hero__overlay {
-      background: linear-gradient(to bottom, rgba(26,26,26,0) 0%, var(--bg-color) 100%);
-    }
-    .service-card__label {
-      background: transparent;
-    }
-    {% endif %}
-
     @media (max-width: 480px) {
-      body { background: var(--bg-color); }
+      body { background: var(--screen-bg); }
       .promo-page { max-width: 100%; }
     }
 
     @media (max-width: 360px) {
-      .hero { height: 360px; }
+      .hero { height: 280px; }
       .identity__name { font-size: 24px; }
-      .service-card__price-value { font-size: 28px; }
-      .advantages { gap: 8px; }
-      .advantage { padding: 12px 6px 10px; }
-      .advantage__icon-wrap { width: 40px; height: 40px; }
-      .advantage__text { font-size: 10px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .cta-button { transition: none; }
-      .cta-button:active { transform: none; }
+      .service-card__price strong { font-size: 28px; }
+      .advantages { gap: 6px; }
+      .advantage { padding: 10px 5px 8px; min-height: 88px; }
+      .advantage__icon { width: 30px; height: 30px; }
+      .advantage__text { font-size: 9.5px; }
     }
 
     @media (min-width: 414px) {
-      .hero { height: 460px; }
+      .hero { height: 340px; }
       .identity__name { font-size: 30px; }
     }
 
     @media (min-width: 481px) {
-      body {
-        background: #F0F0F0;
-        padding: 20px;
-      }
+      body { background: #F0F0F0; padding: 20px; }
       .promo-page {
         border-radius: 24px;
         box-shadow: 0 8px 30px rgba(0,0,0,0.12);
         min-height: auto;
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cta-button { transition: none; }
+      .cta-button:active { transform: none; }
+    }
   </style>
 </head>
 <body>
   <div class="promo-page">
+
     <div class="hero">
-      <img class="hero__photo" src="{{ photo_url }}" alt="{{ display_name }}" loading="eager">
-      <div class="hero__overlay"></div>
+      <div class="hero__grad"></div>
+      <div class="hero__fade"></div>
       {% if badge_text %}
       <div class="hero__badge">{{ badge_text }}</div>
       {% endif %}
     </div>
 
-    <div class="identity">
-      <h1 class="identity__name">{{ display_name }}</h1>
-      <p class="identity__role">{{ specialization }}</p>
-    </div>
-
-    <div class="tagline">
-      <p>{{ tagline }}</p>
-    </div>
-
-    <div class="service-card">
-      <span class="service-card__label">Популярная услуга</span>
-      <p class="service-card__name">{{ service_name }}</p>
-      <p class="service-card__price">
-        <span class="service-card__price-value">{{ service_price }}</span>
-      </p>
-    </div>
-
-    {% if promo_enabled and promo_text %}
-    <div class="promo-banner">
-      <span class="promo-banner__icon">🔥</span>
-      <span class="promo-banner__text">{{ promo_text }}</span>
-    </div>
-    {% endif %}
-
-    <div class="advantages">
-      {% for adv in advantages %}
-      <div class="advantage">
-        <div class="advantage__icon-wrap">
-          <span class="advantage__icon">{{ adv.icon or '✓' }}</span>
-        </div>
-        <p class="advantage__text">{{ adv.text }}</p>
+    <div class="content">
+      <div class="identity">
+        <h1 class="identity__name">{{ display_name }}</h1>
+        <p class="identity__role">{{ specialization }}</p>
       </div>
-      {% endfor %}
-    </div>
 
-    <div class="cta-section">
+      <p class="tagline">{{ tagline }}</p>
+
+      <div class="service-card">
+        <span class="service-card__label">Популярная услуга</span>
+        <p class="service-card__name">{{ service_name }}</p>
+        <p class="service-card__price">
+          <small>от</small>
+          <strong>{{ service_price }}</strong>
+        </p>
+      </div>
+
+      {% if promo_enabled and promo_text %}
+      <div class="offer-card">
+        <div class="offer-card__icon">
+          <svg viewBox="0 0 24 24"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L3 13V4h9l8.59 8.59a2 2 0 0 1 0 2.82ZM7.5 8.5A1.5 1.5 0 1 0 7.5 5.5a1.5 1.5 0 0 0 0 3Z"/></svg>
+        </div>
+        <span>{{ promo_text }}</span>
+      </div>
+      {% endif %}
+
+      <div class="advantages">
+        {% for adv in advantages %}
+        <div class="advantage">
+          <div class="advantage__icon">
+            {{ adv.svg | default('<svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>', true) | safe }}
+          </div>
+          <span class="advantage__text">{{ adv.text }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
       <a href="{{ bot_link }}" class="cta-button" id="cta-btn">Забрать бонусы и подписаться</a>
       <p class="cta-subtext">{{ sub_button_text }}</p>
     </div>

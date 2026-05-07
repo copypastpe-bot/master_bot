@@ -27,6 +27,33 @@ justify-content:center;min-height:100vh;margin:0;background:#f9fafb;color:#37415
 </head><body><div class="box"><h1>404</h1>
 <p>Мастер не найден или ссылка устарела.</p></div></body></html>"""
 
+_ICON_SVG = {
+    "⏰": '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 11h5v-2h-4V6h-2v7Z"/></svg>',
+    "🧴": '<svg viewBox="0 0 24 24"><path d="M9 2h6v3l-2 2v2h1a4 4 0 0 1 4 4v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7a4 4 0 0 1 4-4h1V7L9 5V2Zm1 12v5h4v-5h-4Z"/></svg>',
+    "🔔": '<svg viewBox="0 0 24 24"><path d="M12 22a2.8 2.8 0 0 0 2.65-2H9.35A2.8 2.8 0 0 0 12 22Zm7-6-2-2v-4a5 5 0 0 0-4-4.9V3h-2v2.1A5 5 0 0 0 7 10v4l-2 2v2h14v-2Z"/></svg>',
+    "🌿": '<svg viewBox="0 0 24 24"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8Z"/></svg>',
+    "📸": '<svg viewBox="0 0 24 24"><path d="M12 15.2A3.2 3.2 0 1 0 12 8.8a3.2 3.2 0 0 0 0 6.4ZM9 2 7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9Zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/></svg>',
+    "⭐": '<svg viewBox="0 0 24 24"><path d="m12 2.5 2.9 5.87 6.48.94-4.69 4.57 1.11 6.45L12 17.28l-5.8 3.05 1.11-6.45-4.69-4.57 6.48-.94L12 2.5Z"/></svg>',
+    "✂️": '<svg viewBox="0 0 24 24"><path d="M9.6 7.4A3.5 3.5 0 1 0 8 10.34L11.66 14 8 17.66A3.5 3.5 0 1 0 9.6 20.6L20.2 10l-1.4-1.4-5.72 5.72-3.48-3.48ZM5.5 9A1.5 1.5 0 1 1 5.5 6a1.5 1.5 0 0 1 0 3Zm0 10A1.5 1.5 0 1 1 5.5 16a1.5 1.5 0 0 1 0 3Z"/></svg>',
+    "💈": '<svg viewBox="0 0 24 24"><path d="M9 2h6v3l-2 2v2h1a4 4 0 0 1 4 4v7a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7a4 4 0 0 1 4-4h1V7L9 5V2Zm1 12v5h4v-5h-4Z"/></svg>',
+    "🧼": '<svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.1 3.4 9.9 8 11 4.6-1.1 8-5.9 8-11V5l-8-3Zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7Z"/></svg>',
+    "💡": '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-4 12.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26A7 7 0 0 0 12 2ZM9 20v1a3 3 0 0 0 6 0v-1H9Z"/></svg>',
+    "📍": '<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7Zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z"/></svg>',
+    "💅": '<svg viewBox="0 0 24 24"><path d="M18.7 3.3a2.4 2.4 0 0 0-3.4 0l-7.8 7.8 3.4 3.4 7.8-7.8a2.4 2.4 0 0 0 0-3.4ZM7 12.8c-2.8.7-4 2.7-4 5.7 0 1 .7 1.5 1.6 1.2 1.6-.5 3.2-.3 4.4-1.5 1.2-1.2 1.2-3.1 0-4.3L7 12.8Z"/></svg>',
+    "✨": '<svg viewBox="0 0 24 24"><path d="M13 2 9.9 8.9 3 12l6.9 3.1L13 22l3.1-6.9L23 12l-6.9-3.1L13 2ZM5 3l-1 2-2 1 2 1 1 2 1-2 2-1-2-1-1-2Z"/></svg>',
+    "💗": '<svg viewBox="0 0 24 24"><path d="m12 21.35-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35Z"/></svg>',
+    "🕯️": '<svg viewBox="0 0 24 24"><path d="M12 2C9.24 6 8 8.5 8 10.5A4 4 0 0 0 16 10.5C16 8.5 14.76 6 12 2ZM7 14v8h10v-8H7Z"/></svg>',
+    "🤲": '<svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 9-8 9s-8-4-8-9a8 8 0 0 1 3-6.24V4a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2.76A8 8 0 0 1 20 13Z"/></svg>',
+    "💪": '<svg viewBox="0 0 24 24"><path d="m12 2.5 2.9 5.87 6.48.94-4.69 4.57 1.11 6.45L12 17.28l-5.8 3.05 1.11-6.45-4.69-4.57 6.48-.94L12 2.5Z"/></svg>',
+    "📚": '<svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6Zm1 4h10v2H7V6Zm0 4h7v2H7v-2Z"/></svg>',
+    "🎯": '<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 16a6 6 0 1 1 6-6 6 6 0 0 1-6 6Zm0-8a2 2 0 1 0 2 2 2 2 0 0 0-2-2Z"/></svg>',
+    "✏️": '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>',
+    "📖": '<svg viewBox="0 0 24 24"><path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6Zm1 4h10v2H7V6Zm0 4h7v2H7v-2Z"/></svg>',
+    "✓": '<svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>',
+}
+
+_DEFAULT_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>'
+
 
 def _fmt_date(s) -> str:
     if not s:
@@ -58,33 +85,30 @@ def _absolute_url(request: Request, url: str | None) -> str | None:
 
 
 def _is_dark_style(style: dict) -> bool:
-    bg = (style.get("bg_color") or "#ffffff").lstrip("#")
-    if len(bg) != 6:
-        return False
-    try:
-        red = int(bg[0:2], 16) / 255
-        green = int(bg[2:4], 16) / 255
-        blue = int(bg[4:6], 16) / 255
-    except ValueError:
-        return False
-    return (0.2126 * red + 0.7152 * green + 0.0722 * blue) < 0.3
+    return bool(style.get("is_dark", False))
 
 
 def _style_with_defaults(style: dict | None) -> dict:
     data = dict(style or {})
     defaults = {
-        "primary_color": "#2E7D32",
-        "secondary_color": "#E8F5E9",
-        "accent_color": "#1B5E20",
-        "text_color": "#212121",
-        "text_color_light": "#FFFFFF",
-        "bg_color": "#FFFFFF",
-        "badge_bg": "#2E7D32",
-        "badge_text": "#FFFFFF",
-        "button_bg": "#2E7D32",
-        "button_text": "#FFFFFF",
-        "card_bg": "#F1F8E9",
-        "gradient": "linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%)",
+        "screen_bg": "#f7faf5",
+        "screen_fg": "#1a2a1e",
+        "screen_muted": "#566b5e",
+        "screen_accent": "#2d8049",
+        "badge_bg": "rgba(255,255,255,.8)",
+        "badge_fg": "#1f6e3a",
+        "badge_border": "rgba(255,255,255,.68)",
+        "card_bg": "#eef5eb",
+        "card_border": "#d5e5cf",
+        "pill_bg": "#deedda",
+        "pill_border": "#7aba6e",
+        "offer_bg": "#faf0ec",
+        "offer_border": "#e8c9bc",
+        "offer_fg": "#8c4a2a",
+        "cta_bg": "#2d8049",
+        "cta_fg": "#ffffff",
+        "cta_shadow": "rgba(31,135,79,.22)",
+        "is_dark": False,
     }
     return {**defaults, **data}
 
@@ -95,6 +119,10 @@ async def landing_page(request: Request, page_key: str):
     promo = await get_promo_public_data(page_key, increment_view=True)
     if promo is not None:
         style = _style_with_defaults(promo.get("style", {}).get("config"))
+        advantages_with_svg = []
+        for adv in promo.get("advantages", []):
+            svg = _ICON_SVG.get(adv.get("icon", ""), _DEFAULT_ICON_SVG)
+            advantages_with_svg.append({**adv, "svg": svg})
         photo_url = promo.get("photo_url") or ""
         absolute_photo_url = _absolute_url(request, photo_url)
         page_url = str(request.url)
@@ -113,7 +141,7 @@ async def landing_page(request: Request, page_key: str):
                 "service_price": promo["service_price"],
                 "promo_enabled": promo.get("promo_enabled", False),
                 "promo_text": promo.get("promo_text"),
-                "advantages": promo.get("advantages", []),
+                "advantages": advantages_with_svg,
                 "sub_button_text": promo.get("sub_button_text") or "Бонусы и уведомления в Telegram",
                 "photo_url": photo_url,
                 "absolute_photo_url": absolute_photo_url,

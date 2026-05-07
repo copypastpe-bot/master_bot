@@ -154,7 +154,7 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
 
         public = await self.promo_pages.get_public_promo_page_api("mariya-ivanova")
         self.assertEqual(public["display_name"], "Мария Иванова")
-        self.assertEqual(public["style"]["button_bg"], "#2E7D32")
+        self.assertEqual(public["style"]["cta_bg"], "#2d8049")
         self.assertTrue(public["bot_link"].endswith("?start=promo_1"))
 
         clicked = await self.promo_pages.track_public_promo_click_api("mariya-ivanova")
@@ -219,8 +219,11 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Мария Иванова", promo_html)
         self.assertIn("navigator.sendBeacon('/api/promo/public/mariya-ivanova/click')", promo_html)
         self.assertIn('property="og:title"', promo_html)
-        self.assertIn('class="hero__photo"', promo_html)
-        self.assertIn('class="service-card__price-value"', promo_html)
+        self.assertIn('class="hero__grad"', promo_html)
+        self.assertIn("backdrop-filter: blur(16px)", promo_html)
+        self.assertIn('class="offer-card__icon"', promo_html)
+        self.assertIn('class="advantage__icon"', promo_html)
+        self.assertIn('<svg viewBox="0 0 24 24">', promo_html)
         self.assertIn("@media (max-width: 360px)", promo_html)
         self.assertIn("@media (min-width: 481px)", promo_html)
 

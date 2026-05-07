@@ -43,7 +43,8 @@ class PromoPageDatabaseTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(cleaning["name"], "Клининг")
         self.assertGreaterEqual(len(cleaning["styles"]), 3)
         self.assertGreaterEqual(len(cleaning["advantages"]), 6)
-        self.assertEqual(cleaning["styles"][0]["config"]["primary_color"], "#2E7D32")
+        self.assertEqual(cleaning["styles"][0]["config"]["screen_accent"], "#2d8049")
+        self.assertEqual(cleaning["styles"][0]["config"]["cta_shadow"], "rgba(31,135,79,.22)")
 
     async def test_create_update_publish_and_public_read_model(self):
         await self._seed_masters()
@@ -102,7 +103,7 @@ class PromoPageDatabaseTest(unittest.IsolatedAsyncioTestCase):
         public_data = await db.get_promo_public_data("mariya-ivanova", increment_view=True)
         self.assertIsNotNone(public_data)
         self.assertEqual(public_data["category"]["slug"], "cleaning")
-        self.assertEqual(public_data["style"]["config"]["button_bg"], "#2E7D32")
+        self.assertEqual(public_data["style"]["config"]["cta_bg"], "#2d8049")
         self.assertEqual(public_data["views_count"], 1)
 
         clicked = await db.increment_promo_page_clicks("mariya-ivanova")
