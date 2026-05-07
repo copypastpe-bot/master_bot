@@ -356,13 +356,6 @@ export default function More({ onNavigate }) {
           hideChevron={!isSubscriptionActive}
           onClick={isSubscriptionActive ? () => onNavigate('promos') : handleLockedTap}
         />
-        <Cell
-          icon={<LinkIcon />}
-          label={t('more.cells.promoPage')}
-          value={isSubscriptionActive ? undefined : '🔒'}
-          hideChevron={!isSubscriptionActive}
-          onClick={isSubscriptionActive ? () => onNavigate('promo_page') : handleLockedTap}
-        />
       </div>
 
       <SectionTitle>{t('more.sections.settings')}</SectionTitle>

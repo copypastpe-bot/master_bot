@@ -174,7 +174,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
       if (typeof navigator?.clipboard?.writeText === 'function') {
         await navigator.clipboard.writeText(link);
       }
-    } catch (_) {
+    } catch {
       // non-critical
     }
     trackMasterReferralLinkCopied('dashboard-paywall').catch(() => {});
@@ -182,13 +182,6 @@ function DashboardContent({ data, subscription, onNavigate }) {
       WebApp.showAlert(tr('Ссылка скопирована', 'Link copied'));
     }
     setPaywallOpen(false);
-  };
-
-  const handleRequests = () => {
-    if (typeof WebApp?.HapticFeedback?.impactOccurred === 'function') {
-      WebApp.HapticFeedback.impactOccurred('light');
-    }
-    onNavigate('requests');
   };
 
   const handleReportsWeek = () => {
@@ -323,14 +316,6 @@ function DashboardContent({ data, subscription, onNavigate }) {
           {tr('+ Новый заказ', '+ New order')}
         </button>
 
-        {(stats.pending_requests || 0) > 0 && (
-          <button
-            onClick={handleRequests}
-            className="enterprise-btn-outline"
-          >
-            {tr(`Новые заявки (${stats.pending_requests})`, `New requests (${stats.pending_requests})`)}
-          </button>
-        )}
       </div>
 
       <SubscriptionPaywallSheet
