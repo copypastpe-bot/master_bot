@@ -4716,3 +4716,122 @@ async def get_promo_public_data(slug: str, increment_view: bool = False) -> Opti
         return item
     finally:
         await conn.close()
+
+
+async def get_master_category_ids(master_id: int) -> list[int]:
+    """Return ordered list of master_categories IDs for a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT category_id
+            FROM master_category_links
+            WHERE master_id = ?
+            ORDER BY sort_order ASC, id ASC
+            """,
+            (master_id,),
+        )
+        return [row[0] for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def get_all_promo_styles() -> list[dict]:
+    """Return all active styles with their master_category hint."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT ps.id, ps.slug, ps.name, ps.config, ps.sort_order,
+                   ps.suggested_category_id,
+                   mc.slug  AS category_slug,
+                   mc.name  AS category_name
+            FROM promo_styles ps
+            LEFT JOIN master_categories mc ON mc.id = ps.suggested_category_id
+            WHERE ps.is_active = 1
+            ORDER BY ps.sort_order ASC, ps.id ASC
+            """
+        )
+        styles = []
+        for row in await cursor.fetchall():
+            s = dict(row)
+            s["config"] = _json_loads_default(s.get("config"), {})
+            styles.append(s)
+        return styles
+    finally:
+        await conn.close()
+
+
+async def get_all_promo_advantages() -> list[dict]:
+    """Return all active advantage presets with their master_category hint."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT pa.id, pa.text, pa.icon, pa.sort_order,
+                   pa.suggested_category_id
+            FROM promo_advantages pa
+            WHERE pa.is_active = 1
+            ORDER BY pa.sort_order ASC, pa.id ASC
+            """
+        )
+        return [dict(row) for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def get_default_style_for_category(category_id: int) -> Optional[dict]:
+    """Return the default promo style for a master_category."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT ps.id, ps.slug, ps.name, ps.config
+            FROM category_default_styles cds
+            JOIN promo_styles ps ON ps.id = cds.style_id
+            WHERE cds.category_id = ?
+            """,
+            (category_id,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        s = dict(row)
+        s["config"] = _json_loads_default(s.get("config"), {})
+        return s
+    finally:
+        await conn.close()
+
+
+async def get_default_style_for_master(master_id: int) -> Optional[dict]:
+    """Return the default promo style based on the master's first category.
+
+    Falls back to the first active style in promo_styles if the master
+    has no category links or no matching default.
+    """
+    category_ids = await get_master_category_ids(master_id)
+    if category_ids:
+        style = await get_default_style_for_category(category_ids[0])
+        if style:
+            return style
+
+    # Fallback: first active style by sort_order.
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, slug, name, config
+            FROM promo_styles
+            WHERE is_active = 1
+            ORDER BY sort_order ASC, id ASC
+            LIMIT 1
+            """
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+        s = dict(row)
+        s["config"] = _json_loads_default(s.get("config"), {})
+        return s
+    finally:
+        await conn.close()

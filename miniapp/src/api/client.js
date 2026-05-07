@@ -235,6 +235,10 @@ export const getPromoRecipientsCount = () =>
 // Promo page constructor
 export const getPromoPageCategories = () =>
   api.get('/api/promo/categories').then(r => r.data);
+export const getPromoStyles = () =>
+  api.get('/api/promo/styles').then(r => r.data);
+export const getPromoAdvantages = () =>
+  api.get('/api/promo/advantages').then(r => r.data);
 export const getPromoPage = () =>
   api.get('/api/promo/page').then(r => r.data);
 export const startPromoPage = () =>

@@ -16,10 +16,15 @@ from src.config import CLIENT_BOT_USERNAME
 from src.database import (
     create_promo_page,
     ensure_unique_promo_slug,
+    get_all_promo_advantages,
+    get_all_promo_styles,
+    get_default_style_for_master,
+    get_master_category_ids,
     get_promo_categories,
     get_promo_page_by_master,
     get_promo_public_data,
     get_promo_slug_suggestions,
+    get_promo_style,
     increment_promo_page_clicks,
     mark_promo_page_started,
     promo_slug_exists,
@@ -66,7 +71,7 @@ class PromoAdvantageBody(BaseModel):
 
 class PromoPageBody(BaseModel):
     category_id: int
-    style_id: int
+    style_id: Optional[int] = None
     display_name: str = Field(min_length=2, max_length=60)
     specialization: str = Field(min_length=2, max_length=80)
     tagline: str = Field(min_length=10, max_length=120)
@@ -129,12 +134,15 @@ def _bot_link(master_id: int) -> str:
     return f"https://t.me/{CLIENT_BOT_USERNAME}?start=promo_{master_id}"
 
 
-def _page_response(page: dict) -> dict:
-    return {
+def _page_response(page: dict, style: Optional[dict] = None) -> dict:
+    result = {
         **page,
         "page_url": _page_url(page["slug"]),
         "bot_link": _bot_link(page["master_id"]),
     }
+    if style is not None:
+        result["style"] = style
+    return result
 
 
 def _public_response(data: dict) -> dict:
@@ -163,6 +171,19 @@ def _public_response(data: dict) -> dict:
 async def _validate_category_style(category_id: int, style_id: int) -> None:
     if not await promo_style_belongs_to_category(style_id, category_id):
         raise HTTPException(status_code=400, detail="Style does not belong to category")
+
+
+async def _resolve_style_id(style_id: Optional[int], master_id: int) -> int:
+    """Resolve style_id: use provided value or fall back to master's default."""
+    if style_id is not None:
+        style = await get_promo_style(style_id)
+        if not style:
+            raise HTTPException(status_code=400, detail="Style not found")
+        return style_id
+    default = await get_default_style_for_master(master_id)
+    if not default:
+        raise HTTPException(status_code=500, detail="No promo styles available")
+    return default["id"]
 
 
 async def _sync_qr(page: dict) -> dict:
@@ -235,12 +256,55 @@ async def get_promo_categories_api(_master: Master = Depends(get_current_master)
     return {"categories": await get_promo_categories()}
 
 
+@router.get("/promo/styles")
+async def get_promo_styles_api(master: Master = Depends(get_current_master)):
+    """Return all active styles sorted: master's category styles first."""
+    master_cat_ids = set(await get_master_category_ids(master.id))
+    styles = await get_all_promo_styles()
+    default = await get_default_style_for_master(master.id)
+    default_style_id = default["id"] if default else (styles[0]["id"] if styles else None)
+
+    result = []
+    for s in styles:
+        is_suggested = bool(s.get("suggested_category_id") and s["suggested_category_id"] in master_cat_ids)
+        result.append({
+            "id": s["id"],
+            "slug": s["slug"],
+            "name": s["name"],
+            "config": s["config"],
+            "is_suggested": is_suggested,
+            "category_name": s.get("category_name"),
+        })
+    result.sort(key=lambda s: (not s["is_suggested"], s.get("sort_order", 0)))
+    return {"styles": result, "default_style_id": default_style_id}
+
+
+@router.get("/promo/advantages")
+async def get_promo_advantages_api(master: Master = Depends(get_current_master)):
+    """Return all active advantages sorted: master's category advantages first."""
+    master_cat_ids = set(await get_master_category_ids(master.id))
+    advantages = await get_all_promo_advantages()
+
+    result = []
+    for a in advantages:
+        is_suggested = bool(a.get("suggested_category_id") and a["suggested_category_id"] in master_cat_ids)
+        result.append({
+            "id": a["id"],
+            "text": a["text"],
+            "icon": a["icon"],
+            "is_suggested": is_suggested,
+        })
+    result.sort(key=lambda a: (not a["is_suggested"], 0))
+    return {"advantages": result}
+
+
 @router.get("/promo/page")
 async def get_promo_page_api(master: Master = Depends(get_current_master)):
     page = await get_promo_page_by_master(master.id)
     if not page:
         raise HTTPException(status_code=404, detail="Promo page not found")
-    return _page_response(page)
+    style = await get_promo_style(page["style_id"]) if page.get("style_id") else None
+    return _page_response(page, style=style)
 
 
 @router.post("/promo/page/start")
@@ -256,12 +320,14 @@ async def create_promo_page_api(
     body: PromoPageBody,
     master: Master = Depends(get_current_master),
 ):
-    await _validate_category_style(body.category_id, body.style_id)
+    resolved_style_id = await _resolve_style_id(body.style_id, master.id)
     existing = await get_promo_page_by_master(master.id)
     if existing:
         raise HTTPException(status_code=409, detail="Promo page already exists")
 
-    page = await create_promo_page(master.id, **body.db_payload())
+    payload = body.db_payload()
+    payload["style_id"] = resolved_style_id
+    page = await create_promo_page(master.id, **payload)
     page = await _sync_qr(page)
     return _page_response(page)
 
@@ -271,12 +337,14 @@ async def update_promo_page_api(
     body: PromoPageBody,
     master: Master = Depends(get_current_master),
 ):
-    await _validate_category_style(body.category_id, body.style_id)
+    resolved_style_id = await _resolve_style_id(body.style_id, master.id)
     existing = await get_promo_page_by_master(master.id)
     if not existing:
         raise HTTPException(status_code=404, detail="Promo page not found")
 
-    page = await update_promo_page(master.id, **body.db_payload())
+    payload = body.db_payload()
+    payload["style_id"] = resolved_style_id
+    page = await update_promo_page(master.id, **payload)
     if not page:
         raise HTTPException(status_code=404, detail="Promo page not found")
     return _page_response(page)
