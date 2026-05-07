@@ -237,6 +237,8 @@ export const getPromoPageCategories = () =>
   api.get('/api/promo/categories').then(r => r.data);
 export const getPromoPage = () =>
   api.get('/api/promo/page').then(r => r.data);
+export const startPromoPage = () =>
+  api.post('/api/promo/page/start').then(r => r.data);
 export const createPromoPage = (data) =>
   api.post('/api/promo/page', data).then(r => r.data);
 export const updatePromoPage = (data) =>

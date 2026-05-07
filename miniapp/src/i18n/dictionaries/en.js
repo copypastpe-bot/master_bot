@@ -31,7 +31,7 @@ const en = {
     master: {
       home: 'Home',
       calendar: 'Calendar',
-      requests: 'Requests',
+      minisite: 'Minisite',
       more: 'More',
     },
   },
@@ -77,6 +77,7 @@ const en = {
       promoNew: 'New promo',
       promo: 'Promo',
       promoPage: 'Promo page',
+      minisite: 'Minisite',
       reports: 'Analytics',
       subscription: 'Subscription',
       order: 'Order',
@@ -86,6 +87,18 @@ const en = {
     },
     promoNotFound: 'Not found',
     inDevelopment: 'Section in development',
+  },
+
+  minisite: {
+    intro: {
+      title: 'Client minisite',
+      subtitle: 'Build a public page with services, photo, advantages, and a Telegram contact link.',
+      pointServices: 'Show services and prices',
+      pointTrust: 'Add a photo and advantages',
+      pointShare: 'Share a link or QR code',
+      create: 'Create minisite',
+      error: 'Failed to start creation. Please try again.',
+    },
   },
 
   more: {

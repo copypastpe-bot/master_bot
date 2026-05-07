@@ -31,7 +31,7 @@ const ru = {
     master: {
       home: 'Главная',
       calendar: 'Календарь',
-      requests: 'Заявки',
+      minisite: 'Минисайт',
       more: 'Ещё',
     },
   },
@@ -77,6 +77,7 @@ const ru = {
       promoNew: 'Новая акция',
       promo: 'Акция',
       promoPage: 'Промо-страница',
+      minisite: 'Минисайт',
       reports: 'Аналитика',
       subscription: 'Подписка',
       order: 'Заказ',
@@ -86,6 +87,18 @@ const ru = {
     },
     promoNotFound: 'Не найдено',
     inDevelopment: 'Раздел в разработке',
+  },
+
+  minisite: {
+    intro: {
+      title: 'Минисайт для клиентов',
+      subtitle: 'Соберите публичную страницу с услугами, фото, преимуществами и ссылкой в Telegram.',
+      pointServices: 'Покажите услуги и цены',
+      pointTrust: 'Добавьте фото и преимущества',
+      pointShare: 'Делитесь ссылкой или QR-кодом',
+      create: 'Создать минисайт',
+      error: 'Не удалось начать создание. Попробуйте ещё раз.',
+    },
   },
 
   more: {

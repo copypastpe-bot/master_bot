@@ -2048,6 +2048,91 @@ body.typeui-enterprise-body .promo-builder-qr img {
   background: #fff;
 }
 
+body.typeui-enterprise-body .minisite-intro-page {
+  padding: 18px 16px calc(92px + var(--safe-bottom));
+  display: grid;
+  gap: 14px;
+}
+
+body.typeui-enterprise-body .minisite-intro-hero {
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 8px;
+  background: var(--tg-card-bg);
+  padding: 18px;
+}
+
+body.typeui-enterprise-body .minisite-intro-orbit {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #2f74d2;
+  background: rgba(47, 116, 210, 0.1);
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+body.typeui-enterprise-body .minisite-intro-hero h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.15;
+  color: var(--tg-text);
+  letter-spacing: 0;
+}
+
+body.typeui-enterprise-body .minisite-intro-hero p {
+  margin: 0;
+  color: var(--tg-hint);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body.typeui-enterprise-body .minisite-intro-list {
+  list-style: none;
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+}
+
+body.typeui-enterprise-body .minisite-intro-point {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 8px;
+  background: var(--tg-card-bg);
+  padding: 10px 12px;
+  color: var(--tg-text);
+}
+
+body.typeui-enterprise-body .minisite-intro-point span {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(47, 116, 210, 0.1);
+  color: #2f74d2;
+  font-weight: 700;
+}
+
+body.typeui-enterprise-body .minisite-intro-point b {
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+body.typeui-enterprise-body .minisite-intro-cta {
+  width: 100%;
+}
+
 body.typeui-enterprise-body .enterprise-feedback-page {
   padding: 14px 12px calc(118px + env(safe-area-inset-bottom));
 }

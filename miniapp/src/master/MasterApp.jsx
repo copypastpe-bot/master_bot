@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import MasterNav from './components/MasterNav';
-import { getMasterRequestsUnreadCount } from '../api/client';
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
 import OrderDetail from './pages/OrderDetail';
@@ -19,8 +18,8 @@ import PromosList from './pages/PromosList';
 import PromoCreate from './pages/PromoCreate';
 import PromoCard from './pages/PromoCard';
 import PromoPageBuilder from './pages/PromoPageBuilder';
+import Minisite from './pages/Minisite';
 import Reports from './pages/Reports';
-import Requests from './pages/Requests';
 import Subscription from './pages/Subscription';
 import { useI18n } from '../i18n';
 import AppHeader from './components/AppHeader';
@@ -34,23 +33,8 @@ export default function MasterApp() {
   // navStack: array of { type, id?, ...params }
   // Empty stack = tab root. Push = navigate forward. Pop = back.
   const [navStack, setNavStack] = useState([]);
-  const [requestsBadge, setRequestsBadge] = useState(0);
 
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    let ignore = false;
-    getMasterRequestsUnreadCount()
-      .then((data) => {
-        if (!ignore) setRequestsBadge(data.count ?? 0);
-      })
-      .catch(() => {
-        // badge is best-effort
-      });
-    return () => {
-      ignore = true;
-    };
-  }, []);
 
   useEffect(() => {
     document.body.classList.add('typeui-enterprise-body');
@@ -136,6 +120,7 @@ export default function MasterApp() {
     promo_new:     t('masterApp.titles.promoNew'),
     promo:         t('masterApp.titles.promo'),
     promo_page:    t('masterApp.titles.promoPage'),
+    minisite:      t('masterApp.titles.minisite'),
     reports:       t('masterApp.titles.reports'),
     requests:      t('masterApp.titles.requests'),
     subscription:  t('masterApp.titles.subscription'),
@@ -296,15 +281,6 @@ export default function MasterApp() {
       );
     }
 
-    if (type === 'requests') {
-      return (
-        <div className="master-shell">
-          <AppHeader title={currentTitle} />
-          <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />
-        </div>
-      );
-    }
-
     if (type === 'subscription') {
       return (
         <div className="master-shell">
@@ -341,8 +317,8 @@ export default function MasterApp() {
         return <Dashboard onNavigate={(t, p) => push(t, p)} />;
       case 'calendar':
         return <Calendar onNavigate={(t, p) => push(t, p)} />;
-      case 'requests':
-        return <Requests onNavigate={(t, p) => push(t, p)} onBadgeChange={setRequestsBadge} />;
+      case 'minisite':
+        return <Minisite />;
       case 'more':
         return <More onNavigate={(t, p) => push(t, p)} />;
       default:
@@ -354,7 +330,7 @@ export default function MasterApp() {
     <div className="master-shell">
       <AppHeader title={currentTitle} />
       {renderTab()}
-      <MasterNav active={tab} onNavigate={switchTab} requestsBadge={requestsBadge} />
+      <MasterNav active={tab} onNavigate={switchTab} />
     </div>
   );
 }
