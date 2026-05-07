@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="{{ style.screen_bg }}">
+  <meta name="color-scheme" content="{% if is_dark_style %}dark{% else %}light{% endif %}">
+  <meta name="apple-mobile-web-app-status-bar-style" content="{% if is_dark_style %}black-translucent{% else %}default{% endif %}">
   <title>{{ display_name }} — {{ specialization }}</title>
   <meta name="description" content="{{ tagline }}">
 
