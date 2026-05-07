@@ -276,6 +276,13 @@ export const restoreArchivedClient = (clientId) =>
 export const registerMaster = (data) =>
   api.post('/api/master/register', data).then(r => r.data);
 
+export const getCategories = () =>
+  api.get('/api/master/categories').then(r => r.data);
+export const getMyCategories = () =>
+  api.get('/api/master/me/categories').then(r => r.data);
+export const updateMyCategories = (data) =>
+  api.put('/api/master/me/categories', data).then(r => r.data);
+
 // Requests
 export const getMasterRequests = (status) =>
   api.get('/api/master/requests', { params: status && status !== 'all' ? { status } : {} }).then(r => r.data);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { registerMaster, updateMasterProfile, updateMasterTimezone, updateMasterCurrency } from '../../api/client';
+import { useQuery } from '@tanstack/react-query';
+import { getCategories, registerMaster, updateMasterProfile, updateMasterTimezone, updateMasterCurrency } from '../../api/client';
 import { useI18n } from '../../i18n';
 import {
   TIMEZONES,
@@ -8,6 +9,7 @@ import {
   DEFAULT_CURRENCY,
   resolveInitialTimezone,
 } from '../profileOptions';
+import CategoryPicker from '../components/CategoryPicker';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -36,24 +38,6 @@ const CheckIcon = () => (
   </svg>
 );
 
-// ─── Niches ─────────────────────────────────────────────────────────────────
-
-const NICHES = [
-  'Клининг',
-  'Химчистка мебели и ковров',
-  'Парикмахер и барбер',
-  'Маникюр и бьюти-услуги',
-  'Груминг и животные',
-  'Массаж',
-  'Ремонт бытовой техники',
-  'Мастер на час, мелкий ремонт',
-  'Репетитор',
-  'Фотограф и видеограф',
-  'Психолог',
-  'Садовник',
-  'Другое',
-];
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MasterOnboarding({ onRegistered, referralCode = null }) {
@@ -63,9 +47,9 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
   // Step 1
   const [name, setName] = useState('');
 
-  // Step 2 — multi-select up to 3 niches
-  const [selectedNiches, setSelectedNiches] = useState([]);
-  const [customNiche, setCustomNiche] = useState('');
+  // Step 2 — multi-select up to 3 categories
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
+  const [customNames, setCustomNames] = useState({});
 
   // Step 3 — profile setup
   const [phone, setPhone] = useState('');
@@ -90,28 +74,37 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
     };
   }, []);
 
-  // ── Toggle niche selection (max 3)
-  const toggleNiche = (niche) => {
-    if (loading) return;
-    WebApp?.HapticFeedback?.selectionChanged();
-    setSelectedNiches(prev => {
-      if (prev.includes(niche)) {
-        if (niche === 'Другое') setCustomNiche('');
-        return prev.filter(n => n !== niche);
-      }
-      if (prev.length >= 3) return prev;
-      return [...prev, niche];
-    });
-    setError('');
-  };
+  const categoriesQuery = useQuery({
+    queryKey: ['master-categories'],
+    queryFn: getCategories,
+    staleTime: 10 * 60_000,
+    enabled: step >= 2,
+  });
+
+  const categories = categoriesQuery.data?.categories || [];
+  const otherCategory = categories.find((category) => category.slug === 'other');
 
   const doRegister = async () => {
     setLoading(true);
     setError('');
-    const sphereParts = selectedNiches.map(n => n === 'Другое' ? customNiche.trim() : n);
-    const sphere = sphereParts.join(', ');
+    const selectedCategories = selectedCategoryIds
+      .map((id) => categories.find((category) => category.id === id))
+      .filter(Boolean);
+    const sphere = selectedCategories.map((category) => (
+      category.slug === 'other' ? (customNames[category.id]?.trim() || category.name) : category.name
+    )).join(', ');
+    const payloadCustomNames = {};
+    if (otherCategory && selectedCategoryIds.includes(otherCategory.id)) {
+      payloadCustomNames[otherCategory.id] = customNames[otherCategory.id]?.trim() || '';
+    }
     try {
-      await registerMaster({ name: name.trim(), sphere, referral_code: referralCode || undefined });
+      await registerMaster({
+        name: name.trim(),
+        sphere,
+        category_ids: selectedCategoryIds,
+        custom_names: payloadCustomNames,
+        referral_code: referralCode || undefined,
+      });
       setStep(3);
     } catch (err) {
       if (err?.response?.status === 409) {
@@ -176,8 +169,8 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
     return () => { WebApp.MainButton.offClick(handleStart); WebApp.MainButton.hide(); };
   }, [step, onRegistered, tr]);
 
-  const step2Ready = selectedNiches.length > 0 &&
-    (!selectedNiches.includes('Другое') || customNiche.trim().length > 0);
+  const step2Ready = selectedCategoryIds.length > 0 &&
+    (!otherCategory || !selectedCategoryIds.includes(otherCategory.id) || customNames[otherCategory.id]?.trim().length > 0);
   const step3Ready = Boolean(timezone) && Boolean(currency) &&
     (workMode !== 'home' || Boolean(workAddressDefault.trim()));
   const progressStep = step === 4 ? 3 : step;
@@ -273,57 +266,31 @@ export default function MasterOnboarding({ onRegistered, referralCode = null }) 
           <h1 className="onb-title">{tr('Чем занимаешься?', 'What do you do?')}</h1>
           <p className="onb-subtitle">{tr('Выбери до 3 направлений', 'Select up to 3 niches')}</p>
 
-          <div className="onb-chip-grid">
-            {NICHES.map((niche) => {
-              const isSelected = selectedNiches.includes(niche);
-              const isDisabled = loading || (!isSelected && selectedNiches.length >= 3);
-              return (
-                <button
-                  key={niche}
-                  type="button"
-                  disabled={isDisabled}
-                  onClick={() => toggleNiche(niche)}
-                  className={`onb-chip${isSelected ? ' is-selected' : ''}`}
-                >
-                  {tr(
-                    niche,
-                    niche === 'Клининг' ? 'Cleaning'
-                      : niche === 'Химчистка мебели и ковров' ? 'Furniture and carpet cleaning'
-                      : niche === 'Парикмахер и барбер' ? 'Hairdresser and barber'
-                      : niche === 'Маникюр и бьюти-услуги' ? 'Manicure and beauty services'
-                      : niche === 'Груминг и животные' ? 'Grooming and pets'
-                      : niche === 'Массаж' ? 'Massage'
-                      : niche === 'Ремонт бытовой техники' ? 'Appliance repair'
-                      : niche === 'Мастер на час, мелкий ремонт' ? 'Handyman, minor repairs'
-                      : niche === 'Репетитор' ? 'Tutor'
-                      : niche === 'Фотограф и видеограф' ? 'Photographer and videographer'
-                      : niche === 'Психолог' ? 'Psychologist'
-                      : niche === 'Садовник' ? 'Gardener'
-                      : 'Other'
-                  )}
-                </button>
-              );
-          })}
-          </div>
-
-          {selectedNiches.includes('Другое') && (
-            <div className="onb-field-group">
-              <label className="onb-label">{tr('Своя ниша', 'Your niche')}</label>
-              <input
-                className="onb-input"
-                placeholder={tr('Напишите вашу нишу', 'Write your niche')}
-                value={customNiche}
-                onChange={(e) => setCustomNiche(e.target.value)}
-                autoFocus
-              />
-            </div>
+          {categoriesQuery.isLoading ? (
+            <div className="onb-subtitle">{tr('Загружаем категории...', 'Loading categories...')}</div>
+          ) : categoriesQuery.isError ? (
+            <div className="onb-error">{tr('Не удалось загрузить категории', 'Failed to load categories')}</div>
+          ) : (
+            <CategoryPicker
+              categories={categories}
+              selectedCategoryIds={selectedCategoryIds}
+              customNames={customNames}
+              maxCount={3}
+              loading={loading}
+              onChange={({ category_ids, custom_names }) => {
+                WebApp?.HapticFeedback?.selectionChanged?.();
+                setSelectedCategoryIds(category_ids);
+                setCustomNames(custom_names || {});
+                setError('');
+              }}
+            />
           )}
 
           {error && <div className="onb-error">{error}</div>}
 
           <button
             className="onb-btn-primary"
-            disabled={!step2Ready || loading}
+            disabled={!step2Ready || loading || categoriesQuery.isLoading || categoriesQuery.isError}
             type="button"
             onClick={doRegister}
           >

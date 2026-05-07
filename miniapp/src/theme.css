@@ -3677,6 +3677,96 @@ body.typeui-enterprise-body .onb-chip:disabled {
   cursor: default;
 }
 
+body.typeui-enterprise-body .master-category-picker {
+  display: grid;
+  gap: 14px;
+}
+
+body.typeui-enterprise-body .master-category-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+body.typeui-enterprise-body .master-category-chip {
+  min-height: 42px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tg-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+}
+
+body.typeui-enterprise-body .master-category-chip.is-selected {
+  border-color: rgba(79, 156, 249, 0.62);
+  background: rgba(79, 156, 249, 0.2);
+  color: var(--tg-accent);
+}
+
+body.typeui-enterprise-body .master-category-chip:disabled {
+  opacity: 0.45;
+}
+
+body.typeui-enterprise-body .master-category-chip-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  font-size: 16px;
+  line-height: 1;
+}
+
+body.typeui-enterprise-body .master-category-custom {
+  display: grid;
+  gap: 7px;
+  color: var(--tg-hint);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+body.typeui-enterprise-body .master-category-custom input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--tg-enterprise-border);
+  border-radius: 13px;
+  padding: 0 13px;
+  background: rgba(3, 10, 18, 0.32);
+  color: var(--tg-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+body.typeui-enterprise-body .master-category-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  width: 100%;
+}
+
+body.typeui-enterprise-body .master-category-summary-chip {
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(79, 156, 249, 0.14);
+  color: var(--tg-accent);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
 body.typeui-enterprise-body .onb-btn-primary {
   width: 100%;
   border: none;

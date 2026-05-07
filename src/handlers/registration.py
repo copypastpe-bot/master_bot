@@ -6,7 +6,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
 from src.config import CLIENT_BOT_USERNAME
-from src.database import create_master, get_master_by_tg_id
+from src.database import create_master, get_master_by_tg_id, link_categories_from_sphere
 from src.keyboards import skip_kb, timezone_kb
 from src.states import MasterRegistration
 from src.utils import generate_invite_token, get_timezone_display
@@ -178,6 +178,8 @@ async def complete_registration(message: Message, state: FSMContext, bot: Bot, e
         work_hours=data.get("work_hours"),
         timezone=data.get("timezone", "Europe/Moscow"),
     )
+    if data.get("sphere"):
+        await link_categories_from_sphere(master.id, data.get("sphere"))
 
     await state.clear()
     await state.update_data(current_screen="home")

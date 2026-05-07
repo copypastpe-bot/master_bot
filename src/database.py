@@ -413,6 +413,147 @@ async def update_master(master_id: int, **kwargs) -> None:
         await conn.close()
 
 
+async def get_all_categories() -> list[dict]:
+    """Return active master categories ordered for UI display."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, slug, name, icon, sort_order
+            FROM master_categories
+            WHERE is_active = 1
+            ORDER BY sort_order ASC, id ASC
+            """
+        )
+        return [dict(row) for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def get_category_by_slug(slug: str) -> Optional[dict]:
+    """Return an active master category by slug."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT id, slug, name, icon, sort_order
+            FROM master_categories
+            WHERE slug = ? AND is_active = 1
+            """,
+            (slug,),
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def get_master_categories(master_id: int) -> list[dict]:
+    """Return categories linked to a master."""
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            SELECT mc.id, mc.slug, mc.name, mc.icon, mcl.custom_name
+            FROM master_category_links mcl
+            JOIN master_categories mc ON mc.id = mcl.category_id
+            WHERE mcl.master_id = ? AND mc.is_active = 1
+            ORDER BY mcl.sort_order ASC, mcl.id ASC
+            """,
+            (master_id,),
+        )
+        return [dict(row) for row in await cursor.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def set_master_categories(
+    master_id: int,
+    category_ids: list[int],
+    custom_names: Optional[dict[int, str]] = None,
+) -> None:
+    """Replace all category links for a master and sync legacy masters.sphere."""
+    if len(category_ids) > 3:
+        raise ValueError("At most 3 categories are allowed")
+    category_ids = [int(category_id) for category_id in category_ids]
+    custom_names = custom_names or {}
+    conn = await get_connection()
+    try:
+        if not category_ids:
+            await conn.execute("DELETE FROM master_category_links WHERE master_id = ?", (master_id,))
+            await conn.execute("UPDATE masters SET sphere = NULL WHERE id = ?", (master_id,))
+            await conn.commit()
+            return
+
+        placeholders = ",".join("?" for _ in category_ids)
+        cursor = await conn.execute(
+            f"""
+            SELECT id, slug, name
+            FROM master_categories
+            WHERE is_active = 1 AND id IN ({placeholders})
+            """,
+            category_ids,
+        )
+        categories = {int(row["id"]): dict(row) for row in await cursor.fetchall()}
+        if len(categories) != len(set(category_ids)):
+            raise ValueError("One or more categories do not exist or are inactive")
+
+        await conn.execute("DELETE FROM master_category_links WHERE master_id = ?", (master_id,))
+
+        sphere_parts: list[str] = []
+        seen: set[int] = set()
+        for index, category_id in enumerate(category_ids):
+            if category_id in seen:
+                continue
+            seen.add(category_id)
+            category = categories[category_id]
+            custom = (custom_names.get(category_id) or "").strip() or None
+            if category["slug"] != "other":
+                custom = None
+            sphere_parts.append(custom or category["name"])
+            await conn.execute(
+                """
+                INSERT INTO master_category_links (master_id, category_id, custom_name, sort_order)
+                VALUES (?, ?, ?, ?)
+                """,
+                (master_id, category_id, custom, index),
+            )
+
+        await conn.execute(
+            "UPDATE masters SET sphere = ? WHERE id = ?",
+            (", ".join(sphere_parts) if sphere_parts else None, master_id),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def link_categories_from_sphere(master_id: int, sphere: Optional[str]) -> None:
+    """Best-effort sync from legacy free-text sphere into normalized links."""
+    if not sphere:
+        await set_master_categories(master_id, [])
+        return
+    categories = await get_all_categories()
+    category_by_name = {category["name"]: category["id"] for category in categories}
+    other_id = next((category["id"] for category in categories if category["slug"] == "other"), None)
+    if not other_id:
+        return
+
+    category_ids: list[int] = []
+    custom_names: dict[int, str] = {}
+    for part in [item.strip() for item in sphere.split(",") if item.strip()][:3]:
+        category_id = category_by_name.get(part)
+        if category_id is None:
+            if other_id in category_ids:
+                continue
+            category_id = other_id
+            custom_names[category_id] = part[:100]
+        category_ids.append(category_id)
+
+    if category_ids:
+        await set_master_categories(master_id, category_ids, custom_names)
+
+
 async def save_master_home_message_id(master_id: int, message_id: int) -> None:
     """Save master's home message ID."""
     await update_master(master_id, home_message_id=message_id)

@@ -3,9 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterMe,
   getMasterInvite,
+  getCategories,
+  getMyCategories,
   updateMasterProfile,
   updateMasterTimezone,
   updateMasterCurrency,
+  updateMyCategories,
   uploadMasterAvatar,
   deleteMasterAvatar,
   uploadPortfolioPhoto,
@@ -16,6 +19,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 import { useI18n } from '../../i18n';
 import { TIMEZONES, CURRENCIES, WORK_MODES, LANG_OPTIONS } from '../profileOptions';
+import CategoryPicker from '../components/CategoryPicker';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -132,12 +136,12 @@ function SectionTitle({ children }) {
   return <div className="enterprise-section-title">{children}</div>;
 }
 
-function Cell({ icon, label, value, onClick, fallbackValue }) {
+function Cell({ icon, label, value, valueNode, onClick, fallbackValue }) {
   return (
     <button className="enterprise-cell is-interactive" onClick={() => { haptic(); onClick(); }}>
       {icon && <span className="enterprise-cell-icon">{icon}</span>}
       <span className="enterprise-cell-label">{label}</span>
-      <span className="enterprise-cell-value">{value || fallbackValue}</span>
+      <span className="enterprise-cell-value">{valueNode || value || fallbackValue}</span>
       <span className="enterprise-cell-chevron"><ChevronIcon /></span>
     </button>
   );
@@ -214,6 +218,49 @@ function TextEditSheet({ title, value, placeholder, multiline, loading, onClose,
   );
 }
 
+function CategoryEditSheet({ categories, selectedCategories, loading, onClose, onSave }) {
+  const { tr } = useI18n();
+  const [draft, setDraft] = useState(() => ({
+    category_ids: selectedCategories.map((category) => category.id),
+    custom_names: selectedCategories.reduce((acc, category) => {
+      if (category.custom_name) acc[category.id] = category.custom_name;
+      return acc;
+    }, {}),
+  }));
+  const otherCategory = categories.find((category) => category.slug === 'other');
+  const otherReady = !otherCategory ||
+    !draft.category_ids.includes(otherCategory.id) ||
+    Boolean(draft.custom_names[otherCategory.id]?.trim());
+  const canSave = draft.category_ids.length > 0 && otherReady;
+
+  return (
+    <>
+      <div className="enterprise-sheet-backdrop" onClick={onClose} />
+      <div className="enterprise-sheet">
+        <div className="enterprise-sheet-handle" />
+        <div className="enterprise-sheet-title">{tr('Сфера деятельности', 'Business categories')}</div>
+        <CategoryPicker
+          categories={categories}
+          selectedCategoryIds={draft.category_ids}
+          customNames={draft.custom_names}
+          maxCount={3}
+          loading={loading}
+          showActions
+          onCancel={onClose}
+          onChange={setDraft}
+          onSave={() => canSave && onSave(draft)}
+          saveLabel={tr('Сохранить', 'Save')}
+        />
+        {!canSave && (
+          <div className="promo-builder-error">
+            {tr('Выберите от 1 до 3 категорий. Для «Другое» укажите текст.', 'Choose 1-3 categories. Add text for Other.')}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function Profile() {
   const { t, lang, setLang } = useI18n();
   const [picker, setPicker] = useState(null);
@@ -239,6 +286,18 @@ export default function Profile() {
   const { data: portfolio = [] } = useQuery({
     queryKey: ['master-portfolio'],
     queryFn: getMasterPortfolio,
+    staleTime: 60_000,
+  });
+
+  const { data: categoryData, isLoading: categoriesLoading } = useQuery({
+    queryKey: ['master-categories'],
+    queryFn: getCategories,
+    staleTime: 10 * 60_000,
+  });
+
+  const { data: myCategoryData, isLoading: myCategoriesLoading } = useQuery({
+    queryKey: ['master-me-categories'],
+    queryFn: getMyCategories,
     staleTime: 60_000,
   });
 
@@ -322,6 +381,21 @@ export default function Profile() {
     onError: () => hapticNotify('error'),
   });
 
+  const categoryMutation = useMutation({
+    mutationFn: updateMyCategories,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['master-me-categories'] });
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      setPicker(null);
+      showSuccess(t('profile.toasts.profileUpdated'));
+    },
+    onError: (err) => {
+      hapticNotify('error');
+      const msg = err?.response?.data?.detail || t('profile.errors.saveFailed');
+      WebApp?.showAlert?.(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    },
+  });
+
   const handleCopyInvite = async () => {
     const link = inviteData?.invite_link;
     if (!link) return;
@@ -393,6 +467,18 @@ export default function Profile() {
   const langLabel = languageOptions.find((item) => item.value === lang)?.label || t('profile.language.ru');
   const phoneValue = master?.phone || master?.contacts;
   const isHomeWorkMode = (master?.work_mode || 'travel') === 'home';
+  const allCategories = categoryData?.categories || [];
+  const myCategories = myCategoryData?.categories || [];
+  const categoryValueNode = myCategories.length > 0 ? (
+    <span className="master-category-summary">
+      {myCategories.map((category) => (
+        <span key={category.id} className="master-category-summary-chip">
+          <span>{category.icon || '•'}</span>
+          <span>{category.custom_name || category.name}</span>
+        </span>
+      ))}
+    </span>
+  ) : null;
 
   return (
     <div className="enterprise-profile-page">
@@ -423,8 +509,12 @@ export default function Profile() {
           icon={<BriefcaseIcon />}
           label={t('profile.fields.sphere')}
           value={master?.sphere}
+          valueNode={categoryValueNode}
           fallbackValue={t('common.notSpecified')}
-          onClick={() => setEditor({ field: 'sphere', title: t('profile.fields.sphere'), value: master?.sphere || '', placeholder: t('profile.placeholders.sphere') })}
+          onClick={() => {
+            if (categoriesLoading || myCategoriesLoading || allCategories.length === 0) return;
+            setPicker('categories');
+          }}
         />
         <Cell
           icon={<FileTextIcon />}
@@ -725,6 +815,16 @@ export default function Profile() {
           }}
           onClose={() => setPicker(null)}
           loading={false}
+        />
+      )}
+
+      {picker === 'categories' && (
+        <CategoryEditSheet
+          categories={allCategories}
+          selectedCategories={myCategories}
+          loading={categoryMutation.isPending}
+          onClose={() => setPicker(null)}
+          onSave={(payload) => categoryMutation.mutate(payload)}
         />
       )}
 

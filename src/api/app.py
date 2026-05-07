@@ -24,6 +24,7 @@ from src.api.routers.master import reports as master_reports
 from src.api.routers.master import auth as master_auth
 from src.api.routers.master import requests as master_requests
 from src.api.routers.master import subscription as master_subscription
+from src.api.routers.master import categories as master_categories
 from src.config import MINIAPP_URL
 from src.api.dependencies import SubscriptionRequiredError
 from urllib.parse import urlparse
@@ -95,6 +96,7 @@ app.include_router(master_reports.router, prefix="/api")
 app.include_router(master_auth.router, prefix="/api")
 app.include_router(master_requests.router, prefix="/api")
 app.include_router(master_subscription.router, prefix="/api")
+app.include_router(master_categories.router, prefix="/api")
 
 
 @app.get("/health")

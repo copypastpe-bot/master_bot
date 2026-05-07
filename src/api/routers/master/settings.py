@@ -27,6 +27,7 @@ from src.database import (
     update_service,
     archive_service,
     restore_service,
+    link_categories_from_sphere,
     update_master,
 )
 from src.models import Master
@@ -319,6 +320,8 @@ async def update_master_profile(
 
     if kwargs:
         await update_master(master.id, **kwargs)
+    if "sphere" in payload:
+        await link_categories_from_sphere(master.id, kwargs.get("sphere"))
     return {"ok": True}
 
 
