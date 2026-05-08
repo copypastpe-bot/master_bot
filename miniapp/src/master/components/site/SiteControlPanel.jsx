@@ -98,18 +98,21 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
           display: flex;
           flex-direction: column;
           gap: 12px;
-          background: var(--tg-theme-bg-color, #fff);
+          background: linear-gradient(180deg, var(--master-bg-card), var(--master-bg-surface));
+          border-top: 1px solid var(--master-border);
+          box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.08);
         }
         .site-control-panel__save {
           width: 100%;
           height: 48px;
           border-radius: 12px;
           border: none;
-          background: var(--tg-theme-button-color, #2481cc);
-          color: var(--tg-theme-button-text-color, #fff);
+          background: var(--master-accent);
+          color: var(--master-button-text);
           font-size: 15px;
           font-weight: 600;
           cursor: pointer;
+          box-shadow: 0 10px 24px var(--master-accent-22);
         }
         .site-control-panel__save:disabled { opacity: 0.6; }
         .site-control-panel__link-row {
@@ -120,16 +123,16 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
         }
         .site-control-panel__url {
           font-size: 13px;
-          color: var(--tg-theme-hint-color, #999);
+          color: var(--master-text-secondary);
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
         .site-control-panel__copy {
-          background: none;
-          border: 1px solid var(--tg-theme-accent-text-color, #2481cc);
+          background: var(--master-accent-8);
+          border: 1px solid var(--master-accent);
           border-radius: 8px;
-          color: var(--tg-theme-accent-text-color, #2481cc);
+          color: var(--master-accent);
           font-size: 13px;
           padding: 6px 10px;
           cursor: pointer;
@@ -142,7 +145,8 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
           gap: 8px;
         }
         .stat-card {
-          background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+          background: var(--master-bg-surface);
+          border: 1px solid var(--master-border);
           border-radius: 12px;
           padding: 12px;
           display: flex;
@@ -152,11 +156,11 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
         .stat-card__num {
           font-size: 20px;
           font-weight: 700;
-          color: var(--tg-theme-text-color, #000);
+          color: var(--master-text-primary);
         }
         .stat-card__label {
           font-size: 12px;
-          color: var(--tg-theme-hint-color, #999);
+          color: var(--master-text-secondary);
         }
         .site-control-panel__actions {
           display: grid;
@@ -164,18 +168,18 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
           gap: 8px;
         }
         .site-control-panel__action {
-          background: var(--tg-theme-secondary-bg-color, #f4f4f4);
-          border: none;
+          background: var(--master-bg-surface);
+          border: 1px solid var(--master-border);
           border-radius: 12px;
           padding: 12px;
           font-size: 14px;
           cursor: pointer;
-          color: var(--tg-theme-text-color, #000);
+          color: var(--master-text-primary);
         }
         .site-control-panel__settings-ghost {
           background: none;
           border: none;
-          color: var(--tg-theme-hint-color, #999);
+          color: var(--master-text-secondary);
           font-size: 14px;
           cursor: pointer;
           padding: 4px 0;

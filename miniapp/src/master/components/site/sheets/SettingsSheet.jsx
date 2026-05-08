@@ -97,7 +97,7 @@ export default function SettingsSheet({ data, onChange, onClose }) {
 
       <style>{`
         .sheet-slug-row { display: flex; align-items: center; gap: 0; }
-        .sheet-slug-prefix { font-size: 14px; color: var(--tg-theme-hint-color, #999); white-space: nowrap; padding: 12px 0 12px 14px; background: var(--tg-theme-secondary-bg-color, #f4f4f4); border-radius: 12px 0 0 12px; border: 1px solid transparent; }
+        .sheet-slug-prefix { font-size: 14px; color: var(--master-text-secondary); white-space: nowrap; padding: 12px 0 12px 14px; background: var(--master-bg-surface); border-radius: 12px 0 0 12px; border: 1px solid var(--master-border); border-right: none; }
         .sheet-slug-input { border-radius: 0 12px 12px 0 !important; flex: 1; }
       `}</style>
     </div>

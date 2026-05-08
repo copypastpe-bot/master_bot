@@ -19,7 +19,7 @@ export default function TaglineSheet({ data, onChange, onClose }) {
         />
         <span
           className="sheet-counter"
-          style={{ color: isWarning ? 'var(--tg-theme-destructive-text-color, #e53935)' : undefined }}
+          style={{ color: isWarning ? 'var(--master-destructive)' : undefined }}
         >
           {len}/120
         </span>

@@ -63,7 +63,9 @@ export default function StyleSwitcher({ styles, currentIndex, onChange }) {
           position: sticky;
           top: 0;
           z-index: 10;
-          background: var(--tg-theme-secondary-bg-color, #f4f4f4);
+          background: linear-gradient(180deg, var(--master-bg-card), var(--master-bg-surface));
+          border-bottom: 1px solid var(--master-border);
+          backdrop-filter: blur(14px);
           padding: 8px 16px 6px;
           display: flex;
           flex-direction: column;
@@ -81,21 +83,21 @@ export default function StyleSwitcher({ styles, currentIndex, onChange }) {
           background: none;
           border: none;
           font-size: 24px;
-          color: var(--tg-theme-hint-color, #999);
+          color: var(--master-text-secondary);
           cursor: pointer;
           padding: 0 8px;
           line-height: 1;
           transition: color 150ms;
         }
         .style-switcher__arrow:active {
-          color: var(--tg-theme-accent-text-color, #2481cc);
+          color: var(--master-accent);
         }
         .style-switcher__name {
           flex: 1;
           text-align: center;
           font-size: 14px;
           font-weight: 500;
-          color: var(--tg-theme-text-color, #000);
+          color: var(--master-text-primary);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -109,18 +111,18 @@ export default function StyleSwitcher({ styles, currentIndex, onChange }) {
           width: 6px;
           height: 6px;
           border-radius: 50%;
-          background: var(--tg-theme-hint-color, #999);
+          background: var(--master-text-secondary);
           opacity: 0.3;
           cursor: pointer;
           transition: opacity 200ms, background 200ms;
         }
         .style-switcher__dot.is-active {
-          background: var(--tg-theme-accent-text-color, #2481cc);
+          background: var(--master-accent);
           opacity: 1;
         }
         .style-switcher__counter {
           font-size: 12px;
-          color: var(--tg-theme-hint-color, #999);
+          color: var(--master-text-secondary);
         }
       `}</style>
     </div>

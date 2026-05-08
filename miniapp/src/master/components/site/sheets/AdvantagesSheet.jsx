@@ -102,17 +102,17 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
       </button>
 
       <style>{`
-        .adv-slot { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--tg-theme-secondary-bg-color, #f4f4f4); }
+        .adv-slot { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--master-border); }
         .adv-slot-row { display: flex; align-items: center; gap: 10px; }
         .adv-slot-icon { font-size: 20px; min-width: 28px; text-align: center; }
         .adv-slot-input { flex: 1; }
-        .adv-slot-pick { background: none; border: none; color: var(--tg-theme-accent-text-color, #2481cc); font-size: 13px; cursor: pointer; text-align: left; padding: 0; }
+        .adv-slot-pick { background: none; border: none; color: var(--master-accent); font-size: 13px; cursor: pointer; text-align: left; padding: 0; }
         .adv-template-list { display: flex; flex-direction: column; gap: 2px; max-height: 50vh; overflow-y: auto; }
-        .adv-template-item { display: flex; align-items: center; gap: 10px; background: var(--tg-theme-secondary-bg-color, #f4f4f4); border: none; border-radius: 10px; padding: 10px 12px; cursor: pointer; text-align: left; font-size: 14px; color: var(--tg-theme-text-color, #000); }
-        .adv-template-item.is-suggested { border: 1px solid var(--tg-theme-accent-text-color, #2481cc); }
+        .adv-template-item { display: flex; align-items: center; gap: 10px; background: var(--master-bg-surface); border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; cursor: pointer; text-align: left; font-size: 14px; color: var(--master-text-primary); }
+        .adv-template-item.is-suggested { border: 1px solid var(--master-accent); background: var(--master-accent-8); }
         .adv-template-icon { font-size: 18px; min-width: 26px; }
         .adv-template-text { flex: 1; }
-        .adv-suggested-badge { font-size: 11px; color: var(--tg-theme-accent-text-color, #2481cc); white-space: nowrap; }
+        .adv-suggested-badge { font-size: 11px; color: var(--master-accent); white-space: nowrap; }
       `}</style>
     </div>
   );
