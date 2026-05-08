@@ -6,7 +6,8 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 export default function SiteControlPanel({ data, isDirty, saving, onSave, onSettings }) {
   const [copyDone, setCopyDone] = useState(false);
 
-  const pageUrl = data.slug ? `https://crmfit.ru/m/${data.slug}` : null;
+  // Use page_url from API response (e.g. https://api.crmfit.ru/m/{slug}).
+  const pageUrl = data.page_url || (data.slug ? `${API_BASE}/m/${data.slug}` : null);
   const qrUrl = data.qr_url
     ? (data.qr_url.startsWith('http') ? data.qr_url : `${API_BASE}${data.qr_url}`)
     : null;
@@ -48,7 +49,7 @@ export default function SiteControlPanel({ data, isDirty, saving, onSave, onSett
 
       {pageUrl && data.is_published && (
         <div className="site-control-panel__link-row">
-          <span className="site-control-panel__url">crmfit.ru/m/{data.slug}</span>
+          <span className="site-control-panel__url">{pageUrl}</span>
           <button
             type="button"
             className="site-control-panel__copy"

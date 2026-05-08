@@ -22,6 +22,7 @@ export default function SiteEditor({ initialData, onUpdate }) {
   const [isDirty, setIsDirty] = useState(false);
   const [activeSheet, setActiveSheet] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [photoTs, setPhotoTs] = useState(Date.now());
 
   useEffect(() => {
     getPromoStyles().then((res) => {
@@ -35,6 +36,7 @@ export default function SiteEditor({ initialData, onUpdate }) {
   function updateField(field, value) {
     setData((prev) => ({ ...prev, [field]: value }));
     setIsDirty(true);
+    if (field === 'photo_url') setPhotoTs(Date.now());
   }
 
   function closeSheet() {
@@ -85,6 +87,7 @@ export default function SiteEditor({ initialData, onUpdate }) {
           data={data}
           styleConfig={styleConfig}
           onBlockTap={setActiveSheet}
+          photoTs={photoTs}
         />
 
         <SiteControlPanel

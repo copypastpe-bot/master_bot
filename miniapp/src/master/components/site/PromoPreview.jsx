@@ -2,13 +2,15 @@ import EditableBlock from './EditableBlock';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 
-function absoluteUrl(url) {
+function absoluteUrl(url, bust) {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url}`;
+  const base = url.startsWith('http') ? url : `${API_BASE}${url}`;
+  // Strip existing ?t=... then add fresh one to force browser re-fetch.
+  const clean = base.split('?')[0];
+  return bust ? `${clean}?t=${bust}` : clean;
 }
 
-export default function PromoPreview({ data, styleConfig, onBlockTap }) {
+export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs }) {
   const cfg = styleConfig || {};
 
   const cssVars = {
@@ -32,7 +34,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap }) {
     transition: 'background 300ms ease, color 300ms ease',
   };
 
-  const photoUrl = absoluteUrl(data.photo_url);
+  const photoUrl = absoluteUrl(data.photo_url, photoTs);
 
   return (
     <div className="promo-page" style={cssVars}>
