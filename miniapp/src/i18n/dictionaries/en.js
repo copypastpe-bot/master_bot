@@ -111,6 +111,7 @@ const en = {
       addAdvantages: 'Add advantages',
       ctaButton: 'Claim bonuses and subscribe',
       ctaSubtext: 'Free · No spam',
+      fromPrice: 'from',
     },
   },
 

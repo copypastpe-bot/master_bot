@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { updatePromoPageSlug, checkPromoPageSlug, publishPromoPage, unpublishPromoPage } from '../../../../api/client';
+import { useI18n } from '../../../i18n';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$/;
 
 export default function SettingsSheet({ data, onChange, onClose }) {
+  const { tr } = useI18n();
   const [slug, setSlug] = useState(data.slug || '');
   const [slugError, setSlugError] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
@@ -11,7 +13,7 @@ export default function SettingsSheet({ data, onChange, onClose }) {
 
   async function handleSlugSave() {
     if (!SLUG_RE.test(slug)) {
-      setSlugError('Только латиница, цифры и дефис, 3–50 символов');
+      setSlugError(tr('Только латиница, цифры и дефис, 3–50 символов', 'Latin letters, digits and hyphens, 3–50 chars'));
       return;
     }
     setSlugSaving(true);
@@ -19,13 +21,13 @@ export default function SettingsSheet({ data, onChange, onClose }) {
     try {
       const check = await checkPromoPageSlug(slug);
       if (!check.available && slug !== data.slug) {
-        setSlugError('Этот адрес уже занят');
+        setSlugError(tr('Этот адрес уже занят', 'This address is already taken'));
         return;
       }
       await updatePromoPageSlug(slug);
       onChange('slug', slug);
     } catch {
-      setSlugError('Ошибка сохранения');
+      setSlugError(tr('Ошибка сохранения', 'Save failed'));
     } finally {
       setSlugSaving(false);
     }
@@ -49,7 +51,7 @@ export default function SettingsSheet({ data, onChange, onClose }) {
   return (
     <div className="sheet-form">
       <div className="sheet-field">
-        <label className="sheet-label">Адрес страницы</label>
+        <label className="sheet-label">{tr('Адрес страницы', 'Page address')}</label>
         <div className="sheet-slug-row">
           <span className="sheet-slug-prefix">crmfit.ru/m/</span>
           <input
@@ -68,13 +70,15 @@ export default function SettingsSheet({ data, onChange, onClose }) {
           onClick={handleSlugSave}
           disabled={slugSaving || slug === data.slug}
         >
-          {slugSaving ? 'Сохраняю...' : 'Сохранить адрес'}
+          {slugSaving ? tr('Сохраняю...', 'Saving...') : tr('Сохранить адрес', 'Save address')}
         </button>
       </div>
 
       <div className="sheet-field sheet-field--toggle">
         <label className="sheet-label">
-          {data.is_published ? '✅ Страница опубликована' : '⭕ Страница скрыта'}
+          {data.is_published
+            ? tr('✅ Страница опубликована', '✅ Page is published')
+            : tr('⭕ Страница скрыта', '⭕ Page is hidden')}
         </label>
         <label className="sheet-toggle">
           <input
@@ -88,7 +92,7 @@ export default function SettingsSheet({ data, onChange, onClose }) {
       </div>
 
       <button type="button" className="sheet-btn sheet-btn--done" onClick={onClose}>
-        Готово
+        {tr('Готово', 'Done')}
       </button>
 
       <style>{`

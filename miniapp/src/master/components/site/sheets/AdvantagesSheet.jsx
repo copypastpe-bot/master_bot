@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getPromoAdvantages } from '../../../../api/client';
+import { useI18n } from '../../../i18n';
 
 const DEFAULT_ADVANTAGES = [
   { text: '', icon: '' },
@@ -8,6 +9,7 @@ const DEFAULT_ADVANTAGES = [
 ];
 
 export default function AdvantagesSheet({ data, onChange, onClose }) {
+  const { tr } = useI18n();
   const advantages = data.advantages?.length > 0 ? [...data.advantages] : DEFAULT_ADVANTAGES;
   const [slots, setSlots] = useState(advantages.slice(0, 3).concat(
     DEFAULT_ADVANTAGES.slice(advantages.slice(0, 3).length)
@@ -45,8 +47,8 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
   if (templates !== null) {
     return (
       <div className="sheet-form">
-        <div className="sheet-section-label">Выберите преимущество</div>
-        {loadingTemplates && <p className="sheet-hint">Загрузка...</p>}
+        <div className="sheet-section-label">{tr('Выберите преимущество', 'Select advantage')}</div>
+        {loadingTemplates && <p className="sheet-hint">{tr('Загрузка...', 'Loading...')}</p>}
         <div className="adv-template-list">
           {templates.map((tpl, i) => (
             <button
@@ -57,12 +59,12 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
             >
               <span className="adv-template-icon">{tpl.icon || '✓'}</span>
               <span className="adv-template-text">{tpl.text}</span>
-              {tpl.is_suggested && <span className="adv-suggested-badge">для вас</span>}
+              {tpl.is_suggested && <span className="adv-suggested-badge">{tr('для вас', 'for you')}</span>}
             </button>
           ))}
         </div>
         <button type="button" className="sheet-btn" onClick={() => { setTemplates(null); setActiveSlot(null); }}>
-          Назад
+          {tr('Назад', 'Back')}
         </button>
       </div>
     );
@@ -70,7 +72,7 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
 
   return (
     <div className="sheet-form">
-      <div className="sheet-section-label">Преимущества (3 штуки)</div>
+      <div className="sheet-section-label">{tr('Преимущества (3 штуки)', 'Advantages (3 items)')}</div>
 
       {slots.map((slot, i) => (
         <div key={i} className="adv-slot">
@@ -81,7 +83,7 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
               type="text"
               value={slot.text}
               maxLength={60}
-              placeholder="Текст преимущества"
+              placeholder={tr('Текст преимущества', 'Advantage text')}
               onChange={(e) => updateSlot(i, 'text', e.target.value)}
             />
           </div>
@@ -90,13 +92,13 @@ export default function AdvantagesSheet({ data, onChange, onClose }) {
             className="adv-slot-pick"
             onClick={() => loadTemplates(i)}
           >
-            Выбрать из шаблонов
+            {tr('Выбрать из шаблонов', 'Choose from templates')}
           </button>
         </div>
       ))}
 
       <button type="button" className="sheet-btn sheet-btn--done" onClick={onClose}>
-        Готово
+        {tr('Готово', 'Done')}
       </button>
 
       <style>{`

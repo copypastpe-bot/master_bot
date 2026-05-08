@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { uploadPromoPagePhoto } from '../../../../api/client';
+import { useI18n } from '../../../i18n';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 
@@ -10,6 +11,7 @@ function absoluteUrl(url) {
 }
 
 export default function HeroSheet({ data, onChange, onClose }) {
+  const { tr } = useI18n();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -24,10 +26,10 @@ export default function HeroSheet({ data, onChange, onClose }) {
       if (result?.photo_url) {
         onChange('photo_url', result.photo_url);
       } else {
-        setUploadError('Не удалось получить URL фото. Попробуйте ещё раз.');
+        setUploadError(tr('Не удалось получить URL фото. Попробуйте ещё раз.', 'Failed to get photo URL. Please try again.'));
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail || 'Ошибка загрузки фото';
+      const msg = err?.response?.data?.detail || tr('Ошибка загрузки фото', 'Photo upload failed');
       setUploadError(msg);
     } finally {
       setUploading(false);
@@ -41,14 +43,14 @@ export default function HeroSheet({ data, onChange, onClose }) {
 
   return (
     <div className="sheet-form">
-      <div className="sheet-section-label">Фото профиля</div>
+      <div className="sheet-section-label">{tr('Фото профиля', 'Profile photo')}</div>
 
       {photoUrl && (
         <div className="hero-sheet-preview">
           <img
             key={photoUrl}
             src={photoUrl}
-            alt="Фото"
+            alt={tr('Фото', 'Photo')}
             className="hero-sheet-photo"
           />
         </div>
@@ -63,13 +65,13 @@ export default function HeroSheet({ data, onChange, onClose }) {
       />
 
       <div className="sheet-field">
-        <label className="sheet-label">Бейдж (необязательно)</label>
+        <label className="sheet-label">{tr('Бейдж (необязательно)', 'Badge (optional)')}</label>
         <input
           className="sheet-input"
           type="text"
           value={data.badge_text || ''}
           maxLength={40}
-          placeholder="Например: Доступно запись"
+          placeholder={tr('Например: Доступно запись', 'E.g.: Booking available')}
           onChange={(e) => onChange('badge_text', e.target.value)}
         />
       </div>
@@ -84,7 +86,7 @@ export default function HeroSheet({ data, onChange, onClose }) {
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
       >
-        {uploading ? 'Загружаю...' : photoUrl ? 'Заменить фото' : 'Выбрать фото'}
+        {uploading ? tr('Загружаю...', 'Uploading...') : photoUrl ? tr('Заменить фото', 'Replace photo') : tr('Выбрать фото', 'Choose photo')}
       </button>
 
       {photoUrl && !uploading && (
@@ -93,7 +95,7 @@ export default function HeroSheet({ data, onChange, onClose }) {
           className="sheet-btn sheet-btn--danger"
           onClick={() => onChange('photo_url', '')}
         >
-          Удалить фото
+          {tr('Удалить фото', 'Delete photo')}
         </button>
       )}
 
@@ -103,7 +105,7 @@ export default function HeroSheet({ data, onChange, onClose }) {
         onClick={onClose}
         disabled={uploading}
       >
-        {uploading ? 'Подождите...' : 'Готово'}
+        {uploading ? tr('Подождите...', 'Please wait...') : tr('Готово', 'Done')}
       </button>
     </div>
   );

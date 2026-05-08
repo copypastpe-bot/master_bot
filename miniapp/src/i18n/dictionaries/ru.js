@@ -111,6 +111,7 @@ const ru = {
       addAdvantages: 'Добавьте преимущества',
       ctaButton: 'Забрать бонусы и подписаться',
       ctaSubtext: 'Бесплатно · Без спама',
+      fromPrice: 'от',
     },
   },
 

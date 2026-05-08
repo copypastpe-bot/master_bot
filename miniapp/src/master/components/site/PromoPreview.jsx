@@ -93,7 +93,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
               {data.service_name || <span className="placeholder">{t('minisite.editor.serviceName')}</span>}
             </p>
             <p className="service-card__price">
-              <small>от</small>
+              <small>{t('minisite.editor.fromPrice')}</small>
               <span className="service-card__price-value">
                 {data.service_price || <span className="placeholder">{t('minisite.editor.servicePrice')}</span>}
               </span>
