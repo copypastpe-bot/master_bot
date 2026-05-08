@@ -9,6 +9,13 @@ from typing import Optional
 import qrcode
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
+
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    _HEIF_SUPPORTED = True
+except ImportError:
+    _HEIF_SUPPORTED = False
 from pydantic import BaseModel, Field, field_validator
 
 from src.api.dependencies import get_current_master
@@ -53,7 +60,7 @@ def _resolve_promo_media_dir() -> Path:
 PROMO_MEDIA_DIR = _resolve_promo_media_dir()
 PROMO_PUBLIC_BASE_URL = os.getenv("PROMO_PUBLIC_BASE_URL", "https://api.crmfit.ru")
 MAX_PROMO_PHOTO_BYTES = 5 * 1024 * 1024
-ALLOWED_IMAGE_FORMATS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp"}
+ALLOWED_IMAGE_FORMATS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "HEIF": ".jpg"}
 
 
 class PromoAdvantageBody(BaseModel):
@@ -223,7 +230,7 @@ async def _read_image(file: UploadFile) -> tuple[bytes, Image.Image, str]:
 
     image_format = (image.format or "").upper()
     if image_format not in ALLOWED_IMAGE_FORMATS:
-        raise HTTPException(status_code=415, detail="Unsupported format. Allowed: JPEG, PNG, WebP.")
+        raise HTTPException(status_code=415, detail="Unsupported format. Allowed: JPEG, PNG, WebP, HEIC.")
     if image.width < 200 or image.height < 200:
         raise HTTPException(status_code=400, detail="Image must be at least 200x200 px")
     return data, image, ALLOWED_IMAGE_FORMATS[image_format]
