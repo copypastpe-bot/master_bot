@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { getPromoAdvantages } from '../../../../api/client';
-import { useI18n } from '../../../i18n';
+import { useI18n } from '../../../../i18n';
 
 const DEFAULT_ADVANTAGES = [
   { text: '', icon: '' },

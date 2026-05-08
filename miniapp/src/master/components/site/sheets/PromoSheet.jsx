@@ -1,4 +1,4 @@
-import { useI18n } from '../../../i18n';
+import { useI18n } from '../../../../i18n';
 
 export default function PromoSheet({ data, onChange, onClose }) {
   const { tr } = useI18n();

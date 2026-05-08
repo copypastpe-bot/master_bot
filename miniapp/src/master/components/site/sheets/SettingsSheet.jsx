@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { updatePromoPageSlug, checkPromoPageSlug, publishPromoPage, unpublishPromoPage } from '../../../../api/client';
-import { useI18n } from '../../../i18n';
+import { useI18n } from '../../../../i18n';
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,48}[a-z0-9])$/;
 
