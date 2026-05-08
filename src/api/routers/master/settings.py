@@ -56,6 +56,7 @@ ALLOWED_TIMEZONES = {
 }
 
 ALLOWED_CURRENCIES = {"RUB", "EUR", "ILS", "UAH", "BYN", "KZT", "USD", "TRY", "GEL", "UZS"}
+ALLOWED_THEME_PRESETS = {"ocean", "violet", "emerald", "rose", "amber", "slate", "sky"}
 TELEGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
 
@@ -404,6 +405,30 @@ async def update_master_currency(
     master: Master = Depends(get_current_master),
 ):
     await update_master(master.id, currency=body.currency)
+    return {"ok": True}
+
+
+# =============================================================================
+# Theme preset
+# =============================================================================
+
+class ThemePresetBody(BaseModel):
+    theme_preset: str
+
+    @field_validator("theme_preset")
+    @classmethod
+    def preset_allowed(cls, v):
+        if v not in ALLOWED_THEME_PRESETS:
+            raise ValueError(f"Unknown theme preset: {v}")
+        return v
+
+
+@router.put("/master/theme-preset")
+async def update_master_theme_preset(
+    body: ThemePresetBody,
+    master: Master = Depends(get_current_master),
+):
+    await update_master(master.id, theme_preset=body.theme_preset)
     return {"ok": True}
 
 

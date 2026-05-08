@@ -52,6 +52,7 @@ async def get_master_me(
         "work_address_default": master.work_address_default,
         "currency": master.currency,
         "timezone": master.timezone,
+        "theme_preset": master.theme_preset,
         "bonus_enabled": master.bonus_enabled,
         "bonus_rate": master.bonus_rate,
         "bonus_max_spend": master.bonus_max_spend,
@@ -123,6 +124,7 @@ async def get_master_dashboard(
     return {
         "master_name": master.name,
         "currency": master.currency,
+        "theme_preset": master.theme_preset,
         "today_orders": [_format_order(o) for o in today_orders_raw],
         "tomorrow_orders": [_format_order(o) for o in tomorrow_orders_raw],
         "stats": {
