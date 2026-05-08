@@ -62,7 +62,7 @@ export default function SiteEditor({ initialData, onUpdate }) {
   const styleConfig = styles[currentStyleIndex]?.config ?? data.style?.config ?? {};
 
   const SHEETS = {
-    hero: <HeroSheet data={data} onChange={updateField} onClose={closeSheet} />,
+    hero: <HeroSheet data={data} onChange={updateField} onClose={closeSheet} photoTs={photoTs} />,
     identity: <IdentitySheet data={data} onChange={updateField} onClose={closeSheet} />,
     tagline: <TaglineSheet data={data} onChange={updateField} onClose={closeSheet} />,
     service: <ServiceSheet data={data} onChange={updateField} onClose={closeSheet} />,

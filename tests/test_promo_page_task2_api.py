@@ -248,3 +248,21 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         legacy_status, legacy_html = await self._render_response(legacy_response, legacy_request)
         self.assertEqual(legacy_status, 200)
         self.assertIn("Мария Иванова", legacy_html)
+
+    async def test_public_promo_ssr_uses_master_language(self):
+        await self._create_page()
+        await self.promo_pages.upload_promo_photo_api(file=self._upload_image(), master=self.master)
+        await self.promo_pages.publish_promo_page_api(master=self.master)
+        await db.update_master(1, language="en")
+
+        from src.api.routers import landing
+
+        request = self._request("/m/mariya-ivanova")
+        response = await landing.landing_page(request, "mariya-ivanova")
+        status_code, html = await self._render_response(response, request)
+
+        self.assertEqual(status_code, 200)
+        self.assertIn('<html lang="en">', html)
+        self.assertIn('Popular service', html)
+        self.assertIn('Claim bonuses and subscribe', html)
+        self.assertIn('content="en_US"', html)

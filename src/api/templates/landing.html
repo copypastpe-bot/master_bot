@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ language }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,7 @@
   <meta property="og:title" content="{{ og_title }}">
   <meta property="og:description" content="{{ og_description }}">
   <meta property="og:type" content="profile">
+  <meta property="og:locale" content="{{ og_locale }}">
   {% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
 
   <style>
@@ -186,7 +187,7 @@
   <!-- Блок 3: Портфолио -->
   {% if portfolio %}
   <section class="section">
-    <h2 class="section-title">Портфолио</h2>
+    <h2 class="section-title">{{ portfolio_label }}</h2>
     <div class="portfolio-scroll">
       {% for item in portfolio %}
         <img class="portfolio-img" src="{{ item.url }}" alt="Работа {{ loop.index }}" loading="lazy">
@@ -198,7 +199,7 @@
   <!-- Блок 3.5: Отзывы -->
   {% if reviews %}
   <section class="section">
-    <h2 class="section-title">Отзывы</h2>
+    <h2 class="section-title">{{ reviews_label }}</h2>
     <div class="reviews-list">
       {% for r in reviews[:5] %}
       <div class="review-card">
@@ -221,7 +222,7 @@
   <!-- Блок 4: Услуги и цены -->
   {% if services %}
   <section class="section">
-    <h2 class="section-title">Услуги и цены</h2>
+    <h2 class="section-title">{{ services_label }}</h2>
     <div class="services-list">
       {% for s in services %}
       <div class="service-row">
@@ -236,17 +237,17 @@
   <!-- Блок 5: Контакты -->
   {% if contacts or socials or work_hours %}
   <section class="section">
-    <h2 class="section-title">Контакты</h2>
+    <h2 class="section-title">{{ contacts_label }}</h2>
     <div class="contacts-list">
       {% if contacts %}
       <div class="contact-row">
-        <span class="contact-label">Телефон</span>
+        <span class="contact-label">{{ phone_label }}</span>
         <span class="contact-val"><a href="tel:{{ contacts }}">{{ contacts }}</a></span>
       </div>
       {% endif %}
       {% if socials %}
       <div class="contact-row">
-        <span class="contact-label">Соцсети</span>
+        <span class="contact-label">{{ socials_label }}</span>
         <span class="contact-val">{{ socials }}</span>
       </div>
       {% endif %}

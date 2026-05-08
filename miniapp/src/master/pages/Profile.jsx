@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMasterMe,
@@ -301,6 +301,12 @@ export default function Profile() {
     staleTime: 60_000,
   });
 
+  useEffect(() => {
+    if (master?.language && master.language !== lang) {
+      setLang(master.language);
+    }
+  }, [master?.language, lang, setLang]);
+
   const showSuccess = (msg = t('profile.toasts.saved')) => {
     hapticNotify('success');
     setSuccessMsg(msg);
@@ -379,6 +385,21 @@ export default function Profile() {
       showSuccess(t('profile.toasts.currencySaved'));
     },
     onError: () => hapticNotify('error'),
+  });
+
+  const languageMutation = useMutation({
+    mutationFn: (nextLang) => updateMasterProfile({ language: nextLang }),
+    onSuccess: (_data, nextLang) => {
+      qc.invalidateQueries({ queryKey: ['master-me'] });
+      setLang(nextLang);
+      setPicker(null);
+      showSuccess(t('profile.toasts.languageSaved'));
+    },
+    onError: (err) => {
+      hapticNotify('error');
+      const msg = err?.response?.data?.detail || t('profile.errors.saveFailed');
+      WebApp?.showAlert?.(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    },
   });
 
   const categoryMutation = useMutation({
@@ -464,7 +485,8 @@ export default function Profile() {
   const tzLabel = timezoneOptions.find((item) => item.value === master?.timezone)?.label || master?.timezone || t('common.dash');
   const curLabel = currencyOptions.find((item) => item.value === master?.currency)?.label || master?.currency || t('common.dash');
   const workModeLabel = workModeOptions.find((item) => item.value === master?.work_mode)?.label || t('profile.workModes.travel');
-  const langLabel = languageOptions.find((item) => item.value === lang)?.label || t('profile.language.ru');
+  const currentLanguage = master?.language || lang;
+  const langLabel = languageOptions.find((item) => item.value === currentLanguage)?.label || t('profile.language.ru');
   const phoneValue = master?.phone || master?.contacts;
   const isHomeWorkMode = (master?.work_mode || 'travel') === 'home';
   const allCategories = categoryData?.categories || [];
@@ -808,13 +830,10 @@ export default function Profile() {
         <PickerSheet
           title={t('profile.language.pickerTitle')}
           options={languageOptions}
-          value={lang}
-          onChange={(nextLang) => {
-            setLang(nextLang);
-            showSuccess(t('profile.toasts.languageSaved'));
-          }}
+          value={currentLanguage}
+          onChange={(nextLang) => languageMutation.mutate(nextLang)}
           onClose={() => setPicker(null)}
-          loading={false}
+          loading={languageMutation.isPending}
         />
       )}
 

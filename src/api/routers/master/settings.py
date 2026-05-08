@@ -56,6 +56,7 @@ ALLOWED_TIMEZONES = {
 }
 
 ALLOWED_CURRENCIES = {"RUB", "EUR", "ILS", "UAH", "BYN", "KZT", "USD", "TRY", "GEL", "UZS"}
+ALLOWED_LANGUAGES = {"ru", "en"}
 ALLOWED_THEME_PRESETS = {"ocean", "violet", "emerald", "rose", "amber", "slate", "sky"}
 TELEGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
@@ -187,6 +188,7 @@ class ProfileUpdateBody(BaseModel):
     avatar_file_id: Optional[str] = None
     work_mode: Optional[str] = None
     work_address_default: Optional[str] = None
+    language: Optional[str] = None
     onboarding_banner_shown: Optional[bool] = None
     onboarding_skipped_first_client: Optional[bool] = None
 
@@ -207,6 +209,18 @@ class ProfileUpdateBody(BaseModel):
         if v not in {"home", "travel"}:
             raise ValueError("work_mode must be one of: home, travel")
         return v
+
+    @field_validator("language")
+    @classmethod
+    def language_allowed(cls, v):
+        if v is None:
+            return v
+        value = v.strip().lower()
+        if value.startswith("en"):
+            return "en"
+        if value.startswith("ru"):
+            return "ru"
+        raise ValueError("language must be one of: ru, en")
 
     @field_validator("phone")
     @classmethod

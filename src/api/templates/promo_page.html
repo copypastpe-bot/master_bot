@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ language }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,7 +14,7 @@
   <meta property="og:image" content="{{ absolute_photo_url or photo_url }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:type" content="profile">
-  <meta property="og:locale" content="ru_RU">
+  <meta property="og:locale" content="{{ og_locale }}">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ display_name }} — {{ specialization }}">
@@ -377,10 +377,10 @@
       <p class="tagline">{{ tagline }}</p>
 
       <div class="service-card">
-        <span class="service-card__label">Популярная услуга</span>
+        <span class="service-card__label">{{ popular_service_label }}</span>
         <p class="service-card__name">{{ service_name }}</p>
         <p class="service-card__price">
-          <small>от</small>
+          <small>{{ from_price_label }}</small>
           <strong>{{ service_price }}</strong>
         </p>
       </div>
@@ -405,7 +405,7 @@
         {% endfor %}
       </div>
 
-      <a href="{{ bot_link }}" class="cta-button" id="cta-btn">Забрать бонусы и подписаться</a>
+      <a href="{{ bot_link }}" class="cta-button" id="cta-btn">{{ cta_button_text }}</a>
       <p class="cta-subtext">{{ sub_button_text }}</p>
     </div>
   </div>

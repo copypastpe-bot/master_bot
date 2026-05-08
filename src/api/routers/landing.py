@@ -53,6 +53,42 @@ _ICON_SVG = {
 }
 
 _DEFAULT_ICON_SVG = '<svg viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17Z"/></svg>'
+_PUBLIC_STRINGS = {
+    "ru": {
+        "og_locale": "ru_RU",
+        "popular_service": "Популярная услуга",
+        "from_price": "от",
+        "promo_cta": "Забрать бонусы и подписаться",
+        "promo_subtext": "Бонусы и уведомления в Telegram",
+        "landing_title_not_found": "Страница не найдена",
+        "landing_missing": "Мастер не найден или ссылка устарела.",
+        "landing_cta_bonus": "Подписаться и получить {bonus} бонусов",
+        "landing_cta_default": "Подписаться",
+        "portfolio": "Портфолио",
+        "reviews": "Отзывы",
+        "services": "Услуги и цены",
+        "contacts": "Контакты",
+        "phone": "Телефон",
+        "socials": "Соцсети",
+    },
+    "en": {
+        "og_locale": "en_US",
+        "popular_service": "Popular service",
+        "from_price": "from",
+        "promo_cta": "Claim bonuses and subscribe",
+        "promo_subtext": "Bonuses and Telegram updates",
+        "landing_title_not_found": "Page not found",
+        "landing_missing": "The master was not found or the link is outdated.",
+        "landing_cta_bonus": "Subscribe and get {bonus} bonuses",
+        "landing_cta_default": "Subscribe",
+        "portfolio": "Portfolio",
+        "reviews": "Reviews",
+        "services": "Services & prices",
+        "contacts": "Contacts",
+        "phone": "Phone",
+        "socials": "Socials",
+    },
+}
 
 
 def _fmt_date(s) -> str:
@@ -88,6 +124,11 @@ def _is_dark_style(style: dict) -> bool:
     return bool(style.get("is_dark", False))
 
 
+def _normalize_public_language(raw: str | None) -> str:
+    value = str(raw or "").strip().lower()
+    return "en" if value.startswith("en") else "ru"
+
+
 def _style_with_defaults(style: dict | None) -> dict:
     data = dict(style or {})
     defaults = {
@@ -118,6 +159,8 @@ async def landing_page(request: Request, page_key: str):
     """Render public promo page by slug, or legacy master landing by invite token."""
     promo = await get_promo_public_data(page_key, increment_view=True)
     if promo is not None:
+        language = _normalize_public_language(promo.get("language"))
+        strings = _PUBLIC_STRINGS[language]
         style = _style_with_defaults(promo.get("style", {}).get("config"))
         advantages_with_svg = []
         for adv in promo.get("advantages", []):
@@ -135,14 +178,19 @@ async def landing_page(request: Request, page_key: str):
                 "page_url": page_url,
                 "display_name": promo["display_name"],
                 "specialization": promo["specialization"],
+                "language": language,
+                "og_locale": strings["og_locale"],
                 "tagline": promo["tagline"],
                 "badge_text": promo.get("badge_text"),
                 "service_name": promo["service_name"],
                 "service_price": promo["service_price"],
+                "popular_service_label": strings["popular_service"],
+                "from_price_label": strings["from_price"],
                 "promo_enabled": promo.get("promo_enabled", False),
                 "promo_text": promo.get("promo_text"),
                 "advantages": advantages_with_svg,
-                "sub_button_text": promo.get("sub_button_text") or "Бонусы и уведомления в Telegram",
+                "cta_button_text": strings["promo_cta"],
+                "sub_button_text": promo.get("sub_button_text") or strings["promo_subtext"],
                 "photo_url": photo_url,
                 "absolute_photo_url": absolute_photo_url,
                 "style": style,
@@ -155,6 +203,8 @@ async def landing_page(request: Request, page_key: str):
     if data is None:
         return HTMLResponse(content=_404_HTML, status_code=404)
 
+    language = _normalize_public_language(data.get("language"))
+    strings = _PUBLIC_STRINGS[language]
     name = data.get("name") or ""
     sphere = data.get("sphere") or ""
     about = data.get("about") or ""
@@ -175,9 +225,9 @@ async def landing_page(request: Request, page_key: str):
     master_bot_link = f"https://t.me/{MASTER_BOT_USERNAME}?start=from_landing"
 
     if bonus_enabled and bonus_welcome > 0:
-        cta_text = f"Подписаться и получить {bonus_welcome} бонусов"
+        cta_text = strings["landing_cta_bonus"].format(bonus=bonus_welcome)
     else:
-        cta_text = "Подписаться"
+        cta_text = strings["landing_cta_default"]
 
     portfolio = [
         {"id": item["id"], "url": _photo_url(item["file_id"])}
@@ -222,5 +272,13 @@ async def landing_page(request: Request, page_key: str):
             "og_description": og_description,
             "og_image": og_image,
             "landing_theme": landing_theme,
+            "language": language,
+            "og_locale": strings["og_locale"],
+            "portfolio_label": strings["portfolio"],
+            "reviews_label": strings["reviews"],
+            "services_label": strings["services"],
+            "contacts_label": strings["contacts"],
+            "phone_label": strings["phone"],
+            "socials_label": strings["socials"],
         },
     )

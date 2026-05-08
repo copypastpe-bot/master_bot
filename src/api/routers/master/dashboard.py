@@ -52,6 +52,7 @@ async def get_master_me(
         "work_address_default": master.work_address_default,
         "currency": master.currency,
         "timezone": master.timezone,
+        "language": master.language,
         "theme_preset": master.theme_preset,
         "bonus_enabled": master.bonus_enabled,
         "bonus_rate": master.bonus_rate,

@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from src import database as db
+from src.models import Master
 
 
 class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
@@ -92,6 +93,38 @@ class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         app_module = importlib.import_module("src.api.app")
         return importlib.reload(app_module)
 
+    def _request(self, path: str):
+        from starlette.requests import Request
+
+        return Request({
+            "type": "http",
+            "method": "GET",
+            "path": path,
+            "root_path": "",
+            "scheme": "https",
+            "server": ("api.crmfit.ru", 443),
+            "client": ("127.0.0.1", 12345),
+            "headers": [(b"host", b"api.crmfit.ru")],
+            "query_string": b"",
+        })
+
+    async def _render_response(self, response, request):
+        chunks: list[bytes] = []
+        status_code = 0
+
+        async def receive():
+            return {"type": "http.request", "body": b"", "more_body": False}
+
+        async def send(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message["status"]
+            elif message["type"] == "http.response.body":
+                chunks.append(message.get("body", b""))
+
+        await response(request.scope, receive, send)
+        return status_code, b"".join(chunks).decode("utf-8")
+
     async def test_public_master_endpoint_returns_landing_read_model(self):
         from src.api.routers import public
 
@@ -157,3 +190,32 @@ class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
     async def test_landing_theme_default(self):
         data = await db.get_landing_data("invite_anna")
         self.assertEqual(data["landing_theme"], "sunset")
+        self.assertEqual(data["language"], "ru")
+
+    async def test_master_language_updates_and_legacy_landing_uses_english(self):
+        from src.api.routers import landing
+        from src.api.routers.master import dashboard, settings
+
+        master = Master(id=1, tg_id=1001, name="Анна Иванова", invite_token="invite_anna")
+
+        await settings.update_master_profile(
+            settings.ProfileUpdateBody(language="en"),
+            master=master,
+        )
+
+        updated_master = await db.get_master_by_id(1)
+        self.assertEqual(updated_master.language, "en")
+
+        me = await dashboard.get_master_me(master=updated_master)
+        self.assertEqual(me["language"], "en")
+
+        request = self._request("/m/invite_anna")
+        response = await landing.landing_page(request, "invite_anna")
+        status_code, html = await self._render_response(response, request)
+
+        self.assertEqual(status_code, 200)
+        self.assertIn('<html lang="en">', html)
+        self.assertIn('Portfolio', html)
+        self.assertIn('Services &amp; prices', html)
+        self.assertIn('Phone', html)
+        self.assertIn('Subscribe and get 50 bonuses', html)

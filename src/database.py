@@ -38,7 +38,7 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "work_mode", "work_address_default",
     "bonus_enabled", "bonus_rate", "bonus_max_spend", "bonus_birthday",
     "gc_connected", "gc_credentials",
-    "bonus_welcome", "timezone", "welcome_message", "welcome_photo_id",
+    "bonus_welcome", "timezone", "language", "welcome_message", "welcome_photo_id",
     "birthday_message", "birthday_photo_id", "home_message_id", "currency", "theme_preset",
     "onboarding_skipped_first_client", "onboarding_banner_shown",
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
@@ -162,6 +162,7 @@ def _parse_master_row(row) -> Master:
         bonus_birthday=row["bonus_birthday"],
         bonus_welcome=row["bonus_welcome"] if "bonus_welcome" in row.keys() else 0,
         timezone=row["timezone"] if "timezone" in row.keys() else "Europe/Moscow",
+        language=row["language"] if "language" in row.keys() and row["language"] else "ru",
         currency=row["currency"] if "currency" in row.keys() else "RUB",
         theme_preset=row["theme_preset"] if "theme_preset" in row.keys() and row["theme_preset"] else "ocean",
         welcome_message=row["welcome_message"] if "welcome_message" in row.keys() else None,
@@ -1626,6 +1627,7 @@ async def get_master_public_profile(master_id: int) -> Optional[dict]:
         "work_address_default": master.work_address_default,
         "invite_token": master.invite_token,
         "currency": master.currency,
+        "language": master.language,
         "review_count": review_count,
         "years_on_platform": years_on_platform,
         "created_at": created_dt.isoformat() if created_dt else None,
@@ -4259,6 +4261,7 @@ async def get_landing_data(invite_token: str) -> Optional[dict]:
         "bonus_welcome": master.bonus_welcome,
         "avatar_file_id": master.avatar_file_id,
         "landing_theme": master.landing_theme,
+        "language": master.language,
         "invite_token": master.invite_token,
         "portfolio": portfolio,
         "services": services,
@@ -4687,7 +4690,8 @@ async def get_promo_public_data(slug: str, increment_view: bool = False) -> Opti
                 s.slug AS style_slug,
                 s.name AS style_name,
                 s.config AS style_config,
-                m.name AS master_name
+                m.name AS master_name,
+                m.language AS master_language
             FROM promo_pages p
             JOIN promo_categories c ON c.id = p.category_id
             JOIN promo_styles s ON s.id = p.style_id
@@ -4714,6 +4718,7 @@ async def get_promo_public_data(slug: str, increment_view: bool = False) -> Opti
             "name": item.pop("category_name"),
             "icon": item.pop("category_icon"),
         }
+        item["language"] = item.pop("master_language", None) or "ru"
         return item
     finally:
         await conn.close()

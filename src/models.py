@@ -30,6 +30,7 @@ class Master:
     bonus_welcome: int = 0
     timezone: str = "Europe/Moscow"
     currency: str = "RUB"
+    language: str = "ru"
     theme_preset: str = "ocean"
     welcome_message: Optional[str] = None
     welcome_photo_id: Optional[str] = None

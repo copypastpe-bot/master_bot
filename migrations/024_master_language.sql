@@ -1,0 +1,1 @@
+ALTER TABLE masters ADD COLUMN language TEXT DEFAULT 'ru';

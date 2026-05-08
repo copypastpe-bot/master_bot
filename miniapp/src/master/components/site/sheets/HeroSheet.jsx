@@ -4,13 +4,14 @@ import { useI18n } from '../../../../i18n';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
 
-function absoluteUrl(url) {
+function absoluteUrl(url, bust) {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `${API_BASE}${url}`;
+  const base = url.startsWith('http') ? url : `${API_BASE}${url}`;
+  const clean = base.split('?')[0];
+  return bust ? `${clean}?t=${bust}` : clean;
 }
 
-export default function HeroSheet({ data, onChange, onClose }) {
+export default function HeroSheet({ data, onChange, onClose, photoTs }) {
   const { tr } = useI18n();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +40,7 @@ export default function HeroSheet({ data, onChange, onClose }) {
   }
 
   // Always show current photo from parent state (no local copy — single source of truth)
-  const photoUrl = absoluteUrl(data.photo_url);
+  const photoUrl = absoluteUrl(data.photo_url, photoTs);
 
   return (
     <div className="sheet-form">
