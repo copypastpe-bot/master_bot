@@ -1,3 +1,4 @@
+import { useI18n } from '../../../../i18n';
 import EditableBlock from './EditableBlock';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://api.crmfit.ru';
@@ -11,6 +12,7 @@ function absoluteUrl(url, bust) {
 }
 
 export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs }) {
+  const { t } = useI18n();
   const cfg = styleConfig || {};
 
   const cssVars = {
@@ -52,7 +54,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
           ) : (
             <div className="hero__placeholder">
               <span style={{ fontSize: 32 }}>📷</span>
-              <span>Нажмите, чтобы добавить фото</span>
+              <span>{t('minisite.editor.photoPlaceholder')}</span>
             </div>
           )}
           <div className="hero__grad" />
@@ -68,10 +70,10 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
         <EditableBlock id="identity" label="Имя" onTap={onBlockTap}>
           <div className="identity">
             <h1 className="identity__name">
-              {data.display_name || <span className="placeholder">Ваше имя</span>}
+              {data.display_name || <span className="placeholder">{t('minisite.editor.yourName')}</span>}
             </h1>
             <p className="identity__role">
-              {data.specialization || <span className="placeholder">Специализация</span>}
+              {data.specialization || <span className="placeholder">{t('minisite.editor.specialization')}</span>}
             </p>
           </div>
         </EditableBlock>
@@ -79,21 +81,21 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
         {/* Block 3: Tagline */}
         <EditableBlock id="tagline" label="Описание" onTap={onBlockTap}>
           <p className="tagline">
-            {data.tagline || <span className="placeholder">Добавьте краткое описание</span>}
+            {data.tagline || <span className="placeholder">{t('minisite.editor.addDescription')}</span>}
           </p>
         </EditableBlock>
 
         {/* Block 4: Service Card */}
         <EditableBlock id="service" label="Услуга" onTap={onBlockTap}>
           <div className="service-card">
-            <span className="service-card__label">Популярная услуга</span>
+            <span className="service-card__label">{t('minisite.editor.popularService')}</span>
             <p className="service-card__name">
-              {data.service_name || <span className="placeholder">Название услуги</span>}
+              {data.service_name || <span className="placeholder">{t('minisite.editor.serviceName')}</span>}
             </p>
             <p className="service-card__price">
               <small>от</small>
               <span className="service-card__price-value">
-                {data.service_price || <span className="placeholder">Цена</span>}
+                {data.service_price || <span className="placeholder">{t('minisite.editor.servicePrice')}</span>}
               </span>
             </p>
           </div>
@@ -110,7 +112,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
             </div>
           ) : (
             <div className="offer-card--empty">
-              + Добавить акцию
+              {t('minisite.editor.addPromo')}
             </div>
           )}
         </EditableBlock>
@@ -129,7 +131,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
               ))
             ) : (
               <div className="advantages--empty">
-                <span className="placeholder">Добавьте преимущества</span>
+                <span className="placeholder">{t('minisite.editor.addAdvantages')}</span>
               </div>
             )}
           </div>
@@ -138,9 +140,9 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
         {/* Block 7: CTA */}
         <EditableBlock id="cta" label="Кнопка" onTap={onBlockTap}>
           <div className="cta-section">
-            <div className="cta-button">Забрать бонусы и подписаться</div>
+            <div className="cta-button">{t('minisite.editor.ctaButton')}</div>
             <p className="cta-subtext">
-              {data.sub_button_text || 'Бесплатно · Без спама'}
+              {data.sub_button_text || t('minisite.editor.ctaSubtext')}
             </p>
           </div>
         </EditableBlock>

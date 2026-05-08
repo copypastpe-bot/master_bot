@@ -99,6 +99,19 @@ const en = {
       create: 'Create minisite',
       error: 'Failed to start creation. Please try again.',
     },
+    editor: {
+      photoPlaceholder: 'Tap to add photo',
+      yourName: 'Your name',
+      specialization: 'Specialization',
+      addDescription: 'Add a short description',
+      popularService: 'Popular service',
+      serviceName: 'Service name',
+      servicePrice: 'Price',
+      addPromo: '+ Add promo',
+      addAdvantages: 'Add advantages',
+      ctaButton: 'Claim bonuses and subscribe',
+      ctaSubtext: 'Free · No spam',
+    },
   },
 
   more: {

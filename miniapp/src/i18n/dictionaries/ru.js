@@ -99,6 +99,19 @@ const ru = {
       create: 'Создать минисайт',
       error: 'Не удалось начать создание. Попробуйте ещё раз.',
     },
+    editor: {
+      photoPlaceholder: 'Нажмите, чтобы добавить фото',
+      yourName: 'Ваше имя',
+      specialization: 'Специализация',
+      addDescription: 'Добавьте краткое описание',
+      popularService: 'Популярная услуга',
+      serviceName: 'Название услуги',
+      servicePrice: 'Цена',
+      addPromo: '+ Добавить акцию',
+      addAdvantages: 'Добавьте преимущества',
+      ctaButton: 'Забрать бонусы и подписаться',
+      ctaSubtext: 'Бесплатно · Без спама',
+    },
   },
 
   more: {
