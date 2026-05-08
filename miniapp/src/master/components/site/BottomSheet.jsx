@@ -30,7 +30,7 @@ export default function BottomSheet({ onClose, title, children }) {
           position: fixed;
           inset: 0;
           background: rgba(0,0,0,0.4);
-          z-index: 100;
+          z-index: 200;
         }
         .sheet-container {
           position: fixed;
@@ -39,9 +39,9 @@ export default function BottomSheet({ onClose, title, children }) {
           width: 100%;
           background: var(--tg-theme-bg-color, #fff);
           border-radius: 16px 16px 0 0;
-          padding: 12px 20px 32px;
-          z-index: 101;
-          max-height: 80vh;
+          padding: 12px 20px calc(90px + env(safe-area-inset-bottom, 0px));
+          z-index: 201;
+          max-height: calc(85vh - env(safe-area-inset-bottom, 0px));
           overflow-y: auto;
         }
         .sheet-handle {

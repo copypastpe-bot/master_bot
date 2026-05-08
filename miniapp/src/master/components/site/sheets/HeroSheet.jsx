@@ -45,7 +45,6 @@ export default function HeroSheet({ data, onChange, onClose }) {
         ref={fileRef}
         type="file"
         accept="image/*"
-        capture="environment"
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
