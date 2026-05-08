@@ -30,7 +30,7 @@ import { useThemePreset } from './hooks/useThemePreset';
 const WebApp = window.Telegram?.WebApp;
 
 export default function MasterApp() {
-  const { t } = useI18n();
+  const { t, lang, setLang } = useI18n();
   const [tab, setTab] = useState('home');
   // navStack: array of { type, id?, ...params }
   // Empty stack = tab root. Push = navigate forward. Pop = back.
@@ -44,6 +44,12 @@ export default function MasterApp() {
   });
 
   useThemePreset(masterData?.theme_preset);
+
+  useEffect(() => {
+    if (masterData?.language && masterData.language !== lang) {
+      setLang(masterData.language);
+    }
+  }, [masterData?.language, lang, setLang]);
 
   useEffect(() => {
     document.body.classList.add('typeui-enterprise-body');

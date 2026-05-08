@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { DEFAULT_THEME_PRESET, getThemePreset } from '../themePresets';
 
 const WebApp = window.Telegram?.WebApp;
+const STORAGE_KEY = 'master_theme_preset';
 
 const MASTER_THEME_KEYS = [
   '--master-accent',
@@ -46,10 +47,34 @@ function withAlpha(hex, alpha) {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
 }
 
-function applyThemePreset(name) {
-  const preset = getThemePreset(name || DEFAULT_THEME_PRESET);
+function normalizePresetName(name) {
+  return name || DEFAULT_THEME_PRESET;
+}
+
+export function getStoredThemePreset() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw || null;
+  } catch {
+    return null;
+  }
+}
+
+function persistThemePreset(name) {
+  try {
+    localStorage.setItem(STORAGE_KEY, normalizePresetName(name));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function applyThemePreset(name) {
+  const resolvedName = normalizePresetName(name);
+  const preset = getThemePreset(resolvedName);
   const root = document.documentElement;
   const body = document.body;
+
+  persistThemePreset(resolvedName);
 
   root.style.setProperty('--master-accent', preset.accent);
   root.style.setProperty('--master-accent-soft', preset.accentSoft);
@@ -89,9 +114,21 @@ function applyThemePreset(name) {
 
 export function useThemePreset(name) {
   useEffect(() => {
-    applyThemePreset(name);
+    const resolvedName = normalizePresetName(name || getStoredThemePreset());
+    const reapply = () => applyThemePreset(resolvedName);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        reapply();
+      }
+    };
+
+    reapply();
+    document.addEventListener('visibilitychange', onVisible);
+    WebApp?.onEvent?.('themeChanged', reapply);
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      WebApp?.offEvent?.('themeChanged', reapply);
       const root = document.documentElement;
       for (const key of MASTER_THEME_KEYS) {
         root.style.removeProperty(key);
