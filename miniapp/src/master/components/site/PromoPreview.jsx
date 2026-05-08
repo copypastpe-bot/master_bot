@@ -41,20 +41,24 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
 
       {/* Block 1: Hero */}
       <EditableBlock id="hero" label="Фото" onTap={onBlockTap}>
-        <div
-          className="hero"
-          style={photoUrl ? { backgroundImage: `url(${photoUrl})` } : {}}
-        >
-          <div className="hero__grad" />
-          <div className="hero__fade" />
-          {data.badge_text && (
-            <div className="hero__badge">{data.badge_text}</div>
-          )}
-          {!photoUrl && (
+        <div className="hero">
+          {photoUrl ? (
+            <img
+              key={photoUrl}
+              className="hero__photo"
+              src={photoUrl}
+              alt={data.display_name || ''}
+            />
+          ) : (
             <div className="hero__placeholder">
               <span style={{ fontSize: 32 }}>📷</span>
               <span>Нажмите, чтобы добавить фото</span>
             </div>
+          )}
+          <div className="hero__grad" />
+          <div className="hero__fade" />
+          {data.badge_text && (
+            <div className="hero__badge">{data.badge_text}</div>
           )}
         </div>
       </EditableBlock>
