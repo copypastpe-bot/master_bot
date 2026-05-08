@@ -84,6 +84,7 @@ const ru = {
       createOrder: 'Новый заказ',
       requests: 'Заявки',
       broadcast: 'Рассылка',
+      themePicker: 'Тема оформления',
     },
     promoNotFound: 'Не найдено',
     inDevelopment: 'Раздел в разработке',
@@ -147,6 +148,7 @@ const ru = {
       promoPage: 'Промо-страница',
       profile: 'Профиль мастера',
       bonus: 'Бонусная программа',
+      theme: 'Тема',
       feedbackSettings: 'Запрос отзыва',
       services: 'Справочник услуг',
       googleCalendar: 'Google Calendar',
@@ -159,6 +161,13 @@ const ru = {
       connectedFallback: 'Подключён',
       disconnected: 'Не подключён',
     },
+  },
+
+  themePicker: {
+    title: 'Тема оформления',
+    dark: 'Тёмные',
+    light: 'Светлые',
+    savingFailed: 'Не удалось сохранить тему',
   },
 
   profile: {

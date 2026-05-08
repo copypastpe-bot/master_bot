@@ -2,8 +2,8 @@ const WebApp = window.Telegram?.WebApp;
 
 const STATUS_COLORS = {
   new: 'var(--tg-accent)',
-  confirmed: '#46d18c',
-  done: '#7bb2e8',
+  confirmed: 'var(--master-positive)',
+  done: 'var(--master-accent-soft)',
   cancelled: 'var(--tg-destructive)',
 };
 
@@ -25,7 +25,7 @@ export default function OrderCard({ order, onClick, style }) {
         alignItems: 'center',
         gap: 12,
         padding: '13px 0',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        borderBottom: '1px solid var(--master-border)',
         cursor: 'pointer',
         userSelect: 'none',
         ...style,
@@ -75,7 +75,7 @@ export default function OrderCard({ order, onClick, style }) {
         height: 10,
         borderRadius: '50%',
         background: statusColor,
-        boxShadow: '0 0 0 4px rgba(255, 255, 255, 0.04)',
+        boxShadow: '0 0 0 4px var(--master-accent-8)',
         flexShrink: 0,
       }} />
     </div>

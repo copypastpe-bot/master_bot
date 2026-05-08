@@ -97,13 +97,13 @@ class ThemePresetBackendTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(me["theme_preset"], "ocean")
         self.assertEqual(stats["theme_preset"], "ocean")
 
-        await db.update_master(1, theme_preset="violet")
+        await db.update_master(1, theme_preset="lavender")
         master = await db.get_master_by_id(1)
         me = await dashboard.get_master_me(master=master)
         stats = await dashboard.get_master_dashboard(master=master)
 
-        self.assertEqual(me["theme_preset"], "violet")
-        self.assertEqual(stats["theme_preset"], "violet")
+        self.assertEqual(me["theme_preset"], "lavender")
+        self.assertEqual(stats["theme_preset"], "lavender")
 
     async def test_theme_preset_endpoint_updates_and_rejects_invalid_values(self):
         from src.api.dependencies import get_current_master
@@ -129,7 +129,7 @@ class ThemePresetBackendTest(unittest.IsolatedAsyncioTestCase):
                 app,
                 "PUT",
                 "/api/master/theme-preset",
-                {"theme_preset": "violet"},
+                {"theme_preset": "lavender"},
             )
             self.assertEqual(valid_status, 200)
             self.assertEqual(valid_body, {"ok": True})
@@ -137,7 +137,7 @@ class ThemePresetBackendTest(unittest.IsolatedAsyncioTestCase):
             app.dependency_overrides.clear()
 
         master = await db.get_master_by_id(1)
-        self.assertEqual(master.theme_preset, "violet")
+        self.assertEqual(master.theme_preset, "lavender")
 
     async def _request_json(self, app, method: str, path: str, payload: dict) -> tuple[int, dict]:
         body = json.dumps(payload).encode("utf-8")

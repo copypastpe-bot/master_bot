@@ -180,6 +180,8 @@ export const updateMasterTimezone = (timezone) =>
   api.put('/api/master/timezone', { timezone }).then(r => r.data);
 export const updateMasterCurrency = (currency) =>
   api.put('/api/master/currency', { currency }).then(r => r.data);
+export const updateMasterThemePreset = (themePreset) =>
+  api.put('/api/master/theme-preset', { theme_preset: themePreset }).then(r => r.data);
 export const getMasterInvite = () =>
   api.get('/api/master/invite').then(r => r.data);
 export const getMasterGoogleCalendar = () =>

@@ -84,6 +84,7 @@ const en = {
       createOrder: 'New order',
       requests: 'Requests',
       broadcast: 'Broadcast',
+      themePicker: 'Theme',
     },
     promoNotFound: 'Not found',
     inDevelopment: 'Section in development',
@@ -147,6 +148,7 @@ const en = {
       promoPage: 'Promo page',
       profile: 'Master profile',
       bonus: 'Bonus program',
+      theme: 'Theme',
       feedbackSettings: 'Feedback request',
       services: 'Services catalog',
       googleCalendar: 'Google Calendar',
@@ -159,6 +161,13 @@ const en = {
       connectedFallback: 'Connected',
       disconnected: 'Not connected',
     },
+  },
+
+  themePicker: {
+    title: 'Theme',
+    dark: 'Dark',
+    light: 'Light',
+    savingFailed: 'Failed to save theme',
   },
 
   profile: {

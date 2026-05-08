@@ -118,7 +118,13 @@ export default function Subscription() {
   }, [data]);
 
   const statusStyles = {
-    active: { bg: '#e9f1ff', border: '#9ec3f2', title: '#2b65b9', text: '#2f74d2', icon: '#2f74d2' },
+    active: {
+      bg: 'var(--master-accent-8)',
+      border: 'var(--master-accent-22)',
+      title: 'var(--master-accent)',
+      text: 'var(--master-accent)',
+      icon: 'var(--master-accent)',
+    },
     trial: { bg: '#eaf4df', border: '#b4d39b', title: '#4f7a2d', text: '#5e8d38', icon: '#5e8d38' },
     expired: { bg: '#fbecec', border: '#e8bcbc', title: '#bf4c4c', text: '#d46262', icon: '#333333' },
   }[statusKind];
@@ -313,7 +319,7 @@ export default function Subscription() {
                 gap: 12,
                 textAlign: 'left',
                 cursor: 'pointer',
-                background: selectedRow ? 'rgba(51, 144, 236, 0.08)' : 'transparent',
+                background: selectedRow ? 'var(--master-accent-8)' : 'transparent',
                 border: 'none',
                 borderBottom: idx === PLANS.length - 1 ? 'none' : '1px solid var(--tg-secondary-bg)',
                 padding: '12px 14px',

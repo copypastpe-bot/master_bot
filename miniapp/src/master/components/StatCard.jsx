@@ -29,7 +29,7 @@ export default function StatCard({ icon, value, label, onClick }) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(79, 156, 249, 0.12)',
+        background: 'var(--master-accent-12)',
         color: 'var(--tg-accent)',
       }}>
         {icon}

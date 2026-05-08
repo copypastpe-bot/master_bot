@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import MasterNav from './components/MasterNav';
 import Dashboard from './pages/Dashboard';
 import Calendar from './pages/Calendar';
@@ -20,9 +20,12 @@ import PromoCard from './pages/PromoCard';
 import Minisite from './pages/Minisite';
 import Reports from './pages/Reports';
 import Subscription from './pages/Subscription';
+import ThemePickerPage from './pages/ThemePickerPage';
+import { getMasterMe } from '../api/client';
 import { useI18n } from '../i18n';
 import AppHeader from './components/AppHeader';
 import { resetViewportScroll } from '../utils/scroll';
+import { useThemePreset } from './hooks/useThemePreset';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -34,6 +37,13 @@ export default function MasterApp() {
   const [navStack, setNavStack] = useState([]);
 
   const queryClient = useQueryClient();
+  const { data: masterData } = useQuery({
+    queryKey: ['master-me'],
+    queryFn: getMasterMe,
+    staleTime: 30_000,
+  });
+
+  useThemePreset(masterData?.theme_preset);
 
   useEffect(() => {
     document.body.classList.add('typeui-enterprise-body');
@@ -123,6 +133,7 @@ export default function MasterApp() {
     requests:      t('masterApp.titles.requests'),
     subscription:  t('masterApp.titles.subscription'),
     broadcast:     t('masterApp.titles.broadcast'),
+    theme_picker:  t('masterApp.titles.themePicker'),
   };
 
   const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : 'Master_bot';
@@ -284,6 +295,15 @@ export default function MasterApp() {
         <div className="master-shell">
           <AppHeader title={currentTitle} />
           <Broadcast />
+        </div>
+      );
+    }
+
+    if (type === 'theme_picker') {
+      return (
+        <div className="master-shell">
+          <AppHeader title={currentTitle} />
+          <ThemePickerPage />
         </div>
       );
     }

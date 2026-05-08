@@ -441,6 +441,9 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
   // Show Telegram MainButton on this step only
   useEffect(() => {
     if (!WebApp?.MainButton) return;
+    const rootStyles = typeof window !== 'undefined'
+      ? getComputedStyle(document.documentElement)
+      : null;
 
     if (isSending) {
       WebApp.MainButton.showProgress(false);
@@ -448,8 +451,12 @@ function StepPreview({ segment, text, mediaFile, mediaType, previewData, isLoadi
     }
 
     WebApp.MainButton.setText(tr(`Отправить ${recipients_count} клиентам`, `Send to ${recipients_count} clients`));
-    WebApp.MainButton.color = WebApp.themeParams?.button_color || '#2481cc';
-    WebApp.MainButton.textColor = WebApp.themeParams?.button_text_color || '#ffffff';
+    WebApp.MainButton.color = rootStyles?.getPropertyValue('--master-accent').trim()
+      || WebApp.themeParams?.button_color
+      || '#2481cc';
+    WebApp.MainButton.textColor = rootStyles?.getPropertyValue('--master-button-text').trim()
+      || WebApp.themeParams?.button_text_color
+      || '#ffffff';
     WebApp.MainButton.show();
     WebApp.MainButton.onClick(onSend);
 

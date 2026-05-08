@@ -101,6 +101,16 @@ const CalendarIcon = () => (
   </svg>
 );
 
+const PaletteIcon = () => (
+  <svg {...iconProps}>
+    <path d="M12 3a9 9 0 0 0 0 18h1.2a2.3 2.3 0 0 0 0-4.6h-.7a1.4 1.4 0 0 1-1.4-1.4c0-.6.4-1.2 1-1.4l2-.6A4.7 4.7 0 0 0 12 3Z" />
+    <circle cx="7.5" cy="10" r="1" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="7" r="1" fill="currentColor" stroke="none" />
+    <circle cx="14.5" cy="7.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="17" cy="11.5" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 const ChevronIcon = () => (
   <svg {...iconProps} width={14} height={14}>
     <path d="m9 18 6-6-6-6" />
@@ -362,6 +372,7 @@ export default function More({ onNavigate }) {
       <div className="enterprise-cell-group">
         <Cell icon={<UserIcon />} label={t('more.cells.profile')} onClick={() => onNavigate('profile')} />
         <Cell icon={<GiftIcon />} label={t('more.cells.bonus')} onClick={() => onNavigate('bonus')} />
+        <Cell icon={<PaletteIcon />} label={t('more.cells.theme')} onClick={() => onNavigate('theme_picker')} />
         <Cell icon={<MessageIcon />} label={t('more.cells.feedbackSettings')} onClick={() => onNavigate('feedback_settings')} />
         <Cell icon={<ToolIcon />} label={t('more.cells.services')} onClick={() => onNavigate('services')} />
         <Cell

@@ -57,7 +57,10 @@ ALLOWED_TIMEZONES = {
 
 ALLOWED_CURRENCIES = {"RUB", "EUR", "ILS", "UAH", "BYN", "KZT", "USD", "TRY", "GEL", "UZS"}
 ALLOWED_LANGUAGES = {"ru", "en"}
-ALLOWED_THEME_PRESETS = {"ocean", "violet", "emerald", "rose", "amber", "slate", "sky"}
+ALLOWED_THEME_PRESETS = {
+    "ocean", "emerald", "rose", "amber", "slate", "sky",
+    "cloud", "peach", "lavender", "mint",
+}
 TELEGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 INSTAGRAM_USERNAME_RE = re.compile(r"^[A-Za-z0-9._]{1,30}$")
 

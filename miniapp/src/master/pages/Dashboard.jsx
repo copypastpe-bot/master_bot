@@ -243,7 +243,7 @@ function DashboardContent({ data, subscription, onNavigate }) {
           <h2 className="enterprise-page-title">
             {tr('Привет', 'Hello')}, {data?.master_name || ''}!
           </h2>
-          <span style={{ color: isSubscriptionActive ? '#2f74d2' : '#888888', fontSize: 24, lineHeight: 1 }}>★</span>
+          <span style={{ color: isSubscriptionActive ? 'var(--master-accent)' : 'var(--tg-hint)', fontSize: 24, lineHeight: 1 }}>★</span>
         </div>
         <p className="enterprise-page-subtitle">{formatDate(today, locale)}</p>
       </div>
