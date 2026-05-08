@@ -1,10 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getMasterMe, getPromoPage, startPromoPage } from '../../api/client';
+import { createPromoPage, getMasterMe, getPromoPage, startPromoPage } from '../../api/client';
 import { useI18n } from '../../i18n';
-import PromoPageBuilder from './PromoPageBuilder';
+import SiteEditor from './SiteEditor';
 
 const WebApp = window.Telegram?.WebApp;
+
+// Default advantages satisfy the backend's "exactly 3" validator.
+const DEFAULT_ADVANTAGES = [
+  { text: 'Приеду вовремя', icon: '⏰' },
+  { text: 'Своё оборудование', icon: '🧴' },
+  { text: 'Индивидуальный подход', icon: '🎯' },
+];
+
+// Legacy promo_categories.id = 1 (cleaning) — needed for NOT NULL column.
+// Category selection is now handled via master_categories; this is a legacy FK.
+const DEFAULT_CATEGORY_ID = 1;
 
 function IntroPoint({ children }) {
   return (
@@ -56,6 +67,50 @@ export default function Minisite() {
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const me = masterQuery.data || {};
+      return createPromoPage({
+        category_id: DEFAULT_CATEGORY_ID,
+        style_id: null,
+        display_name: me.name || '',
+        specialization: me.sphere || '',
+        tagline: '',
+        badge_text: '',
+        service_name: '',
+        service_price: '',
+        promo_enabled: false,
+        promo_text: '',
+        advantages: DEFAULT_ADVANTAGES,
+        sub_button_text: 'Бесплатно · Без спама · Отписка в 1 клик',
+      });
+    },
+    onSuccess: (data) => {
+      WebApp?.HapticFeedback?.notificationOccurred?.('success');
+      qc.setQueryData(['promo-page'], data);
+      setError('');
+    },
+    onError: () => {
+      WebApp?.HapticFeedback?.notificationOccurred?.('error');
+      setError(t('minisite.intro.error'));
+    },
+  });
+
+  function handleCreate() {
+    if (!masterQuery.data?.promo_page_started_at) {
+      // Mark started first, then create draft
+      startMutation.mutate(undefined, {
+        onSuccess: () => createMutation.mutate(),
+      });
+    } else {
+      createMutation.mutate();
+    }
+  }
+
+  function handleUpdate() {
+    qc.invalidateQueries({ queryKey: ['promo-page'] });
+  }
+
   if (pageQuery.isLoading || (masterQuery.isLoading && !pageQuery.data)) {
     return <div className="promo-builder-state">{t('common.loading')}</div>;
   }
@@ -69,10 +124,44 @@ export default function Minisite() {
     );
   }
 
-  if (!shouldShowIntro) {
-    return <PromoPageBuilder />;
+  // Page exists → open inline editor
+  if (pageQuery.data) {
+    return <SiteEditor initialData={pageQuery.data} onUpdate={handleUpdate} />;
   }
 
+  // Intro screen
+  if (shouldShowIntro) {
+    return (
+      <div className="minisite-intro-page">
+        <section className="minisite-intro-hero">
+          <span className="minisite-intro-orbit" aria-hidden="true">◎</span>
+          <h2>{t('minisite.intro.title')}</h2>
+          <p>{t('minisite.intro.subtitle')}</p>
+        </section>
+
+        <ul className="minisite-intro-list">
+          <IntroPoint>{t('minisite.intro.pointServices')}</IntroPoint>
+          <IntroPoint>{t('minisite.intro.pointTrust')}</IntroPoint>
+          <IntroPoint>{t('minisite.intro.pointShare')}</IntroPoint>
+        </ul>
+
+        {error && <div className="promo-builder-error is-global">{error}</div>}
+
+        <button
+          type="button"
+          className="promo-builder-btn minisite-intro-cta"
+          onClick={handleCreate}
+          disabled={startMutation.isPending || createMutation.isPending}
+        >
+          {(startMutation.isPending || createMutation.isPending)
+            ? t('common.saving')
+            : t('minisite.intro.create')}
+        </button>
+      </div>
+    );
+  }
+
+  // Started but page not created yet → show create button
   return (
     <div className="minisite-intro-page">
       <section className="minisite-intro-hero">
@@ -81,21 +170,15 @@ export default function Minisite() {
         <p>{t('minisite.intro.subtitle')}</p>
       </section>
 
-      <ul className="minisite-intro-list">
-        <IntroPoint>{t('minisite.intro.pointServices')}</IntroPoint>
-        <IntroPoint>{t('minisite.intro.pointTrust')}</IntroPoint>
-        <IntroPoint>{t('minisite.intro.pointShare')}</IntroPoint>
-      </ul>
-
       {error && <div className="promo-builder-error is-global">{error}</div>}
 
       <button
         type="button"
         className="promo-builder-btn minisite-intro-cta"
-        onClick={() => startMutation.mutate()}
-        disabled={startMutation.isPending}
+        onClick={handleCreate}
+        disabled={createMutation.isPending}
       >
-        {startMutation.isPending ? t('common.saving') : t('minisite.intro.create')}
+        {createMutation.isPending ? t('common.saving') : t('minisite.intro.create')}
       </button>
     </div>
   );

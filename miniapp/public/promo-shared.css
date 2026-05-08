@@ -1,0 +1,353 @@
+/* Shared promo-page structural CSS.
+   CSS custom properties (--screen-bg, etc.) are set inline by the caller.
+   Used by both the React SiteEditor preview and the SSR promo_page.html.       */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+.promo-page {
+  width: 100%;
+  max-width: 430px;
+  background: var(--screen-bg, #f7faf5);
+  color: var(--screen-fg, #1a2a1e);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Hero ─────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  width: 100%;
+  height: 315px;
+  overflow: hidden;
+  background-color: #ccc;
+  background-position: center;
+  background-size: cover;
+}
+
+.hero__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.hero__grad {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 72% 28%, rgba(255,255,255,.15), transparent 7rem),
+    linear-gradient(125deg, transparent 0 40%, rgba(255,255,255,.1) 40% 54%, transparent 54%),
+    linear-gradient(180deg, rgba(0,0,0,.2), rgba(0,0,0,.3) 52%, var(--screen-bg, #f7faf5) 100%);
+}
+
+.hero__fade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 92px;
+  background: linear-gradient(180deg, transparent, var(--screen-bg, #f7faf5));
+}
+
+.hero__badge {
+  position: absolute;
+  top: 50px;
+  left: 16px;
+  z-index: 1;
+  border: 1px solid var(--badge-border, rgba(255,255,255,.68));
+  border-radius: 999px;
+  background: var(--badge-bg, rgba(255,255,255,.8));
+  color: var(--badge-fg, #1f6e3a);
+  padding: 8px 11px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 8px 22px rgba(0,0,0,.12);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  max-width: calc(100% - 32px);
+  overflow-wrap: anywhere;
+}
+
+.hero__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: rgba(255,255,255,.7);
+  font-size: 13px;
+}
+
+/* ── Content wrapper ──────────────────────────── */
+
+.content {
+  position: relative;
+  margin-top: -46px;
+  padding: 0 18px 20px;
+}
+
+/* ── Identity ─────────────────────────────────── */
+
+.identity { padding: 0 6px 13px; }
+
+.identity__name {
+  margin: 0 0 5px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.identity__role {
+  margin: 0;
+  color: var(--screen-accent, #2d8049);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .11em;
+  line-height: 1;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* ── Tagline ──────────────────────────────────── */
+
+.tagline {
+  margin: 0 6px 16px;
+  color: var(--screen-muted, #566b5e);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* ── Service card ─────────────────────────────── */
+
+.service-card {
+  border: 1px solid var(--card-border, #d5e5cf);
+  border-radius: 19px;
+  background: var(--card-bg, #eef5eb);
+  padding: 16px;
+}
+
+.service-card__label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 25px;
+  margin-bottom: 12px;
+  border: 1px solid var(--pill-border, #7aba6e);
+  border-radius: 999px;
+  background: var(--pill-bg, #deedda);
+  color: var(--screen-accent, #2d8049);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.service-card__name {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.service-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: var(--screen-accent, #2d8049);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+}
+
+.service-card__price small {
+  color: var(--screen-muted, #566b5e);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.service-card__price-value {
+  font-size: 34px;
+  line-height: .9;
+  letter-spacing: 0;
+}
+
+/* ── Offer / promo banner ─────────────────────── */
+
+.offer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid var(--offer-border, #e8c9bc);
+  border-radius: 15px;
+  background: var(--offer-bg, #faf0ec);
+  color: var(--offer-fg, #8c4a2a);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.offer-card__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid currentColor;
+  flex: 0 0 auto;
+}
+
+.offer-card__icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.offer-card--empty {
+  border: 1.5px dashed var(--card-border, #d5e5cf);
+  border-radius: 15px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--screen-muted, #566b5e);
+  font-size: 13px;
+  opacity: .6;
+}
+
+/* ── Advantages ───────────────────────────────── */
+
+.advantages {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.advantage {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-height: 96px;
+  border: 1px solid var(--card-border, #d5e5cf);
+  border-radius: 16px;
+  background: var(--card-bg, #eef5eb);
+  padding: 12px 7px 10px;
+  text-align: center;
+}
+
+.advantage__icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--pill-bg, #deedda);
+  color: var(--screen-accent, #2d8049);
+}
+
+.advantage__icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.advantage__text {
+  color: var(--screen-muted, #566b5e);
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.advantages--empty {
+  grid-column: 1 / -1;
+  padding: 20px;
+  text-align: center;
+  color: var(--screen-muted, #566b5e);
+  font-size: 13px;
+  opacity: .6;
+}
+
+/* ── CTA ──────────────────────────────────────── */
+
+.cta-section { margin-top: 4px; }
+
+.cta-button {
+  display: block;
+  margin-top: 16px;
+  border-radius: 16px;
+  background: var(--cta-bg, #2d8049);
+  color: var(--cta-fg, #ffffff);
+  padding: 17px 16px;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 12px 24px var(--cta-shadow, rgba(31,135,79,.22));
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow-wrap: anywhere;
+}
+
+.cta-subtext {
+  margin: 10px 18px 0;
+  color: var(--screen-muted, #566b5e);
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* ── Placeholder text ─────────────────────────── */
+
+.placeholder {
+  color: var(--screen-muted, #566b5e);
+  opacity: .5;
+  font-style: italic;
+}
+
+/* ── Responsive ───────────────────────────────── */
+
+@media (max-width: 360px) {
+  .hero { height: 280px; }
+  .identity__name { font-size: 24px; }
+  .service-card__price-value { font-size: 28px; }
+  .advantages { gap: 6px; }
+  .advantage { padding: 10px 5px 8px; min-height: 88px; }
+  .advantage__icon-wrap { width: 30px; height: 30px; }
+  .advantage__text { font-size: 9.5px; }
+}
+
+@media (min-width: 414px) {
+  .hero { height: 340px; }
+  .identity__name { font-size: 30px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cta-button { transition: none; }
+  .cta-button:active { transform: none; }
+}
