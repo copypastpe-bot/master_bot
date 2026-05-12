@@ -2,7 +2,7 @@
 set -e
 
 SERVER="deploy@75.119.153.118"
-STATIC_DIR="/var/www/app.crmfit.ru"
+STATIC_DIR="/var/www/app.abooking.org"
 
 echo "=== Building Mini App ==="
 cd miniapp
@@ -27,5 +27,5 @@ ssh $SERVER "sudo systemctl reload nginx"
 
 echo ""
 echo "=== Done! ==="
-echo "Mini App: https://app.crmfit.ru"
-echo "API:      https://api.crmfit.ru"
+echo "Mini App: https://app.abooking.org"
+echo "API:      https://api.abooking.org"

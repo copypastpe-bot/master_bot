@@ -94,9 +94,9 @@ class PromoPageDatabaseTest(unittest.IsolatedAsyncioTestCase):
         await db.update_promo_page_media(
             master_id=1,
             photo_path="/var/www/crmfit/media/promo/1/photo.jpg",
-            photo_url="https://crmfit.ru/media/promo/1/photo.jpg",
+            photo_url="https://api.abooking.org/media/promo/1/photo.jpg",
             qr_path="/var/www/crmfit/media/promo/1/qr.png",
-            qr_url="https://crmfit.ru/media/promo/1/qr.png",
+            qr_url="https://api.abooking.org/media/promo/1/qr.png",
         )
         await db.set_promo_page_published(1, True)
 

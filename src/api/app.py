@@ -45,8 +45,7 @@ app.add_middleware(
     allow_origins=[
         _miniapp_origin,
         "http://localhost:5173",
-        "https://ru.app.crmfit.ru",
-    ],  # Mini App + local dev + RU proxy
+    ],  # Mini App + local dev
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

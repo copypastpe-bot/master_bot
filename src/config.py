@@ -34,7 +34,7 @@ def _append_query_param(url: str, key: str, value: str) -> str:
     return urlunsplit(parts._replace(query=urlencode(query)))
 
 
-MINIAPP_URL: str = os.getenv("MINIAPP_URL", "https://app.crmfit.ru")
+MINIAPP_URL: str = os.getenv("MINIAPP_URL", "https://app.abooking.org")
 CLIENT_MINIAPP_URL: str = os.getenv(
     "CLIENT_MINIAPP_URL",
     _append_query_param(MINIAPP_URL, "app", "client"),

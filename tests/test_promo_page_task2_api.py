@@ -28,7 +28,7 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         os.environ["AVATARS_DIR"] = str(Path(self.tmp.name) / "avatars")
         os.environ["PORTFOLIO_DIR"] = str(Path(self.tmp.name) / "portfolio")
         os.environ["PROMO_MEDIA_DIR"] = str(Path(self.tmp.name) / "promo")
-        os.environ["PROMO_PUBLIC_BASE_URL"] = "https://crmfit.ru"
+        os.environ["PROMO_PUBLIC_BASE_URL"] = "https://api.abooking.org"
 
         await db.init_db()
         await self._seed_master()
@@ -102,9 +102,9 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
             "path": path,
             "root_path": "",
             "scheme": "https",
-            "server": ("api.crmfit.ru", 443),
+            "server": ("api.abooking.org", 443),
             "client": ("127.0.0.1", 12345),
-            "headers": [(b"host", b"api.crmfit.ru")],
+            "headers": [(b"host", b"api.abooking.org")],
             "query_string": b"",
         })
 
@@ -133,7 +133,7 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
         created = await self._create_page()
 
         self.assertEqual(created["slug"], "mariya-ivanova")
-        self.assertEqual(created["page_url"], "https://crmfit.ru/m/mariya-ivanova")
+        self.assertEqual(created["page_url"], "https://api.abooking.org/m/mariya-ivanova")
         self.assertEqual(created["qr_url"], "/media/promo/1/qr.png")
         self.assertTrue((Path(self.tmp.name) / "promo" / "1" / "qr.png").is_file())
 
@@ -175,7 +175,7 @@ class PromoPageTask2ApiTest(unittest.IsolatedAsyncioTestCase):
             master=self.master,
         )
         self.assertEqual(updated["slug"], "maria-cleaning")
-        self.assertEqual(updated["page_url"], "https://crmfit.ru/m/maria-cleaning")
+        self.assertEqual(updated["page_url"], "https://api.abooking.org/m/maria-cleaning")
         self.assertTrue((Path(self.tmp.name) / "promo" / "1" / "qr.png").is_file())
 
     async def test_invalid_or_small_photo_is_rejected(self):

@@ -58,7 +58,7 @@ def _resolve_promo_media_dir() -> Path:
 
 
 PROMO_MEDIA_DIR = _resolve_promo_media_dir()
-PROMO_PUBLIC_BASE_URL = os.getenv("PROMO_PUBLIC_BASE_URL", "https://api.crmfit.ru")
+PROMO_PUBLIC_BASE_URL = os.getenv("PROMO_PUBLIC_BASE_URL", "https://api.abooking.org")
 MAX_PROMO_PHOTO_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_FORMATS = {"JPEG": ".jpg", "PNG": ".png", "WEBP": ".webp", "HEIF": ".jpg"}
 

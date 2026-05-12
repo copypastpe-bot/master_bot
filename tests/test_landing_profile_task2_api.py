@@ -102,9 +102,9 @@ class LandingProfileTask2ApiTest(unittest.IsolatedAsyncioTestCase):
             "path": path,
             "root_path": "",
             "scheme": "https",
-            "server": ("api.crmfit.ru", 443),
+            "server": ("api.abooking.org", 443),
             "client": ("127.0.0.1", 12345),
-            "headers": [(b"host", b"api.crmfit.ru")],
+            "headers": [(b"host", b"api.abooking.org")],
             "query_string": b"",
         })
 

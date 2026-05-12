@@ -317,7 +317,7 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
                 "Для регистрации нам нужно ваше согласие на обработку персональных данных.\n\n"
                 "Мы собираем: имя, телефон, дату рождения (опционально).\n"
                 "Данные используются только для записи и бонусной программы.\n\n"
-                '<a href="https://crmfit.ru/privacy">Политика конфиденциальности</a>',
+                '<a href="https://abooking.org/privacy">Политика конфиденциальности</a>',
                 reply_markup=consent_kb(),
                 parse_mode="HTML",
                 disable_web_page_preview=True,
