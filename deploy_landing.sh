@@ -8,7 +8,9 @@ echo "=== Creating static dir on server ==="
 ssh $SERVER "sudo mkdir -p $STATIC_DIR && sudo chown \$(whoami):\$(whoami) $STATIC_DIR"
 
 echo "=== Uploading landing to server ==="
-rsync -avz --delete --exclude='.DS_Store' landing/ $SERVER:$STATIC_DIR/
+rsync -avz --delete --exclude='.DS_Store' \
+  --chmod=D755,F644 \
+  landing/ $SERVER:$STATIC_DIR/
 
 echo "=== Uploading nginx config ==="
 scp nginx/landing.conf $SERVER:/tmp/landing.conf
