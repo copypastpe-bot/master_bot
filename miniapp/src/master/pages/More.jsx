@@ -233,7 +233,7 @@ export default function More({ onNavigate }) {
   const handleSupport = () => {
     haptic();
     if (typeof WebApp?.openTelegramLink === 'function') {
-      WebApp.openTelegramLink('https://t.me/crmfit_support');
+      WebApp.openTelegramLink('https://t.me/pastushenko12');
     }
   };
 

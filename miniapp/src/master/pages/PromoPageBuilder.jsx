@@ -686,7 +686,7 @@ export default function PromoPageBuilder() {
         <section className="promo-builder-card">
           <Field label={tr('Адрес страницы', 'Page address')} hint={tr('Можно оставить автогенерацию из имени', 'Can be generated from the name')} error={fieldErrors.slug}>
             <div className="promo-builder-slug-row">
-              <span>crmfit.ru/m/</span>
+              <span>api.abooking.org/m/</span>
               <input
                 value={form.slug}
                 onChange={(event) => updateField('slug', normalizeSlug(event.target.value))}

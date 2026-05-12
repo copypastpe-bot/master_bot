@@ -5,8 +5,8 @@ import { useI18n } from '../i18n';
 
 const WebApp = window.Telegram?.WebApp;
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
-const SUPPORT_TG = import.meta.env.VITE_SUPPORT_TG || 'crmfit_support';
-const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://crmfit.ru/privacy';
+const SUPPORT_TG = import.meta.env.VITE_SUPPORT_TG || 'pastushenko12';
+const PRIVACY_URL = import.meta.env.VITE_PRIVACY_URL || 'https://abooking.org/privacy';
 
 function Toggle({ checked, disabled }) {
   return (

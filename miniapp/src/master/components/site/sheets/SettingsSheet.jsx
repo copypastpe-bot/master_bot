@@ -53,7 +53,7 @@ export default function SettingsSheet({ data, onChange, onClose }) {
       <div className="sheet-field">
         <label className="sheet-label">{tr('Адрес страницы', 'Page address')}</label>
         <div className="sheet-slug-row">
-          <span className="sheet-slug-prefix">crmfit.ru/m/</span>
+          <span className="sheet-slug-prefix">api.abooking.org/m/</span>
           <input
             className="sheet-input sheet-slug-input"
             type="text"

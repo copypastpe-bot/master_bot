@@ -142,7 +142,7 @@ export default function MasterApp() {
     theme_picker:  t('masterApp.titles.themePicker'),
   };
 
-  const currentTitle = current ? (titleMap[current.type] ?? 'Master_bot') : 'Master_bot';
+  const currentTitle = current ? (titleMap[current.type] ?? 'abooking') : 'abooking';
 
   if (current) {
     const { type, id } = current;

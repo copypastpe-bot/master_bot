@@ -154,7 +154,7 @@ const en = {
       googleCalendar: 'Google Calendar',
       support: 'Contact support',
       version: 'Version',
-      domain: 'crmfit.ru',
+      domain: 'abooking.org',
     },
     googleCalendar: {
       loading: '...',
