@@ -77,17 +77,18 @@ export default function SiteEditor({ initialData, onUpdate }) {
       <link rel="stylesheet" href="/promo-shared.css" />
 
       <div className="site-editor">
-        <StyleSwitcher
-          styles={styles}
-          currentIndex={currentStyleIndex}
-          onChange={(idx) => { setCurrentStyleIndex(idx); setIsDirty(true); }}
-        />
-
         <PromoPreview
           data={data}
           styleConfig={styleConfig}
           onBlockTap={setActiveSheet}
           photoTs={photoTs}
+          heroOverlay={
+            <StyleSwitcher
+              styles={styles}
+              currentIndex={currentStyleIndex}
+              onChange={(idx) => { setCurrentStyleIndex(idx); setIsDirty(true); }}
+            />
+          }
         />
 
         <SiteControlPanel

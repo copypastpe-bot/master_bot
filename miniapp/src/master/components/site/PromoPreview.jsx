@@ -11,7 +11,7 @@ function absoluteUrl(url, bust) {
   return bust ? `${clean}?t=${bust}` : clean;
 }
 
-export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs }) {
+export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs, heroOverlay }) {
   const { t } = useI18n();
   const cfg = styleConfig || {};
 
@@ -62,6 +62,7 @@ export default function PromoPreview({ data, styleConfig, onBlockTap, photoTs })
           {data.badge_text && (
             <div className="hero__badge">{data.badge_text}</div>
           )}
+          {heroOverlay}
         </div>
       </EditableBlock>
 
