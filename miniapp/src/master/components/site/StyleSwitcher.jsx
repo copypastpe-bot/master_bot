@@ -7,18 +7,20 @@ export default function StyleSwitcher({ styles, currentIndex, onChange }) {
   const total = styles.length;
   const label = current?.name || '';
 
-  function prev() {
+  function prev(e) {
+    e.stopPropagation();
     WebApp?.HapticFeedback?.selectionChanged?.();
     onChange((currentIndex - 1 + total) % total);
   }
 
-  function next() {
+  function next(e) {
+    e.stopPropagation();
     WebApp?.HapticFeedback?.selectionChanged?.();
     onChange((currentIndex + 1) % total);
   }
 
   return (
-    <div className="style-switcher">
+    <div className="style-switcher" onClick={(e) => e.stopPropagation()}>
       <button
         type="button"
         className="style-switcher__arrow"
@@ -43,10 +45,13 @@ export default function StyleSwitcher({ styles, currentIndex, onChange }) {
 
       <style>{`
         .style-switcher {
+          /* .content has margin-top: -46px and pulls the master name on top
+             of the photo's bottom strip — clear it (+ headroom for the chip)
+             so we land just above the name. */
           position: absolute;
           left: 12px;
           right: 12px;
-          bottom: 12px;
+          bottom: 72px;
           z-index: 5;
           display: grid;
           grid-template-columns: 36px 1fr 36px;
