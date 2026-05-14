@@ -36,9 +36,20 @@ function ClientApp({ masters, activeMasterId, onMasterChange, initialInviteToken
   const qc = useQueryClient();
 
   useEffect(() => {
+    // Only style body as client when role is confirmed; master needs the
+    // enterprise body class which MasterApp adds. Mixing both = visual leak.
+    if (role !== 'client') return;
     document.body.classList.add('typeui-client-body');
     return () => document.body.classList.remove('typeui-client-body');
-  }, []);
+  }, [role]);
+
+  useEffect(() => {
+    // Persist last known role so the next boot can paint the correct theme
+    // BEFORE React mounts (see main.jsx applyBootTheme).
+    if (role && role !== 'unknown') {
+      try { localStorage.setItem('last_role', role); } catch {}
+    }
+  }, [role]);
 
   // Hide BottomNav when keyboard open
   useEffect(() => {
