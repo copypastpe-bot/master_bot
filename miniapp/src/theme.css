@@ -84,8 +84,8 @@ body.typeui-enterprise-body {
   --radius-card: 20px;
   --radius-btn: 14px;
   --tg-enterprise-border: var(--master-border);
-  --tg-enterprise-shadow: 0 18px 44px rgba(0, 0, 0, 0.14);
-  --tg-enterprise-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.09);
+  --tg-enterprise-shadow: 0 9px 22px rgba(0, 0, 0, 0.14);
+  --tg-enterprise-shadow-soft: 0 6px 14px rgba(0, 0, 0, 0.09);
   --tg-enterprise-highlight: var(--master-accent-8);
   background: var(--tg-bg);
   color: var(--tg-text);
@@ -109,7 +109,7 @@ body.typeui-client-body {
   --radius-btn: 14px;
   --client-shell-padding: 16px;
   --client-border: rgba(255, 255, 255, 0.08);
-  --client-shadow: 0 16px 40px rgba(0, 0, 0, 0.11);
+  --client-shadow: 0 8px 20px rgba(0, 0, 0, 0.11);
   background: var(--tg-bg);
   color: var(--tg-text);
   padding-bottom: 96px;
