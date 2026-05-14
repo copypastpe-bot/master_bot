@@ -5,7 +5,7 @@ export default function StatCard({ icon, value, label, onClick }) {
     <div
       onClick={isClickable ? onClick : undefined}
       style={{
-        background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025))',
+        background: 'var(--tg-surface)',
         border: '1px solid var(--tg-enterprise-border)',
         boxShadow: 'var(--tg-enterprise-shadow)',
         borderRadius: 'var(--radius-card)',
@@ -18,7 +18,6 @@ export default function StatCard({ icon, value, label, onClick }) {
         position: 'relative',
         transition: 'transform 140ms ease, box-shadow 140ms ease',
         WebkitTapHighlightColor: 'transparent',
-        backdropFilter: 'blur(14px)',
         overflow: 'hidden',
       }}
     >
