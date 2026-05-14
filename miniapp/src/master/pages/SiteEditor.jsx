@@ -109,6 +109,7 @@ export default function SiteEditor({ initialData, onUpdate }) {
         .site-editor {
           min-height: 100vh;
           background: var(--master-bg-section);
+          position: relative;
         }
         /* Shared sheet form styles */
         .sheet-form { display: flex; flex-direction: column; gap: 12px; }
