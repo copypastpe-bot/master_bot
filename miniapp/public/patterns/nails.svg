@@ -1,15 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-  <g stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <!-- Heart, rotated -8° -->
-    <g transform="translate(22 24) rotate(-8) scale(0.8) translate(-12 -12)">
+  <g stroke="black" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Heart big, top-left, -15° -->
+    <g transform="translate(22 25) rotate(-15) scale(1.0) translate(-12 -12)">
       <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>
     </g>
-    <!-- Sparkle large, rotated +15° -->
-    <g transform="translate(70 68) rotate(15) scale(1.0) translate(-12 -12)">
+    <!-- Sparkle big, top-right, +28° -->
+    <g transform="translate(78 32) rotate(28) scale(1.0) translate(-12 -12)">
       <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
     </g>
-    <!-- Sparkle small, rotated -25° -->
-    <g transform="translate(78 16) rotate(-25) scale(0.5) translate(-12 -12)">
+    <!-- Sparkle medium, mid-left, -25° -->
+    <g transform="translate(28 72) rotate(-25) scale(0.8) translate(-12 -12)">
+      <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
+    </g>
+    <!-- Heart small, bottom-right, +35° -->
+    <g transform="translate(70 80) rotate(35) scale(0.7) translate(-12 -12)">
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>
+    </g>
+    <!-- Sparkle tiny, top-mid, +45° -->
+    <g transform="translate(52 12) rotate(45) scale(0.45) translate(-12 -12)">
+      <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
+    </g>
+    <!-- Sparkle tiny, mid-left, -10° -->
+    <g transform="translate(10 50) rotate(-10) scale(0.4) translate(-12 -12)">
       <path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/>
     </g>
   </g>
