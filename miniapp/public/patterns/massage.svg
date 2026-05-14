@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <g stroke="black" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(20 10) rotate(-15) scale(0.45) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(45 25) rotate(35) scale(0.38) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(28 48) rotate(8) scale(0.64) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(8 72) rotate(30) scale(0.5) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(62 70) rotate(12) scale(0.34) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(78 18) rotate(28) scale(0.64) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(62 38) rotate(-8) scale(0.53) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(38 62) rotate(-25) scale(0.68) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(82 85) rotate(20) scale(0.53) translate(-12 -12)"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="6" r="2.5"/><circle cx="18" cy="12" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/></g>
+    <g transform="translate(12 32) rotate(12) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(88 42) rotate(-22) scale(0.32) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(72 55) rotate(60) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(95 65) rotate(-50) scale(0.26) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(50 80) rotate(-10) scale(0.34) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(22 92) rotate(-15) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(8 18) rotate(20) scale(0.26) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(92 8) rotate(-30) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(60 8) rotate(45) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(35 18) rotate(-45) scale(0.26) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(5 52) rotate(5) scale(0.26) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(50 35) rotate(70) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(78 75) rotate(-65) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(38 92) rotate(55) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(68 95) rotate(-30) scale(0.26) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(95 30) rotate(70) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+    <g transform="translate(18 5) rotate(-60) scale(0.3) translate(-12 -12)"><path d="M6 14c0-4 4-7 8-7 0 4-4 7-8 7z"/></g>
+  </g>
+</svg>
