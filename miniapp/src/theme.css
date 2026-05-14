@@ -1160,6 +1160,30 @@ body.typeui-enterprise-body .master-shell::before {
   z-index: 0;
 }
 
+/* PROTOTYPE: category pattern overlay.
+   Phase 1 hard-codes the nails pattern globally so we can evaluate
+   density and contrast on real devices. Phase 2 will read master.categories
+   and switch --master-pattern via inline style on .master-shell. */
+body.typeui-enterprise-body .master-shell {
+  --master-pattern: url("/patterns/nails.svg");
+}
+
+body.typeui-enterprise-body .master-shell::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-color: var(--tg-accent);
+  -webkit-mask-image: var(--master-pattern, none);
+          mask-image: var(--master-pattern, none);
+  -webkit-mask-repeat: repeat;
+          mask-repeat: repeat;
+  -webkit-mask-size: 100px 100px;
+          mask-size: 100px 100px;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: 0;
+}
+
 body.typeui-enterprise-body .master-shell > * {
   position: relative;
   z-index: 1;
