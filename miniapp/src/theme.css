@@ -1165,7 +1165,7 @@ body.typeui-enterprise-body .master-shell::before {
    density and contrast on real devices. Phase 2 will read master.categories
    and switch --master-pattern via inline style on .master-shell. */
 body.typeui-enterprise-body .master-shell {
-  --master-pattern: url("/patterns/nails.svg?v=3");
+  --master-pattern: url("/patterns/nails.svg?v=4");
 }
 
 body.typeui-enterprise-body .master-shell::after {
