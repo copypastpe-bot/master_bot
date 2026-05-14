@@ -1177,8 +1177,8 @@ body.typeui-enterprise-body .master-shell::after {
           mask-image: var(--master-pattern, none);
   -webkit-mask-repeat: repeat;
           mask-repeat: repeat;
-  -webkit-mask-size: 100px 100px;
-          mask-size: 100px 100px;
+  -webkit-mask-size: 150px 150px;
+          mask-size: 150px 150px;
   opacity: 0.10;
   pointer-events: none;
   z-index: 0;
