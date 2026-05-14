@@ -142,7 +142,7 @@ export default function MasterApp() {
     theme_picker:  t('masterApp.titles.themePicker'),
   };
 
-  const currentTitle = current ? (titleMap[current.type] ?? 'abooking') : 'abooking';
+  const currentTitle = current ? titleMap[current.type] : null;
 
   if (current) {
     const { type, id } = current;
@@ -343,7 +343,7 @@ export default function MasterApp() {
 
   return (
     <div className="master-shell">
-      <AppHeader title={currentTitle} />
+      <AppHeader brand />
       {renderTab()}
       <MasterNav active={tab} onNavigate={switchTab} />
     </div>

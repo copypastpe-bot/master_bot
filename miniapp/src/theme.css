@@ -1188,6 +1188,16 @@ body.typeui-enterprise-body .app-header-title {
   letter-spacing: 0.02em;
 }
 
+body.typeui-enterprise-body .app-header-title--brand {
+  padding: 0 18px;
+}
+
+body.typeui-enterprise-body .app-header-brand {
+  height: 22px;
+  width: auto;
+  display: block;
+}
+
 body.typeui-enterprise-body .master-page-header {
   padding: 15px 16px;
   border-bottom: 1px solid var(--tg-enterprise-border);
