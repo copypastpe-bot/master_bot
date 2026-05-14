@@ -100,7 +100,15 @@ export function applyThemePreset(name) {
   root.style.setProperty('--master-accent-28', withAlpha(preset.accent, 0.28));
   root.style.colorScheme = preset.mode;
 
-  if (body?.classList.contains('typeui-enterprise-body')) {
+  // Always paint the body inline bg/color when applyThemePreset is called.
+  // Previously gated on `typeui-enterprise-body` class presence — but the
+  // hook's useEffect fires BEFORE the separate class-adding useEffect in
+  // MasterApp, so the first invocation always missed. With react-query
+  // persistence the data doesn't change after first render → the effect
+  // never re-runs to "catch up" → body stayed on the prior forced bg.
+  // applyThemePreset is only called from master code paths, so it's safe
+  // to write inline body styles unconditionally.
+  if (body) {
     body.style.background = preset.bgBase;
     body.style.color = preset.textPrimary;
   }
