@@ -21,11 +21,12 @@ import Minisite from './pages/Minisite';
 import Reports from './pages/Reports';
 import Subscription from './pages/Subscription';
 import ThemePickerPage from './pages/ThemePickerPage';
-import { getMasterMe } from '../api/client';
+import { getMasterMe, getMyCategories } from '../api/client';
 import { useI18n } from '../i18n';
 import AppHeader from './components/AppHeader';
 import { resetViewportScroll } from '../utils/scroll';
 import { useThemePreset } from './hooks/useThemePreset';
+import { useMasterPattern } from './patterns/useMasterPattern';
 
 const WebApp = window.Telegram?.WebApp;
 
@@ -43,7 +44,14 @@ export default function MasterApp() {
     staleTime: 30_000,
   });
 
+  const { data: myCategoriesData } = useQuery({
+    queryKey: ['master-me-categories'],
+    queryFn: getMyCategories,
+    staleTime: 60_000,
+  });
+
   useThemePreset(masterData?.theme_preset);
+  useMasterPattern(myCategoriesData?.categories);
 
   useEffect(() => {
     if (masterData?.language && masterData.language !== lang) {

@@ -1160,14 +1160,12 @@ body.typeui-enterprise-body .master-shell::before {
   z-index: 0;
 }
 
-/* PROTOTYPE: category pattern overlay.
-   Phase 1 hard-codes the nails pattern globally so we can evaluate
-   density and contrast on real devices. Phase 2 will read master.categories
-   and switch --master-pattern via inline style on .master-shell. */
-body.typeui-enterprise-body .master-shell {
-  --master-pattern: url("/patterns/nails.svg?v=5");
-}
-
+/* Category pattern overlay. The --master-pattern CSS variable is set
+   from JS (useMasterPattern hook) based on master.categories: a static
+   /patterns/<slug>.svg URL for a single category, or an inline
+   data: URL with a runtime-mixed SVG when the master picked 2+.
+   When the variable is unset, mask resolves to `none` and nothing
+   is painted — graceful fallback for masters with no categories. */
 body.typeui-enterprise-body .master-shell::after {
   content: '';
   position: fixed;

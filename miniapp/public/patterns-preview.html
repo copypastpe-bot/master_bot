@@ -50,37 +50,37 @@
             mask-size: 260px 260px;
     opacity: 0.10;
   }
-  .nails::after      { -webkit-mask-image: url('/patterns/nails.svg');      mask-image: url('/patterns/nails.svg');      }
-  .barber::after     { -webkit-mask-image: url('/patterns/barber.svg');     mask-image: url('/patterns/barber.svg');     }
-  .pets::after       { -webkit-mask-image: url('/patterns/pets.svg');       mask-image: url('/patterns/pets.svg');       }
-  .photo::after      { -webkit-mask-image: url('/patterns/photo.svg');      mask-image: url('/patterns/photo.svg');      }
-  .garden::after     { -webkit-mask-image: url('/patterns/garden.svg');     mask-image: url('/patterns/garden.svg');     }
-  .clean::after      { -webkit-mask-image: url('/patterns/clean.svg');      mask-image: url('/patterns/clean.svg');      }
-  .upholstery::after { -webkit-mask-image: url('/patterns/upholstery.svg'); mask-image: url('/patterns/upholstery.svg'); }
-  .massage::after    { -webkit-mask-image: url('/patterns/massage.svg');    mask-image: url('/patterns/massage.svg');    }
-  .appliance::after  { -webkit-mask-image: url('/patterns/appliance.svg');  mask-image: url('/patterns/appliance.svg');  }
-  .handy::after      { -webkit-mask-image: url('/patterns/handy.svg');      mask-image: url('/patterns/handy.svg');      }
-  .tutor::after      { -webkit-mask-image: url('/patterns/tutor.svg');      mask-image: url('/patterns/tutor.svg');      }
-  .psy::after        { -webkit-mask-image: url('/patterns/psy.svg');        mask-image: url('/patterns/psy.svg');        }
-  .other::after      { -webkit-mask-image: url('/patterns/other.svg');      mask-image: url('/patterns/other.svg');      }
+  .beauty::after           { -webkit-mask-image: url('/patterns/beauty.svg');           mask-image: url('/patterns/beauty.svg');           }
+  .barber::after           { -webkit-mask-image: url('/patterns/barber.svg');           mask-image: url('/patterns/barber.svg');           }
+  .grooming::after         { -webkit-mask-image: url('/patterns/grooming.svg');         mask-image: url('/patterns/grooming.svg');         }
+  .photographer::after     { -webkit-mask-image: url('/patterns/photographer.svg');     mask-image: url('/patterns/photographer.svg');     }
+  .gardener::after         { -webkit-mask-image: url('/patterns/gardener.svg');         mask-image: url('/patterns/gardener.svg');         }
+  .cleaning::after         { -webkit-mask-image: url('/patterns/cleaning.svg');         mask-image: url('/patterns/cleaning.svg');         }
+  .dry_cleaning::after     { -webkit-mask-image: url('/patterns/dry_cleaning.svg');     mask-image: url('/patterns/dry_cleaning.svg');     }
+  .massage::after          { -webkit-mask-image: url('/patterns/massage.svg');          mask-image: url('/patterns/massage.svg');          }
+  .appliance_repair::after { -webkit-mask-image: url('/patterns/appliance_repair.svg'); mask-image: url('/patterns/appliance_repair.svg'); }
+  .handyman::after         { -webkit-mask-image: url('/patterns/handyman.svg');         mask-image: url('/patterns/handyman.svg');         }
+  .tutor::after            { -webkit-mask-image: url('/patterns/tutor.svg');            mask-image: url('/patterns/tutor.svg');            }
+  .psychologist::after     { -webkit-mask-image: url('/patterns/psychologist.svg');     mask-image: url('/patterns/psychologist.svg');     }
+  .other::after            { -webkit-mask-image: url('/patterns/other.svg');            mask-image: url('/patterns/other.svg');            }
 </style>
 </head>
 <body>
 <h1>Master patterns preview — 13 категорий</h1>
-<p class="intro">Каждый паттерн рендерится так же, как появится в мастер-приложении: accent-color через CSS mask, opacity 0.10, тайл 260×260.</p>
+<p class="intro">Имена файлов совпадают с master_categories.slug в БД. Каждый паттерн рендерится так же, как в мастер-приложении: accent-color через CSS mask, opacity 0.10, тайл 260×260.</p>
 <div class="grid">
-  <div class="card"><h3>nails — Маникюр и бьюти</h3><div class="tile-wrap nails"></div></div>
+  <div class="card"><h3>beauty — Маникюр и бьюти</h3><div class="tile-wrap beauty"></div></div>
   <div class="card"><h3>barber — Парикмахер и барбер</h3><div class="tile-wrap barber"></div></div>
-  <div class="card"><h3>pets — Груминг и животные</h3><div class="tile-wrap pets"></div></div>
-  <div class="card"><h3>photo — Фотограф и видеограф</h3><div class="tile-wrap photo"></div></div>
-  <div class="card"><h3>garden — Садовник</h3><div class="tile-wrap garden"></div></div>
-  <div class="card"><h3>clean — Клининг</h3><div class="tile-wrap clean"></div></div>
-  <div class="card"><h3>upholstery — Химчистка мебели и ковров</h3><div class="tile-wrap upholstery"></div></div>
+  <div class="card"><h3>grooming — Груминг и животные</h3><div class="tile-wrap grooming"></div></div>
+  <div class="card"><h3>photographer — Фотограф и видеограф</h3><div class="tile-wrap photographer"></div></div>
+  <div class="card"><h3>gardener — Садовник</h3><div class="tile-wrap gardener"></div></div>
+  <div class="card"><h3>cleaning — Клининг</h3><div class="tile-wrap cleaning"></div></div>
+  <div class="card"><h3>dry_cleaning — Химчистка мебели и ковров</h3><div class="tile-wrap dry_cleaning"></div></div>
   <div class="card"><h3>massage — Массаж</h3><div class="tile-wrap massage"></div></div>
-  <div class="card"><h3>appliance — Ремонт бытовой техники</h3><div class="tile-wrap appliance"></div></div>
-  <div class="card"><h3>handy — Мастер на час</h3><div class="tile-wrap handy"></div></div>
+  <div class="card"><h3>appliance_repair — Ремонт техники</h3><div class="tile-wrap appliance_repair"></div></div>
+  <div class="card"><h3>handyman — Мастер на час</h3><div class="tile-wrap handyman"></div></div>
   <div class="card"><h3>tutor — Репетитор</h3><div class="tile-wrap tutor"></div></div>
-  <div class="card"><h3>psy — Психолог</h3><div class="tile-wrap psy"></div></div>
+  <div class="card"><h3>psychologist — Психолог</h3><div class="tile-wrap psychologist"></div></div>
   <div class="card"><h3>other — Стилист / другое (mix)</h3><div class="tile-wrap other"></div></div>
 </div>
 </body>
