@@ -28,6 +28,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>abooking — карманная CRM для частных мастеров</title>
+<link rel="icon" type="image/png" href="/uploads/abooking-icon.png">
+<link rel="apple-touch-icon" href="/uploads/abooking-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap">
 <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin="anonymous"></script>
@@ -244,7 +246,7 @@ const Nav = ({t}) => (
   <nav style={{position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, background: t.navBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${t.navBorder}`}}>
     <Wrap s={{height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
       <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
-        <img src="uploads/a-booking_logo 1.png" alt="abooking" style={{height: 28, width: 'auto', display: 'block', filter: t.isDark ? 'brightness(0) invert(1)' : 'none'}} />
+        <img src="uploads/abooking-logo.png" alt="Abooking" style={{height: 32, width: 'auto', display: 'block', filter: t.isDark ? 'brightness(0) invert(1)' : 'none'}} />
       </div>
       <TgBtn t={t}>Попробовать</TgBtn>
     </Wrap>
