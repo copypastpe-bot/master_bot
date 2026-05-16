@@ -7,10 +7,10 @@
   <meta name="color-scheme" content="{% if is_dark_style %}dark{% else %}light{% endif %}">
   <meta name="apple-mobile-web-app-status-bar-style" content="{% if is_dark_style %}black-translucent{% else %}default{% endif %}">
   <title>{{ display_name }} — {{ specialization }}</title>
-  <meta name="description" content="{{ tagline }}">
+  <meta name="description" content="{{ tagline or specialization }}">
 
   <meta property="og:title" content="{{ display_name }} — {{ specialization }}">
-  <meta property="og:description" content="{{ tagline }}">
+  <meta property="og:description" content="{{ tagline or specialization }}">
   <meta property="og:image" content="{{ absolute_photo_url or photo_url }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:type" content="profile">
@@ -18,7 +18,7 @@
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ display_name }} — {{ specialization }}">
-  <meta name="twitter:description" content="{{ tagline }}">
+  <meta name="twitter:description" content="{{ tagline or specialization }}">
   <meta name="twitter:image" content="{{ absolute_photo_url or photo_url }}">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -374,7 +374,7 @@
         <p class="identity__role">{{ specialization }}</p>
       </div>
 
-      <p class="tagline">{{ tagline }}</p>
+      {% if tagline %}<p class="tagline">{{ tagline }}</p>{% endif %}
 
       <div class="service-card">
         <span class="service-card__label">{{ popular_service_label }}</span>

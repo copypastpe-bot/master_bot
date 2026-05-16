@@ -81,7 +81,7 @@ class PromoPageBody(BaseModel):
     style_id: Optional[int] = None
     display_name: str = Field(min_length=2, max_length=60)
     specialization: str = Field(min_length=2, max_length=80)
-    tagline: str = Field(min_length=10, max_length=120)
+    tagline: Optional[str] = Field(default=None, max_length=120)
     badge_text: Optional[str] = Field(default=None, max_length=40)
     service_name: str = Field(min_length=2, max_length=100)
     service_price: str = Field(min_length=1, max_length=30)
