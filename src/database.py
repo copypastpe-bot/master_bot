@@ -118,6 +118,12 @@ async def get_connection() -> aiosqlite.Connection:
     conn = await aiosqlite.connect(DB_PATH)
     conn.row_factory = aiosqlite.Row
     await conn.execute("PRAGMA foreign_keys = ON")
+    # WAL: readers don't block the writer; survives concurrent API + scheduler writes.
+    await conn.execute("PRAGMA journal_mode = WAL")
+    # Wait up to 5s on a locked DB instead of failing immediately with OperationalError.
+    await conn.execute("PRAGMA busy_timeout = 5000")
+    # NORMAL is durable under WAL and noticeably faster than FULL on each commit.
+    await conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 
 
