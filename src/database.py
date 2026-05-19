@@ -3451,6 +3451,181 @@ async def save_campaign(
         await conn.close()
 
 
+# =============================================================================
+# Broadcast background queue
+# =============================================================================
+
+async def create_broadcast_campaign(
+    *,
+    master_id: int,
+    text: str,
+    segment: str,
+    recipients: list[dict],
+    media_path: Optional[str],
+    media_type: Optional[str],
+) -> int:
+    """Create a broadcast campaign in 'pending' status and seed its recipient queue.
+
+    Each recipient dict must carry client_id + tg_id. Returns the new campaign_id.
+    """
+    conn = await get_connection()
+    try:
+        cursor = await conn.execute(
+            """
+            INSERT INTO campaigns
+                (master_id, type, text, segment, status, total_recipients,
+                 sent_count, failed_count, media_path, media_type,
+                 last_progress_at, sent_at)
+            VALUES (?, 'broadcast', ?, ?, 'pending', ?, 0, 0, ?, ?,
+                    datetime('now'), datetime('now'))
+            """,
+            (master_id, text, segment, len(recipients), media_path, media_type),
+        )
+        campaign_id = cursor.lastrowid
+        if recipients:
+            await conn.executemany(
+                """
+                INSERT INTO broadcast_recipients (campaign_id, client_id, tg_id, status)
+                VALUES (?, ?, ?, 'pending')
+                """,
+                [(campaign_id, r["client_id"], r["tg_id"]) for r in recipients],
+            )
+        await conn.commit()
+        return campaign_id
+    finally:
+        await conn.close()
+
+
+async def get_pending_broadcast_recipients(campaign_id: int, *, limit: int = 100) -> list[dict]:
+    """Return up to `limit` still-pending recipients, oldest first."""
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            """
+            SELECT br.id, br.client_id, br.tg_id, c.name
+            FROM broadcast_recipients br
+            LEFT JOIN clients c ON c.id = br.client_id
+            WHERE br.campaign_id = ? AND br.status = 'pending'
+            ORDER BY br.id
+            LIMIT ?
+            """,
+            (campaign_id, limit),
+        )
+        return [dict(row) for row in await cur.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def mark_broadcast_recipient_sent(campaign_id: int, *, client_id: int) -> None:
+    """Flip one pending row to 'sent' and bump campaigns.sent_count."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """
+            UPDATE broadcast_recipients
+            SET status = 'sent', sent_at = datetime('now')
+            WHERE campaign_id = ? AND client_id = ? AND status = 'pending'
+            """,
+            (campaign_id, client_id),
+        )
+        await conn.execute(
+            """
+            UPDATE campaigns
+            SET sent_count = sent_count + 1, last_progress_at = datetime('now')
+            WHERE id = ?
+            """,
+            (campaign_id,),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def mark_broadcast_recipient_failed(
+    campaign_id: int, *, client_id: int, error: str, blocked: bool = False
+) -> None:
+    """Flip one pending row to 'blocked' or 'failed' and bump campaigns.failed_count."""
+    conn = await get_connection()
+    try:
+        new_status = "blocked" if blocked else "failed"
+        await conn.execute(
+            """
+            UPDATE broadcast_recipients
+            SET status = ?, sent_at = datetime('now'), error = ?
+            WHERE campaign_id = ? AND client_id = ? AND status = 'pending'
+            """,
+            (new_status, (error or "")[:500], campaign_id, client_id),
+        )
+        await conn.execute(
+            """
+            UPDATE campaigns
+            SET failed_count = failed_count + 1, last_progress_at = datetime('now')
+            WHERE id = ?
+            """,
+            (campaign_id,),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def set_broadcast_status(campaign_id: int, status: str) -> None:
+    """Move a campaign between pending/running/done/failed."""
+    assert status in {"pending", "running", "done", "failed"}
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """
+            UPDATE campaigns
+            SET status = ?, last_progress_at = datetime('now')
+            WHERE id = ?
+            """,
+            (status, campaign_id),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def finalize_broadcast(campaign_id: int) -> None:
+    """Mark a finished campaign as done."""
+    await set_broadcast_status(campaign_id, "done")
+
+
+async def get_broadcast_status(campaign_id: int) -> Optional[dict]:
+    """Return the campaign row as a dict for polling, or None if missing."""
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            """
+            SELECT id, master_id, status, total_recipients, sent_count, failed_count,
+                   media_path, media_type, text, segment, last_progress_at
+            FROM campaigns
+            WHERE id = ? AND type = 'broadcast'
+            """,
+            (campaign_id,),
+        )
+        row = await cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def find_resumable_broadcasts() -> list[int]:
+    """Return broadcast campaign IDs still in pending/running — startup resume hook."""
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            """
+            SELECT id FROM campaigns
+            WHERE type = 'broadcast' AND status IN ('pending', 'running')
+            """
+        )
+        return [row["id"] for row in await cur.fetchall()]
+    finally:
+        await conn.close()
+
+
 async def get_active_promos(master_id: int) -> list[Campaign]:
     """Get active promo campaigns for a master."""
     conn = await get_connection()
