@@ -354,3 +354,59 @@ class BroadcastEndpointTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException) as ctx:
             await get_broadcast_campaign_status(cid, master=other)
         self.assertEqual(ctx.exception.status_code, 403)
+
+
+class BroadcastStartupResumeTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        await _seed_master_with_clients()
+        self.bot = _FakeBot()
+        self.app = _fake_app(self.bot)
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_startup_resumes_running_campaign(self):
+        """A campaign left mid-flight ('running' status, pending rows)
+        should be drained when resume_pending_broadcasts runs."""
+        cid = await db.create_broadcast_campaign(
+            master_id=1, text="x", segment="all",
+            recipients=[{"client_id": 1, "tg_id": 2001}],
+            media_path=None, media_type=None,
+        )
+        # Simulate crash: status='running', recipient still 'pending'.
+        await db.set_broadcast_status(cid, "running")
+
+        from src.api.app import resume_pending_broadcasts
+        await resume_pending_broadcasts(self.app)
+
+        # Worker scheduled — give it a tick to drain.
+        import asyncio
+        await asyncio.sleep(0.5)
+
+        status = await db.get_broadcast_status(cid)
+        self.assertEqual(status["status"], "done")
+        self.assertEqual(status["sent_count"], 1)
+        self.assertEqual(self.bot.calls[0][1], 2001)
+
+    async def test_startup_skips_finished_campaigns(self):
+        cid = await db.create_broadcast_campaign(
+            master_id=1, text="x", segment="all",
+            recipients=[{"client_id": 1, "tg_id": 2001}],
+            media_path=None, media_type=None,
+        )
+        await db.mark_broadcast_recipient_sent(cid, client_id=1)
+        await db.finalize_broadcast(cid)
+
+        from src.api.app import resume_pending_broadcasts
+        await resume_pending_broadcasts(self.app)
+
+        import asyncio
+        await asyncio.sleep(0.2)
+
+        # Worker must not have re-sent — the recipient is no longer pending.
+        self.assertEqual(self.bot.calls, [])

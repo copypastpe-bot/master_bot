@@ -108,3 +108,29 @@ async def health_check():
 async def handle_subscription_required(_request, exc: SubscriptionRequiredError):
     """Return compact subscription-required payload without FastAPI detail wrapper."""
     return JSONResponse(status_code=403, content=exc.payload)
+
+
+async def resume_pending_broadcasts(target_app=None) -> None:
+    """Re-launch any broadcast campaign that was mid-flight when the API last
+    stopped (status='pending' or 'running'). Idempotent: the worker only
+    touches recipients still in 'pending', so already-sent rows are skipped.
+    """
+    import asyncio
+    import logging
+
+    from src.api.routers.master.broadcast import _run_broadcast
+    from src.database import find_resumable_broadcasts
+
+    logger = logging.getLogger(__name__)
+    bound_app = target_app or app
+    ids = await find_resumable_broadcasts()
+    if not ids:
+        return
+    logger.info(f"Resuming {len(ids)} broadcast(s) after restart: {ids}")
+    for cid in ids:
+        asyncio.create_task(_run_broadcast(cid, bound_app))
+
+
+@app.on_event("startup")
+async def _on_startup() -> None:
+    await resume_pending_broadcasts()
