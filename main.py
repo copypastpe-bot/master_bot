@@ -33,6 +33,19 @@ if APP_ENV == "development":
         "Never run with APP_ENV=development on a production server."
     )
 
+# Encrypted columns (Google OAuth tokens etc.) silently degrade to plain-text
+# when ENCRYPTION_KEY is missing — see src/crypto.py:_get_fernet. That's
+# acceptable for local dev but catastrophic in production: a key rotation
+# typo would start writing tokens to disk in plain text with only a WARN.
+if APP_ENV == "production":
+    from src.crypto import _get_fernet
+    if _get_fernet() is None:
+        raise RuntimeError(
+            "Refusing to start: ENCRYPTION_KEY is not configured but APP_ENV=production. "
+            "Generate one with: python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\" and set it in .env."
+        )
+
 
 async def run_master_bot():
     """Run master bot (oauth_server is started separately by main.py)."""
