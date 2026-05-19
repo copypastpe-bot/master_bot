@@ -268,3 +268,89 @@ class BroadcastWorkerTest(unittest.IsolatedAsyncioTestCase):
         )
         await _run_broadcast(cid, self.app, sleep_seconds=0)
         self.assertEqual(self.bot.calls[0][0], "photo")
+
+
+class BroadcastEndpointTest(unittest.IsolatedAsyncioTestCase):
+    """End-to-end tests for the new POST /send (202) + GET /campaigns/{id}."""
+
+    async def asyncSetUp(self):
+        import os
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        os.environ["BROADCAST_MEDIA_DIR"] = str(Path(self.tmp.name) / "broadcast_media")
+        await db.init_db()
+        await _seed_master_with_clients()
+        self.bot = _FakeBot()
+        self.app = _fake_app(self.bot)
+        self.request = SimpleNamespace(app=self.app)
+        self.master = await db.get_master_by_id(1)
+        # Drain the in-memory rate-limit bucket so multiple tests don't share state.
+        from src.api.ratelimit import broadcast_limiter
+        broadcast_limiter._buckets.clear()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_send_returns_202_with_campaign_id(self):
+        from src.api.routers.master.broadcast import send_broadcast
+        response = await send_broadcast(
+            request=self.request,
+            segment="all", text="hello {name}",
+            media_type=None, media=None,
+            master=self.master,
+        )
+        self.assertEqual(response.status_code, 202)
+        import json
+        body = json.loads(bytes(response.body))
+        self.assertIn("campaign_id", body)
+        self.assertEqual(body["total_recipients"], 3)
+
+        # Worker scheduled via asyncio.create_task — give it a tick.
+        import asyncio
+        await asyncio.sleep(0.5)
+
+        status = await db.get_broadcast_status(body["campaign_id"])
+        self.assertEqual(status["status"], "done")
+        self.assertEqual(status["sent_count"], 3)
+
+    async def test_get_campaign_status_returns_progress_payload(self):
+        from src.api.routers.master.broadcast import (
+            send_broadcast,
+            get_broadcast_campaign_status,
+        )
+        import json
+        response = await send_broadcast(
+            request=self.request,
+            segment="all", text="x",
+            media_type=None, media=None,
+            master=self.master,
+        )
+        cid = json.loads(bytes(response.body))["campaign_id"]
+
+        payload = await get_broadcast_campaign_status(cid, master=self.master)
+        for key in ("campaign_id", "status", "total_recipients",
+                    "sent_count", "failed_count", "last_progress_at"):
+            self.assertIn(key, payload)
+        self.assertEqual(payload["campaign_id"], cid)
+
+    async def test_get_campaign_status_rejects_other_master(self):
+        from fastapi import HTTPException
+        from src.api.routers.master.broadcast import (
+            send_broadcast,
+            get_broadcast_campaign_status,
+        )
+        import json
+        response = await send_broadcast(
+            request=self.request, segment="all", text="x",
+            media_type=None, media=None, master=self.master,
+        )
+        cid = json.loads(bytes(response.body))["campaign_id"]
+
+        # Another master (id=2) tries to peek.
+        from src.models import Master
+        other = Master(id=2, tg_id=999, name="Other", invite_token="other")
+        with self.assertRaises(HTTPException) as ctx:
+            await get_broadcast_campaign_status(cid, master=other)
+        self.assertEqual(ctx.exception.status_code, 403)

@@ -2,17 +2,26 @@
 
 import asyncio
 import logging
+import os
+import time
+from pathlib import Path
 from typing import Optional
 
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import BufferedInputFile
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_current_master
 from src.api.ratelimit import broadcast_limiter
 from src.config import CLIENT_BOT_USERNAME
-from src.database import get_clients_by_segment, save_campaign, get_broadcast_recipients_count
+from src.database import (
+    create_broadcast_campaign,
+    get_broadcast_recipients_count,
+    get_broadcast_status,
+    get_clients_by_segment,
+)
 from src.models import Master
 
 logger = logging.getLogger(__name__)
@@ -179,49 +188,65 @@ async def send_broadcast(
     if not recipients:
         raise HTTPException(status_code=400, detail="No recipients in this segment")
 
-    client_bot = getattr(request.app.state, "client_bot", None)
-    if not client_bot:
+    if not getattr(request.app.state, "client_bot", None):
         raise HTTPException(status_code=503, detail="client_bot not available")
 
-    sent = 0
-    failed = 0
-    for client in recipients:
-        tg_id = client.get("tg_id")
-        if not tg_id:
-            failed += 1
-            continue
+    # Persist media to disk so a container restart mid-flight can still
+    # read the bytes (the worker re-loads them by path).
+    media_path: Optional[str] = None
+    if media_bytes:
+        media_dir = Path(os.getenv("BROADCAST_MEDIA_DIR", "/app/data/broadcast"))
         try:
-            personalized_body = _personalize(text, client.get("name") or "")
-            personalized = f"{master.name}:\n\n{personalized_body}"
-            if media_bytes and media_type == "photo":
-                file_obj = BufferedInputFile(media_bytes, filename="photo.jpg")
-                await client_bot.send_photo(chat_id=tg_id, photo=file_obj, caption=personalized)
-            elif media_bytes and media_type == "video":
-                file_obj = BufferedInputFile(media_bytes, filename="video.mp4")
-                await client_bot.send_video(chat_id=tg_id, video=file_obj, caption=personalized)
-            else:
-                await client_bot.send_message(chat_id=tg_id, text=personalized)
-            sent += 1
-            await asyncio.sleep(0.05)  # 50 ms rate-limit pause
-        except TelegramForbiddenError:
-            logger.warning(f"Broadcast: client {tg_id} blocked the bot")
-            failed += 1
-        except Exception as e:
-            logger.error(f"Broadcast: failed to send to {tg_id}: {e}")
-            failed += 1
+            media_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            media_dir = Path("/tmp/master_bot_broadcast")
+            media_dir.mkdir(parents=True, exist_ok=True)
+        suffix = ".jpg" if media_type == "photo" else ".mp4"
+        media_path = str(media_dir / f"campaign_{master.id}_{int(time.time())}{suffix}")
+        Path(media_path).write_bytes(media_bytes)
 
-    await save_campaign(
+    campaign_id = await create_broadcast_campaign(
         master_id=master.id,
-        campaign_type="broadcast",
-        title=None,
         text=text,
-        active_from=None,
-        active_to=None,
-        sent_count=sent,
         segment=segment,
+        recipients=[
+            # get_clients_by_segment returns id/tg_id/name; rename id → client_id.
+            {"client_id": r["id"], "tg_id": r["tg_id"]}
+            for r in recipients if r.get("tg_id")
+        ],
+        media_path=media_path,
+        media_type=media_type if media_bytes else None,
     )
 
-    return {"sent_count": sent, "failed_count": failed}
+    # Fire-and-forget. Restart-safe: campaigns.status + broadcast_recipients
+    # carry enough state that a startup hook can pick up where this left off.
+    asyncio.create_task(_run_broadcast(campaign_id, request.app))
+
+    return JSONResponse(
+        status_code=202,
+        content={"campaign_id": campaign_id, "total_recipients": len(recipients)},
+    )
+
+
+@router.get("/master/broadcast/campaigns/{campaign_id}")
+async def get_broadcast_campaign_status(
+    campaign_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Polled by the Mini App after POST /send returns 202."""
+    status = await get_broadcast_status(campaign_id)
+    if not status:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if status["master_id"] != master.id:
+        raise HTTPException(status_code=403, detail="Not your campaign")
+    return {
+        "campaign_id": campaign_id,
+        "status": status["status"],
+        "total_recipients": status["total_recipients"],
+        "sent_count": status["sent_count"],
+        "failed_count": status["failed_count"],
+        "last_progress_at": status["last_progress_at"],
+    }
 
 
 async def _run_broadcast(campaign_id: int, app, *, sleep_seconds: float = 0.05) -> None:
