@@ -81,8 +81,10 @@ class RateLimiter:
 # Prevents spamming the Telegram invoice API which could get the bot rate-limited.
 invoice_limiter = RateLimiter(max_calls=5, window_seconds=60)
 
-# Broadcast send: max 2 sends per master per 5 minutes.
-# A single broadcast already fans out to many clients — no need to allow rapid re-sends.
+# Broadcast send: max 2 per master per 5 minutes.
+# Tight not because of HTTP duration (POST /send returns in <100ms now that
+# the loop runs as an asyncio.create_task) but to protect downstream Telegram
+# quotas and the broadcast_recipients queue from being flooded by one master.
 broadcast_limiter = RateLimiter(max_calls=2, window_seconds=300)
 
 # General write operations (client create, order create, bonus): max 30 per IP per minute.
