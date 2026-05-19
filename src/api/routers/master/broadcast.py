@@ -222,3 +222,86 @@ async def send_broadcast(
     )
 
     return {"sent_count": sent, "failed_count": failed}
+
+
+async def _run_broadcast(campaign_id: int, app, *, sleep_seconds: float = 0.05) -> None:
+    """Background worker that drains broadcast_recipients for a campaign.
+
+    Idempotent and restart-safe: only touches rows still in 'pending', so a
+    re-launched run after crash picks up exactly where the previous one
+    stopped. Reads media bytes from disk when campaigns.media_path is set,
+    so the bytes survive a container restart.
+    """
+    from pathlib import Path
+    from src.database import (
+        get_broadcast_status,
+        get_master_by_id,
+        get_pending_broadcast_recipients,
+        mark_broadcast_recipient_sent,
+        mark_broadcast_recipient_failed,
+        set_broadcast_status,
+        finalize_broadcast,
+    )
+
+    campaign = await get_broadcast_status(campaign_id)
+    if not campaign:
+        logger.warning(f"broadcast worker: campaign {campaign_id} not found")
+        return
+
+    master = await get_master_by_id(campaign["master_id"])
+    if not master:
+        await set_broadcast_status(campaign_id, "failed")
+        return
+
+    client_bot = getattr(app.state, "client_bot", None)
+    if not client_bot:
+        logger.error(f"broadcast {campaign_id}: client_bot not on app.state — marking failed")
+        await set_broadcast_status(campaign_id, "failed")
+        return
+
+    media_bytes: Optional[bytes] = None
+    media_type = campaign["media_type"]
+    if campaign["media_path"]:
+        try:
+            media_bytes = Path(campaign["media_path"]).read_bytes()
+        except FileNotFoundError:
+            logger.error(f"broadcast {campaign_id}: media file missing — sending text only")
+            media_type = None
+
+    await set_broadcast_status(campaign_id, "running")
+
+    text = campaign["text"]
+
+    while True:
+        batch = await get_pending_broadcast_recipients(campaign_id, limit=50)
+        if not batch:
+            break
+
+        for recipient in batch:
+            tg_id = recipient["tg_id"]
+            client_id = recipient["client_id"]
+            body = _personalize(text, recipient.get("name") or "")
+            personalized = f"{master.name}:\n\n{body}"
+            try:
+                if media_bytes and media_type == "photo":
+                    file_obj = BufferedInputFile(media_bytes, filename="photo.jpg")
+                    await client_bot.send_photo(chat_id=tg_id, photo=file_obj, caption=personalized)
+                elif media_bytes and media_type == "video":
+                    file_obj = BufferedInputFile(media_bytes, filename="video.mp4")
+                    await client_bot.send_video(chat_id=tg_id, video=file_obj, caption=personalized)
+                else:
+                    await client_bot.send_message(chat_id=tg_id, text=personalized)
+                await mark_broadcast_recipient_sent(campaign_id, client_id=client_id)
+            except TelegramForbiddenError:
+                await mark_broadcast_recipient_failed(
+                    campaign_id, client_id=client_id, error="blocked", blocked=True,
+                )
+            except Exception as e:  # noqa: BLE001 — log + persist, never crash the worker
+                logger.error(f"broadcast {campaign_id} → {tg_id}: {e}")
+                await mark_broadcast_recipient_failed(
+                    campaign_id, client_id=client_id, error=str(e),
+                )
+            if sleep_seconds:
+                await asyncio.sleep(sleep_seconds)
+
+    await finalize_broadcast(campaign_id)
