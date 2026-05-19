@@ -6,7 +6,7 @@ import logging
 
 import uvicorn
 
-from src.config import LOG_LEVEL, API_PORT, APP_ENV
+from src.config import LOG_LEVEL, API_PORT, APP_ENV, MINIAPP_URL
 
 # Configure logging
 logging.basicConfig(
@@ -14,6 +14,18 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Hard-fail if dev mode is somehow paired with a production-facing MINIAPP_URL.
+# Reason: APP_ENV=development enables the X-Init-Data: "dev" bypass in
+# src/api/dependencies.py — leaking that onto a real domain would grant any
+# caller full master/client access. A warning is not enough; refuse to boot.
+_PRODUCTION_HOST_MARKERS = ("abooking.org", "crmfit.ru")
+if APP_ENV == "development" and any(m in MINIAPP_URL for m in _PRODUCTION_HOST_MARKERS):
+    raise RuntimeError(
+        f"Refusing to start: APP_ENV=development with production MINIAPP_URL "
+        f"({MINIAPP_URL}). The initData bypass would be exposed publicly. "
+        "Set APP_ENV=production or point MINIAPP_URL to a local/staging host."
+    )
 
 if APP_ENV == "development":
     logger.warning(
