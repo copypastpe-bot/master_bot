@@ -40,6 +40,10 @@ token.json
 miniapp/node_modules/
 miniapp/dist/
 
+# Landing
+landing-v2/node_modules/
+landing-v2/dist/
+
 # Working prompts (not for VCS)
 prompts/
 .worktrees/
