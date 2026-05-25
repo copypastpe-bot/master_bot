@@ -1,21 +1,25 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVER="deploy@75.119.153.118"
 STATIC_DIR="/var/www/abooking.org"
 
 echo "=== Building landing ==="
-cd "$(dirname "$0")/landing-v2"
+cd "$SCRIPT_DIR/landing-v2"
 npm run build
 
 echo "=== Creating static dir on server ==="
 ssh $SERVER "sudo mkdir -p $STATIC_DIR && sudo chown \$(whoami):\$(whoami) $STATIC_DIR"
 
 echo "=== Uploading landing to server ==="
-rsync -avz --delete --chmod=D755,F644 --exclude='.DS_Store' dist/ $SERVER:$STATIC_DIR/
+rsync -avz --delete --exclude='.DS_Store' dist/ $SERVER:$STATIC_DIR/
+
+echo "=== Normalizing perms on server ==="
+ssh $SERVER "find $STATIC_DIR -type d -exec chmod 755 {} \; && find $STATIC_DIR -type f -exec chmod 644 {} \;"
 
 echo "=== Uploading nginx config ==="
-scp "$(dirname "$0")/nginx/landing.conf" $SERVER:/tmp/landing.conf
+scp "$SCRIPT_DIR/nginx/landing.conf" $SERVER:/tmp/landing.conf
 ssh $SERVER "sudo cp /tmp/landing.conf /etc/nginx/sites-available/landing.conf && \
              sudo ln -sf /etc/nginx/sites-available/landing.conf /etc/nginx/sites-enabled/landing.conf && \
              sudo nginx -t"
