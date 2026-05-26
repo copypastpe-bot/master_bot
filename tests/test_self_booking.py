@@ -233,3 +233,147 @@ class ScheduleExceptionsTest(unittest.IsolatedAsyncioTestCase):
         await db.add_master_schedule_exception(1, "2026-06-15", "off")
         rows = await db.get_master_schedule_exceptions(1)
         self.assertEqual([r["date"] for r in rows], ["2026-06-15", "2026-07-01"])
+
+
+class SlotGeneratorTest(unittest.TestCase):
+    """Pure-function tests — no DB, no event loop. Inputs in, list out."""
+
+    def test_single_window_30min_step(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "11:30")],
+            exception=None,
+            duration_minutes=30,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        self.assertEqual(slots, ["10:00", "10:30", "11:00"])
+
+    def test_60min_duration_in_3h_window(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "13:00")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        # Candidates with 30-min step that fit a 60-min slot in [10:00, 13:00):
+        # 10:00 (end 11:00 ≤ 13:00), 10:30, 11:00, 11:30, 12:00 (end 13:00 ≤ 13:00).
+        self.assertEqual(slots, ["10:00", "10:30", "11:00", "11:30", "12:00"])
+
+    def test_adjacent_existing_is_not_an_overlap(self):
+        """Booking that starts exactly when another ends should be allowed."""
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "13:00")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[("10:00", 60)],  # blocks 10:00–11:00 exactly
+            now=None,
+            target_date="2026-06-01",
+        )
+        # 10:00 overlaps (same start). 10:30 starts during existing.
+        # 11:00 starts exactly when existing ends — adjacent, NOT overlap.
+        # 11:30 fine. 12:00 fine.
+        self.assertIn("11:00", slots)
+        self.assertNotIn("10:00", slots)
+        self.assertNotIn("10:30", slots)
+
+    def test_overlap_in_middle_excludes_neighbors(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "13:00")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[("11:00", 60)],  # blocks 11:00–12:00
+            now=None,
+            target_date="2026-06-01",
+        )
+        # 10:00 (10:00-11:00) — adjacent → OK.
+        # 10:30 (10:30-11:30) — overlaps existing 11:00-12:00 → NO.
+        # 11:00, 11:30 — overlap → NO. 12:00 (12:00-13:00) — adjacent → OK.
+        self.assertEqual(slots, ["10:00", "12:00"])
+
+    def test_off_exception_returns_empty(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "18:00")],
+            exception={"kind": "off"},
+            duration_minutes=30,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        self.assertEqual(slots, [])
+
+    def test_override_exception_replaces_weekly(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "18:00")],
+            exception={"kind": "override", "start": "14:00", "end": "16:00"},
+            duration_minutes=60,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        # Override replaces the 10:00-18:00 weekly with 14:00-16:00.
+        # 30-min step over [14:00, 16:00) with 60-min duration:
+        # 14:00 (end 15:00), 14:30 (end 15:30), 15:00 (end 16:00).
+        self.assertEqual(slots, ["14:00", "14:30", "15:00"])
+
+    def test_past_slots_pruned_for_today(self):
+        from src.booking.slot_generator import generate_slots
+        from datetime import datetime
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "13:00")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[],
+            now=datetime(2026, 6, 1, 11, 30),
+            target_date="2026-06-01",
+        )
+        # 10:00 — past. 10:30 — past. 11:00 — past (before 11:30 now).
+        # 11:30 — exactly now (treat as past, can't book a slot starting "now").
+        # 12:00 fits (12:00 + 60 = 13:00 ≤ 13:00).
+        self.assertEqual(slots, ["12:00"])
+
+    def test_now_does_not_affect_future_date(self):
+        from src.booking.slot_generator import generate_slots
+        from datetime import datetime
+        # Now is during 2026-06-01 but target is the next day — no pruning.
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "11:00")],
+            exception=None,
+            duration_minutes=30,
+            existing_bookings=[],
+            now=datetime(2026, 6, 1, 23, 59),
+            target_date="2026-06-02",
+        )
+        self.assertEqual(slots, ["10:00", "10:30"])
+
+    def test_split_shift_two_windows(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "12:00"), ("16:00", "18:00")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        self.assertEqual(slots, ["10:00", "10:30", "11:00", "16:00", "16:30", "17:00"])
+
+    def test_duration_larger_than_window_yields_nothing(self):
+        from src.booking.slot_generator import generate_slots
+        slots = generate_slots(
+            weekly_intervals=[("10:00", "10:45")],
+            exception=None,
+            duration_minutes=60,
+            existing_bookings=[],
+            now=None,
+            target_date="2026-06-01",
+        )
+        self.assertEqual(slots, [])
