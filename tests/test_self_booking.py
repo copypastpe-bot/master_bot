@@ -574,3 +574,29 @@ class BookingCreationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(row["status"], "cancelled")
         # Idempotent: cancelling again returns None.
         self.assertIsNone(await db.cancel_booking_by_token(token))
+
+    async def test_concurrent_bookings_only_one_wins(self):
+        """Real race: spawn 3 coroutines targeting the same slot at once.
+        Exactly one must succeed; the other two must get BookingConflictError.
+
+        Proves the BEGIN IMMEDIATE + WAL + busy_timeout combo from sprint 1
+        actually serialises concurrent bookings — without it we'd be hostage
+        to whichever conn wrote first, but the overlap check would race."""
+        import asyncio
+        from src.database import BookingConflictError
+
+        async def book():
+            try:
+                return await db.create_booking_with_overlap_check(
+                    master_id=1, client_id=1,
+                    scheduled_at="2026-06-01 14:00:00",
+                    duration_minutes=60, service_ids=[], source="public",
+                )
+            except BookingConflictError:
+                return "conflict"
+
+        results = await asyncio.gather(book(), book(), book())
+        winners = [r for r in results if isinstance(r, int)]
+        losers = [r for r in results if r == "conflict"]
+        self.assertEqual(len(winners), 1, f"got results: {results}")
+        self.assertEqual(len(losers), 2, f"got results: {results}")
