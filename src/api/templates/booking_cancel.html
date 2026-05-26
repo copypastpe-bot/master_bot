@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Моя запись</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f6f8;
+      color: #1f2330;
+      margin: 0;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      padding: 28px 24px;
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 {
+      font-size: 18px;
+      margin: 0 0 16px;
+      color: #1f2330;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #ecedef;
+      font-size: 14px;
+    }
+    .row:last-of-type { border-bottom: none; }
+    .label { color: #6c7280; }
+    .value { color: #1f2330; font-weight: 500; text-align: right; }
+    .actions { margin-top: 24px; }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-danger { background: #e84545; color: #fff; }
+    .btn-disabled { background: #ecedef; color: #6c7280; cursor: default; }
+    .notice {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #fef7e7;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #6e5b1f;
+    }
+    .status-cancelled, .status-done {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: #f4f4f6;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #6c7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if missing %}
+      <h1>Запись не найдена</h1>
+      <p style="font-size: 14px; color: #6c7280;">
+        Ссылка устарела или не существует.
+      </p>
+    {% else %}
+      <h1>Ваша запись</h1>
+      <div class="row">
+        <span class="label">Услуга</span>
+        <span class="value">{{ service_name }}</span>
+      </div>
+      <div class="row">
+        <span class="label">Мастер</span>
+        <span class="value">{{ master_name }}</span>
+      </div>
+      <div class="row">
+        <span class="label">Имя</span>
+        <span class="value">{{ client_name }}</span>
+      </div>
+      <div class="row">
+        <span class="label">Дата и время</span>
+        <span class="value">{{ scheduled_at }} МСК</span>
+      </div>
+      {% if status == "cancelled" %}
+        <div class="status-cancelled">Запись отменена</div>
+      {% elif status == "done" %}
+        <div class="status-done">Запись завершена</div>
+      {% elif can_cancel %}
+        <div class="actions">
+          <button id="cancel-btn" class="btn btn-danger" onclick="cancelBooking()">Отменить запись</button>
+        </div>
+      {% else %}
+        <div class="notice">
+          До записи меньше {{ cutoff_hours }} ч — отменить онлайн уже нельзя.
+          Свяжитесь с мастером{% if master_phone %}: {{ master_phone }}{% endif %}.
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+  <script>
+    async function cancelBooking() {
+      const btn = document.getElementById('cancel-btn');
+      btn.disabled = true; btn.classList.add('btn-disabled'); btn.classList.remove('btn-danger');
+      btn.textContent = 'Отменяем...';
+      const resp = await fetch('/api/public/cancel/{{ token }}', {method: 'POST'});
+      if (resp.ok) {
+        btn.textContent = 'Отменено';
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        btn.textContent = data.detail || 'Не удалось отменить';
+      }
+    }
+  </script>
+</body>
+</html>

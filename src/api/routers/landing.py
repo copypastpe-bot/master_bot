@@ -282,3 +282,68 @@ async def landing_page(request: Request, page_key: str):
             "socials_label": strings["socials"],
         },
     )
+
+
+@router.get("/b/{token}", response_class=HTMLResponse)
+async def booking_cancel_page(request: Request, token: str):
+    """Public per-booking page reached via the cancel_url returned by
+    POST /api/public/book. Anonymous: the token IS the identifier."""
+    from src.database import (
+        get_connection,
+        get_master_by_id,
+        get_order_by_cancel_token,
+        get_service_by_id,
+    )
+
+    order = await get_order_by_cancel_token(token)
+    if not order:
+        return templates.TemplateResponse(
+            request=request,
+            name="booking_cancel.html",
+            context={"missing": True},
+            status_code=404,
+        )
+
+    master = await get_master_by_id(order["master_id"])
+    # Fetch service via order_items (first one — booking flow only adds one).
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT service_id, name FROM order_items WHERE order_id = ? LIMIT 1",
+            (order["id"],),
+        )
+        item = await cur.fetchone()
+        cur2 = await conn.execute(
+            "SELECT name FROM clients WHERE id = ?", (order["client_id"],)
+        )
+        client_row = await cur2.fetchone()
+    finally:
+        await conn.close()
+
+    service_name = item["name"] if item else "услуга"
+
+    # Cutoff math: same as the POST endpoint.
+    scheduled = datetime.fromisoformat(order["scheduled_at"].replace(" ", "T"))
+    seconds_until = (scheduled - datetime.now()).total_seconds()
+    cutoff_seconds = master.booking_cancel_cutoff_hours * 3600
+    can_cancel = (
+        order["status"] == "confirmed"
+        and seconds_until >= cutoff_seconds
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="booking_cancel.html",
+        context={
+            "missing": False,
+            "token": token,
+            "service_name": service_name,
+            "master_name": master.name,
+            "master_phone": master.phone or "",
+            "client_name": client_row["name"] if client_row else "",
+            "scheduled_at": order["scheduled_at"],
+            "status": order["status"],
+            "can_cancel": can_cancel,
+            "cutoff_hours": master.booking_cancel_cutoff_hours,
+        },
+    )

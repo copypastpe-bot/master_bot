@@ -30,14 +30,17 @@ from src.booking.slot_generator import generate_slots
 from src.config import MINIAPP_URL
 from src.database import (
     BookingConflictError,
+    cancel_booking_by_token,
     create_booking_with_overlap_check,
     create_client,
     get_client_by_phone,
     get_client_by_tg_id,
     get_connection,
+    get_master_by_id,
     get_master_by_invite_token,
     get_master_schedule_exceptions,
     get_master_schedule_weekly,
+    get_order_by_cancel_token,
     get_service_by_id,
     link_client_to_master,
 )
@@ -250,3 +253,49 @@ async def public_book(request: Request, body: PublicBookBody):
             "cancel_url": cancel_url,
         },
     )
+
+
+@router.post("/public/cancel/{token}")
+async def public_cancel(request: Request, token: str):
+    """Cancel a booking via its public token.
+
+    404 — token unknown / never existed.
+    409 — already cancelled or done (nothing to do).
+    403 — cutoff window has passed (master configures cancel_cutoff_hours);
+          surface a "contact your master" message to the user upstream.
+    """
+    order = await get_order_by_cancel_token(token)
+    if not order:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if order["status"] in ("cancelled", "done"):
+        raise HTTPException(status_code=409, detail="Booking already finalized")
+
+    master = await get_master_by_id(order["master_id"])
+    if master is None:
+        raise HTTPException(status_code=404, detail="Master not found")
+
+    # Cutoff: scheduled_at − cancel_cutoff_hours must be in the future.
+    scheduled = datetime.fromisoformat(order["scheduled_at"].replace(" ", "T"))
+    seconds_until = (scheduled - datetime.now()).total_seconds()
+    if seconds_until < master.booking_cancel_cutoff_hours * 3600:
+        raise HTTPException(
+            status_code=403,
+            detail="Cancel window has passed — contact the master directly",
+        )
+
+    cancelled_id = await cancel_booking_by_token(token)
+    if cancelled_id is None:
+        # Raced with another cancellation — treat as already finalized.
+        raise HTTPException(status_code=409, detail="Booking already finalized")
+
+    master_bot = getattr(request.app.state, "master_bot", None)
+    if master_bot:
+        try:
+            await master_bot.send_message(
+                chat_id=master.tg_id,
+                text=f"❌ Клиент отменил запись (#{cancelled_id})",
+            )
+        except Exception as e:
+            logger.warning(f"cancel notify failed for order {cancelled_id}: {e}")
+
+    return {"ok": True}

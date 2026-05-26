@@ -956,6 +956,117 @@ class PublicBookingApiTest(unittest.IsolatedAsyncioTestCase):
                     await public_book(request=req, body=body)
                 self.assertEqual(ctx.exception.status_code, 429)
 
+    # --- Cancellation endpoint + SSR page (Task 11) ----------------------
+
+    async def test_cancel_endpoint_marks_cancelled_and_notifies(self):
+        from src.api.routers.public_booking import public_book, public_cancel, PublicBookBody
+        import json
+        resp = await public_book(
+            request=self._request(ip="5.5.5.5"),
+            body=PublicBookBody(
+                slug="tok", service_id=1,
+                # Use a date far in the future so cutoff doesn't trip.
+                date="2099-01-01", start="10:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        body = json.loads(bytes(resp.body))
+        token = body["cancel_token"]
+
+        # Master gets the "new booking" notify; clear before cancel.
+        self.notifications.clear()
+
+        result = await public_cancel(request=self._request(ip="5.5.5.5"), token=token)
+        self.assertEqual(result, {"ok": True})
+
+        order = await db.get_order_by_cancel_token(token)
+        self.assertEqual(order["status"], "cancelled")
+        self.assertEqual(len(self.notifications), 1)
+        self.assertIn("отменил", self.notifications[0][1])
+
+    async def test_cancel_404_for_unknown_token(self):
+        from src.api.routers.public_booking import public_cancel
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            await public_cancel(request=self._request(), token="bogus")
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_cancel_403_after_cutoff_passed(self):
+        from src.api.routers.public_booking import public_book, public_cancel, PublicBookBody
+        from fastapi import HTTPException
+        import json
+        # Master's cutoff is the default 24 h; book a slot 1 hour from now.
+        # We use a date in the past relative to "future" but in fact use direct
+        # DB insert so that cutoff math fails without waiting wall-clock.
+        resp = await public_book(
+            request=self._request(ip="6.6.6.6"),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2099-01-01", start="10:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        token = json.loads(bytes(resp.body))["cancel_token"]
+        # Force the order into the near future (30 min from now) so cutoff
+        # (24h) is exceeded.
+        from datetime import datetime, timedelta
+        soon = (datetime.now() + timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "UPDATE orders SET scheduled_at = ? WHERE cancel_token = ?",
+                (soon, token),
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        with self.assertRaises(HTTPException) as ctx:
+            await public_cancel(request=self._request(ip="6.6.6.6"), token=token)
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    async def test_cancel_page_renders_html(self):
+        """SSR sanity: /b/{token} returns 200 + the master's name + service."""
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        from src.api.routers.landing import booking_cancel_page
+        from types import SimpleNamespace
+        import json
+        resp = await public_book(
+            request=self._request(ip="7.7.7.7"),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2099-01-01", start="10:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        token = json.loads(bytes(resp.body))["cancel_token"]
+        # Forge a minimal Request shim the way landing.py templates expect:
+        # Jinja's TemplateResponse needs at minimum scope+receive+send.
+        from starlette.requests import Request
+        scope = {
+            "type": "http", "method": "GET", "path": f"/b/{token}",
+            "headers": [], "query_string": b"",
+        }
+        async def _r():
+            return {"type": "http.disconnect"}
+        req = Request(scope, _r)
+        page = await booking_cancel_page(request=req, token=token)
+        self.assertEqual(page.status_code, 200)
+        text = bytes(page.body).decode()
+        self.assertIn("Ivan", text)        # client name visible
+        self.assertIn("Haircut", text)     # service visible
+        self.assertIn(token, text)         # token embedded for fetch() call
+
+    async def test_cancel_page_404_for_unknown_token(self):
+        from src.api.routers.landing import booking_cancel_page
+        from starlette.requests import Request
+        scope = {
+            "type": "http", "method": "GET", "path": "/b/x",
+            "headers": [], "query_string": b"",
+        }
+        async def _r():
+            return {"type": "http.disconnect"}
+        req = Request(scope, _r)
+        page = await booking_cancel_page(request=req, token="bogus")
+        self.assertEqual(page.status_code, 404)
+
     async def test_book_reuses_existing_client_by_phone(self):
         from src.api.routers.public_booking import public_book, PublicBookBody
         await public_book(
