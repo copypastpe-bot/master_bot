@@ -426,6 +426,50 @@ async def update_master(master_id: int, **kwargs) -> None:
         await conn.close()
 
 
+# ============================================================================
+# Self-booking schedule (migration 026)
+# ============================================================================
+
+async def get_master_schedule_weekly(master_id: int) -> list[dict]:
+    """Return the master's weekly schedule rows, ordered by weekday and start_time."""
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT id, weekday, start_time, end_time "
+            "FROM master_schedule_weekly WHERE master_id = ? "
+            "ORDER BY weekday, start_time",
+            (master_id,),
+        )
+        return [dict(r) for r in await cur.fetchall()]
+    finally:
+        await conn.close()
+
+
+async def set_master_schedule_weekly(master_id: int, intervals: list[dict]) -> None:
+    """Idempotently replace the master's weekly template.
+
+    Each interval dict has keys: weekday (0=Mon … 6=Sun), start (HH:MM), end (HH:MM).
+    BEGIN IMMEDIATE serialises the delete+insert sequence so a concurrent reader
+    never observes a half-applied schedule (paired with WAL from sprint 1).
+    """
+    conn = await get_connection()
+    try:
+        await conn.execute("BEGIN IMMEDIATE")
+        await conn.execute(
+            "DELETE FROM master_schedule_weekly WHERE master_id = ?",
+            (master_id,),
+        )
+        if intervals:
+            await conn.executemany(
+                "INSERT INTO master_schedule_weekly "
+                "(master_id, weekday, start_time, end_time) VALUES (?, ?, ?, ?)",
+                [(master_id, i["weekday"], i["start"], i["end"]) for i in intervals],
+            )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
 async def get_all_categories() -> list[dict]:
     """Return active master categories ordered for UI display."""
     conn = await get_connection()
