@@ -470,6 +470,69 @@ async def set_master_schedule_weekly(master_id: int, intervals: list[dict]) -> N
         await conn.close()
 
 
+async def add_master_schedule_exception(
+    master_id: int,
+    date: str,
+    kind: str,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+) -> int:
+    """Insert a schedule exception. kind in {'off', 'override'}. Returns new row id."""
+    assert kind in ("off", "override"), f"unknown kind: {kind!r}"
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            "INSERT INTO master_schedule_exceptions "
+            "(master_id, date, kind, start_time, end_time) VALUES (?, ?, ?, ?, ?)",
+            (master_id, date, kind, start, end),
+        )
+        await conn.commit()
+        return cur.lastrowid
+    finally:
+        await conn.close()
+
+
+async def delete_master_schedule_exception(master_id: int, exception_id: int) -> None:
+    """Remove an exception, scoped by master_id so a malformed call from
+    another master cannot delete somebody else's data."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            "DELETE FROM master_schedule_exceptions WHERE id = ? AND master_id = ?",
+            (exception_id, master_id),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def get_master_schedule_exceptions(
+    master_id: int,
+    date: Optional[str] = None,
+) -> list[dict]:
+    """Return exception rows ordered by date then start_time. If date is given,
+    filter to that single date."""
+    conn = await get_connection()
+    try:
+        if date is not None:
+            cur = await conn.execute(
+                "SELECT id, master_id, date, kind, start_time, end_time "
+                "FROM master_schedule_exceptions "
+                "WHERE master_id = ? AND date = ? ORDER BY start_time",
+                (master_id, date),
+            )
+        else:
+            cur = await conn.execute(
+                "SELECT id, master_id, date, kind, start_time, end_time "
+                "FROM master_schedule_exceptions WHERE master_id = ? "
+                "ORDER BY date, start_time",
+                (master_id,),
+            )
+        return [dict(r) for r in await cur.fetchall()]
+    finally:
+        await conn.close()
+
+
 async def get_all_categories() -> list[dict]:
     """Return active master categories ordered for UI display."""
     conn = await get_connection()

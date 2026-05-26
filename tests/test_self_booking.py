@@ -175,3 +175,61 @@ class WeeklyScheduleTest(unittest.IsolatedAsyncioTestCase):
         await db.set_master_schedule_weekly(1, [])
         self.assertEqual(await db.get_master_schedule_weekly(1), [])
         self.assertEqual(len(await db.get_master_schedule_weekly(2)), 1)
+
+
+class ScheduleExceptionsTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (1, 100, 'M', 'tok')"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_add_off_day(self):
+        exc_id = await db.add_master_schedule_exception(
+            master_id=1, date="2026-06-15", kind="off",
+        )
+        self.assertIsInstance(exc_id, int)
+        rows = await db.get_master_schedule_exceptions(1, date="2026-06-15")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["kind"], "off")
+        self.assertIsNone(rows[0]["start_time"])
+        self.assertIsNone(rows[0]["end_time"])
+
+    async def test_add_override_with_hours(self):
+        await db.add_master_schedule_exception(
+            master_id=1, date="2026-06-16", kind="override",
+            start="14:00", end="18:00",
+        )
+        rows = await db.get_master_schedule_exceptions(1, date="2026-06-16")
+        self.assertEqual(rows[0]["start_time"], "14:00")
+        self.assertEqual(rows[0]["end_time"], "18:00")
+
+    async def test_delete_by_id_scoped_to_master(self):
+        exc_id = await db.add_master_schedule_exception(
+            master_id=1, date="2026-06-15", kind="off",
+        )
+        # Wrong master can't delete it.
+        await db.delete_master_schedule_exception(master_id=2, exception_id=exc_id)
+        self.assertEqual(len(await db.get_master_schedule_exceptions(1)), 1)
+        # Owner can.
+        await db.delete_master_schedule_exception(master_id=1, exception_id=exc_id)
+        self.assertEqual(await db.get_master_schedule_exceptions(1), [])
+
+    async def test_get_without_date_returns_all_ordered(self):
+        await db.add_master_schedule_exception(1, "2026-07-01", "off")
+        await db.add_master_schedule_exception(1, "2026-06-15", "off")
+        rows = await db.get_master_schedule_exceptions(1)
+        self.assertEqual([r["date"] for r in rows], ["2026-06-15", "2026-07-01"])
