@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.routers import client, orders, bonuses, promos, services, public, landing, promo_pages
 from src.api.routers import auth_router
+from src.api.routers import public_booking
 from src.api.routers import client_app
 from src.api.routers import client_masters
 from src.api.routers import requests as client_requests
@@ -80,6 +81,7 @@ app.include_router(promos.router, prefix="/api")
 app.include_router(promo_pages.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(public.router, prefix="/api")
+app.include_router(public_booking.router, prefix="/api")
 app.include_router(auth_router.router, prefix="/api")
 app.include_router(client_app.router, prefix="/api")
 app.include_router(client_masters.router, prefix="/api")

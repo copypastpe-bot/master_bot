@@ -787,3 +787,197 @@ class ServiceDurationApiTest(unittest.IsolatedAsyncioTestCase):
         )
         fetched = await db.get_service_by_id(created["id"])
         self.assertEqual(fetched.duration_minutes, 45)
+
+
+class PublicBookingApiTest(unittest.IsolatedAsyncioTestCase):
+    """Public unauthenticated booking flow: slots query + create booking."""
+
+    async def asyncSetUp(self):
+        from types import SimpleNamespace
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token, self_booking_enabled) "
+                "VALUES (1, 100, 'M', 'tok', 1)"
+            )
+            await conn.execute(
+                "INSERT INTO services (id, master_id, name, price, duration_minutes) "
+                "VALUES (1, 1, 'Haircut', 1000, 60)"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        # Seed schedule: Mondays 10:00-18:00.
+        await db.set_master_schedule_weekly(1, [
+            {"weekday": 0, "start": "10:00", "end": "18:00"},
+        ])
+
+        # Capture master_bot notifications.
+        self.notifications = []
+
+        class _FakeMasterBot:
+            async def send_message(_self, chat_id, text, **_kw):
+                self.notifications.append((chat_id, text))
+
+        self.bot = _FakeMasterBot()
+        self.app_state = SimpleNamespace(
+            state=SimpleNamespace(master_bot=self.bot)
+        )
+        # Per-IP rate limit is in-memory — reset between tests.
+        from src.api.ratelimit import public_book_limiter
+        public_book_limiter._buckets.clear()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    def _request(self, ip="1.2.3.4"):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            client=SimpleNamespace(host=ip),
+            headers={},
+            app=self.app_state,
+        )
+
+    # --- Slots endpoint ---------------------------------------------------
+
+    async def test_slots_returns_30min_starts_in_window(self):
+        from src.api.routers.public_booking import get_public_slots
+        resp = await get_public_slots(
+            slug="tok", service_id=1, date="2026-06-01",  # Monday
+        )
+        # 60-min slots at 30-min step in 10:00-18:00 → 10:00..17:00 inclusive.
+        self.assertIn("10:00", resp["slots"])
+        self.assertIn("17:00", resp["slots"])
+        self.assertNotIn("17:30", resp["slots"])
+
+    async def test_slots_404_when_slug_unknown(self):
+        from src.api.routers.public_booking import get_public_slots
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            await get_public_slots(slug="nope", service_id=1, date="2026-06-01")
+        self.assertEqual(ctx.exception.status_code, 404)
+
+    async def test_slots_403_when_self_booking_disabled(self):
+        await db.update_master(1, self_booking_enabled=False)
+        from src.api.routers.public_booking import get_public_slots
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            await get_public_slots(slug="tok", service_id=1, date="2026-06-01")
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    async def test_slots_excludes_already_booked(self):
+        """End-to-end check: after a real booking, that slot disappears from the slots API."""
+        from src.api.routers.public_booking import get_public_slots, public_book, PublicBookBody
+        # Book 14:00 via the public endpoint (real flow, no FK shortcuts).
+        await public_book(
+            request=self._request(),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2026-06-01", start="14:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        resp = await get_public_slots(slug="tok", service_id=1, date="2026-06-01")
+        # 60-min service @ 14:00 blocks 13:30 (would end 14:30) and 14:00 itself.
+        self.assertNotIn("14:00", resp["slots"])
+        self.assertNotIn("13:30", resp["slots"])
+        # Adjacent 15:00 must still be free.
+        self.assertIn("15:00", resp["slots"])
+
+    # --- Book endpoint ----------------------------------------------------
+
+    async def test_book_creates_order_and_notifies_master(self):
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        resp = await public_book(
+            request=self._request(),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2026-06-01", start="10:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        self.assertEqual(resp.status_code, 201)
+        import json
+        body = json.loads(bytes(resp.body))
+        self.assertIn("order_id", body)
+        self.assertIn("cancel_token", body)
+        self.assertTrue(body["cancel_url"].endswith("/b/" + body["cancel_token"]))
+        # Notification fired.
+        self.assertEqual(len(self.notifications), 1)
+        self.assertIn("Новая запись", self.notifications[0][1])
+        self.assertIn("Ivan", self.notifications[0][1])
+
+    async def test_book_rejects_invalid_phone(self):
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        from fastapi import HTTPException
+        with self.assertRaises(HTTPException) as ctx:
+            await public_book(
+                request=self._request(),
+                body=PublicBookBody(
+                    slug="tok", service_id=1, date="2026-06-01", start="10:00",
+                    name="Ivan", phone="notaphone",
+                ),
+            )
+        self.assertEqual(ctx.exception.status_code, 422)
+
+    async def test_book_conflict_when_slot_already_taken(self):
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        from fastapi import HTTPException
+        body = PublicBookBody(
+            slug="tok", service_id=1, date="2026-06-01", start="10:00",
+            name="Ivan", phone="+79991234567",
+        )
+        # First booking succeeds.
+        await public_book(request=self._request(ip="1.1.1.1"), body=body)
+        # Second from a different IP gets 409.
+        with self.assertRaises(HTTPException) as ctx:
+            await public_book(request=self._request(ip="2.2.2.2"), body=body)
+        self.assertEqual(ctx.exception.status_code, 409)
+
+    async def test_book_rate_limit_kicks_in_after_5(self):
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        from fastapi import HTTPException
+        # Six different slots from the same IP — the 6th must be 429.
+        slots = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]
+        req = self._request(ip="3.3.3.3")
+        for i, t in enumerate(slots):
+            body = PublicBookBody(
+                slug="tok", service_id=1, date="2026-06-01", start=t,
+                name=f"C{i}", phone="+79991234567",
+            )
+            if i < 5:
+                resp = await public_book(request=req, body=body)
+                self.assertEqual(resp.status_code, 201)
+            else:
+                with self.assertRaises(HTTPException) as ctx:
+                    await public_book(request=req, body=body)
+                self.assertEqual(ctx.exception.status_code, 429)
+
+    async def test_book_reuses_existing_client_by_phone(self):
+        from src.api.routers.public_booking import public_book, PublicBookBody
+        await public_book(
+            request=self._request(ip="4.4.4.4"),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2026-06-01", start="10:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        await public_book(
+            request=self._request(ip="4.4.4.4"),
+            body=PublicBookBody(
+                slug="tok", service_id=1, date="2026-06-01", start="11:00",
+                name="Ivan", phone="+79991234567",
+            ),
+        )
+        # Both orders must reference the same client (no duplicate clients).
+        conn = await db.get_connection()
+        try:
+            cur = await conn.execute("SELECT COUNT(*) AS c FROM clients")
+            self.assertEqual((await cur.fetchone())["c"], 1)
+            cur = await conn.execute("SELECT COUNT(*) AS c FROM orders")
+            self.assertEqual((await cur.fetchone())["c"], 2)
+        finally:
+            await conn.close()

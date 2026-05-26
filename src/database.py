@@ -570,9 +570,23 @@ async def create_booking_with_overlap_check(
         )
         order_id = cur.lastrowid
         for service_id in service_ids:
+            # order_items.name and .price are NOT NULL — snapshot the
+            # service values now so historical orders stay readable even
+            # if the service is later renamed or deleted.
+            svc_cur = await conn.execute(
+                "SELECT name, price FROM services WHERE id = ?",
+                (service_id,),
+            )
+            svc_row = await svc_cur.fetchone()
+            if svc_row is None:
+                # Service vanished — fail the booking rather than silently
+                # write a NULL-name row.
+                await conn.rollback()
+                raise ValueError(f"service {service_id} not found")
             await conn.execute(
-                "INSERT INTO order_items (order_id, service_id) VALUES (?, ?)",
-                (order_id, service_id),
+                "INSERT INTO order_items (order_id, service_id, name, price) "
+                "VALUES (?, ?, ?, ?)",
+                (order_id, service_id, svc_row["name"], svc_row["price"] or 0),
             )
         await conn.commit()
         return order_id

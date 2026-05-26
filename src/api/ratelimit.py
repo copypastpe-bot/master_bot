@@ -89,3 +89,9 @@ broadcast_limiter = RateLimiter(max_calls=2, window_seconds=300)
 
 # General write operations (client create, order create, bonus): max 30 per IP per minute.
 write_limiter = RateLimiter(max_calls=30, window_seconds=60)
+
+# Public self-booking: 5 successful bookings per IP per hour.
+# The /api/public/book endpoint is the first truly unauthenticated write
+# surface in the project — without a per-IP cap, a script could fill a
+# master's calendar for weeks in seconds.
+public_book_limiter = RateLimiter(max_calls=5, window_seconds=3600)
