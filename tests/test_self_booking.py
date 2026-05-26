@@ -600,3 +600,114 @@ class BookingCreationTest(unittest.IsolatedAsyncioTestCase):
         losers = [r for r in results if r == "conflict"]
         self.assertEqual(len(winners), 1, f"got results: {results}")
         self.assertEqual(len(losers), 2, f"got results: {results}")
+
+
+class MasterBookingApiTest(unittest.IsolatedAsyncioTestCase):
+    """Master-facing settings + schedule endpoints. Handlers are called
+    directly with a stubbed Master dependency (project's existing pattern,
+    see tests/test_promo_page_task2_api.py)."""
+
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (1, 100, 'M', 'tok')"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def _master(self):
+        return await db.get_master_by_id(1)
+
+    async def test_get_returns_defaults_when_empty(self):
+        from src.api.routers.master.settings import get_booking_settings
+        m = await self._master()
+        resp = await get_booking_settings(master=m)
+        self.assertEqual(resp["enabled"], False)
+        self.assertEqual(resp["cancel_cutoff_hours"], 24)
+        self.assertEqual(resp["horizon_days"], 30)
+        self.assertEqual(resp["weekly"], [])
+        self.assertEqual(resp["exceptions"], [])
+
+    async def test_put_updates_toggle_cutoff_horizon(self):
+        from src.api.routers.master.settings import (
+            update_booking_settings, BookingSettingsBody,
+        )
+        m = await self._master()
+        await update_booking_settings(
+            BookingSettingsBody(enabled=True, cancel_cutoff_hours=12, horizon_days=14),
+            master=m,
+        )
+        updated = await db.get_master_by_id(1)
+        self.assertTrue(updated.self_booking_enabled)
+        self.assertEqual(updated.booking_cancel_cutoff_hours, 12)
+        self.assertEqual(updated.booking_horizon_days, 14)
+
+    async def test_put_rejects_out_of_range_cutoff(self):
+        from src.api.routers.master.settings import (
+            update_booking_settings, BookingSettingsBody,
+        )
+        from pydantic import ValidationError
+        m = await self._master()
+        with self.assertRaises(ValidationError):
+            BookingSettingsBody(enabled=True, cancel_cutoff_hours=0, horizon_days=30)
+        with self.assertRaises(ValidationError):
+            BookingSettingsBody(enabled=True, cancel_cutoff_hours=49, horizon_days=30)
+
+    async def test_replace_weekly_round_trip_via_api(self):
+        from src.api.routers.master.settings import (
+            replace_weekly_schedule, WeeklyIntervalBody,
+        )
+        m = await self._master()
+        await replace_weekly_schedule(
+            [
+                WeeklyIntervalBody(weekday=0, start="10:00", end="14:00"),
+                WeeklyIntervalBody(weekday=1, start="11:00", end="15:00"),
+            ],
+            master=m,
+        )
+        from src.api.routers.master.settings import get_booking_settings
+        resp = await get_booking_settings(master=m)
+        self.assertEqual(len(resp["weekly"]), 2)
+        self.assertEqual(resp["weekly"][0]["weekday"], 0)
+
+    async def test_add_and_delete_exception_via_api(self):
+        from src.api.routers.master.settings import (
+            add_schedule_exception, remove_schedule_exception, ExceptionBody,
+        )
+        m = await self._master()
+        result = await add_schedule_exception(
+            ExceptionBody(date="2026-06-15", kind="off"),
+            master=m,
+        )
+        exc_id = result["id"]
+        from src.api.routers.master.settings import get_booking_settings
+        resp = await get_booking_settings(master=m)
+        self.assertEqual(len(resp["exceptions"]), 1)
+
+        await remove_schedule_exception(exc_id, master=m)
+        resp = await get_booking_settings(master=m)
+        self.assertEqual(resp["exceptions"], [])
+
+    async def test_add_exception_rejects_unknown_kind(self):
+        from src.api.routers.master.settings import (
+            add_schedule_exception, ExceptionBody,
+        )
+        from fastapi import HTTPException
+        m = await self._master()
+        with self.assertRaises(HTTPException) as ctx:
+            await add_schedule_exception(
+                ExceptionBody(date="2026-06-15", kind="vacation"),
+                master=m,
+            )
+        self.assertEqual(ctx.exception.status_code, 422)

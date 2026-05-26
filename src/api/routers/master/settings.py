@@ -991,3 +991,106 @@ async def proxy_telegram_media(file_id: str):
     content_type = media_type_map.get(ext, "application/octet-stream")
 
     return StreamingResponse(file_bytes, media_type=content_type)
+
+
+# ============================================================================
+# Self-booking (migration 026 — see docs/plans/2026-05-25-self-booking-design.md)
+# ============================================================================
+
+from pydantic import Field as _Field  # noqa: E402 — local-only, keeps top imports tidy
+from src.database import (  # noqa: E402
+    add_master_schedule_exception,
+    delete_master_schedule_exception,
+    get_master_schedule_exceptions,
+    get_master_schedule_weekly,
+    set_master_schedule_weekly,
+    update_master,
+)
+
+
+class BookingSettingsBody(BaseModel):
+    enabled: bool
+    cancel_cutoff_hours: int = _Field(ge=1, le=48)
+    horizon_days: int = _Field(ge=1, le=60)
+
+
+class WeeklyIntervalBody(BaseModel):
+    weekday: int = _Field(ge=0, le=6)
+    start: str
+    end: str
+
+
+class ExceptionBody(BaseModel):
+    date: str
+    kind: str  # 'off' | 'override'
+    start: Optional[str] = None
+    end: Optional[str] = None
+
+
+@router.get("/master/booking-settings")
+async def get_booking_settings(master: Master = Depends(get_current_master)):
+    """Bundle the master's self-booking config for the Mini App settings screen."""
+    return {
+        "enabled": master.self_booking_enabled,
+        "cancel_cutoff_hours": master.booking_cancel_cutoff_hours,
+        "horizon_days": master.booking_horizon_days,
+        "weekly": await get_master_schedule_weekly(master.id),
+        "exceptions": await get_master_schedule_exceptions(master.id),
+    }
+
+
+@router.put("/master/booking-settings")
+async def update_booking_settings(
+    body: BookingSettingsBody,
+    master: Master = Depends(get_current_master),
+):
+    """Update the master-level toggle + cutoff + horizon. Schedule is its own
+    endpoint because it has a different shape (full replace vs partial)."""
+    await update_master(
+        master.id,
+        self_booking_enabled=body.enabled,
+        booking_cancel_cutoff_hours=body.cancel_cutoff_hours,
+        booking_horizon_days=body.horizon_days,
+    )
+    return {"ok": True}
+
+
+@router.put("/master/schedule/weekly")
+async def replace_weekly_schedule(
+    intervals: list[WeeklyIntervalBody],
+    master: Master = Depends(get_current_master),
+):
+    """Idempotent full replace of the master's weekly template. Empty list
+    clears the schedule (returns the master to "no self-booking windows")."""
+    await set_master_schedule_weekly(
+        master.id, [i.model_dump() for i in intervals]
+    )
+    return {"ok": True, "count": len(intervals)}
+
+
+@router.post("/master/schedule/exceptions")
+async def add_schedule_exception(
+    body: ExceptionBody,
+    master: Master = Depends(get_current_master),
+):
+    """Add a date-level override. kind='off' nukes the day; kind='override'
+    replaces weekly for that date and requires start/end."""
+    if body.kind not in ("off", "override"):
+        raise HTTPException(status_code=422, detail="kind must be 'off' or 'override'")
+    if body.kind == "override" and (not body.start or not body.end):
+        raise HTTPException(status_code=422, detail="override requires start and end")
+    exc_id = await add_master_schedule_exception(
+        master.id, body.date, body.kind, body.start, body.end,
+    )
+    return {"id": exc_id}
+
+
+@router.delete("/master/schedule/exceptions/{exception_id}")
+async def remove_schedule_exception(
+    exception_id: int,
+    master: Master = Depends(get_current_master),
+):
+    """Remove an exception. Scoped by master_id in the helper so a malformed
+    call can't reach another master's data."""
+    await delete_master_schedule_exception(master.id, exception_id)
+    return {"ok": True}
