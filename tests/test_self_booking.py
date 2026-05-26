@@ -377,3 +377,200 @@ class SlotGeneratorTest(unittest.TestCase):
             target_date="2026-06-01",
         )
         self.assertEqual(slots, [])
+
+
+class BookingCreationTest(unittest.IsolatedAsyncioTestCase):
+    """create_booking_with_overlap_check inserts inside BEGIN IMMEDIATE and
+    rejects any overlap with an active order."""
+
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (1, 100, 'M', 'tok')"
+            )
+            await conn.execute(
+                "INSERT INTO clients (id, tg_id, name, phone) "
+                "VALUES (1, 200, 'C', '+79991234567')"
+            )
+            await conn.execute(
+                "INSERT INTO master_clients (master_id, client_id) VALUES (1, 1)"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_first_booking_succeeds_and_stamps_metadata(self):
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60,
+            service_ids=[],
+            source="public",
+        )
+        self.assertIsInstance(order_id, int)
+        # Verify stamped metadata.
+        conn = await db.get_connection()
+        try:
+            cur = await conn.execute(
+                "SELECT status, source, cancel_token, duration_minutes "
+                "FROM orders WHERE id = ?", (order_id,)
+            )
+            row = await cur.fetchone()
+        finally:
+            await conn.close()
+        self.assertEqual(row["status"], "confirmed")
+        self.assertEqual(row["source"], "public")
+        self.assertEqual(row["duration_minutes"], 60)
+        self.assertIsNotNone(row["cancel_token"])
+        self.assertEqual(len(row["cancel_token"]), 32)  # uuid4().hex
+
+    async def test_overlapping_booking_raises(self):
+        await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        from src.database import BookingConflictError
+        with self.assertRaises(BookingConflictError):
+            await db.create_booking_with_overlap_check(
+                master_id=1, client_id=1,
+                scheduled_at="2026-06-01 14:30:00",  # overlaps 14:00-15:00
+                duration_minutes=60, service_ids=[], source="public",
+            )
+
+    async def test_adjacent_booking_succeeds(self):
+        await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        # Starts exactly when the previous ends — no overlap.
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 15:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        self.assertIsInstance(order_id, int)
+
+    async def test_cancelled_does_not_block_slot(self):
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "UPDATE orders SET status='cancelled' WHERE id = ?", (order_id,)
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        # Rebooking the same slot must now succeed.
+        order_id2 = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        self.assertIsInstance(order_id2, int)
+        self.assertNotEqual(order_id, order_id2)
+
+    async def test_done_status_also_does_not_block(self):
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "UPDATE orders SET status='done' WHERE id = ?", (order_id,)
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        # done means slot is past — same time can theoretically be reused
+        # (we leave that policy to the slot generator's past-time pruning).
+        order_id2 = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        self.assertIsInstance(order_id2, int)
+
+    async def test_different_master_can_book_same_slot(self):
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (2, 200, 'M2', 'tok2')"
+            )
+            await conn.execute(
+                "INSERT INTO master_clients (master_id, client_id) VALUES (2, 1)"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        # Different master at the same time is totally fine.
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=2, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        self.assertIsInstance(order_id, int)
+
+    async def test_get_order_by_cancel_token_roundtrip(self):
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        conn = await db.get_connection()
+        try:
+            cur = await conn.execute(
+                "SELECT cancel_token FROM orders WHERE id = ?", (order_id,)
+            )
+            token = (await cur.fetchone())["cancel_token"]
+        finally:
+            await conn.close()
+        row = await db.get_order_by_cancel_token(token)
+        self.assertEqual(row["id"], order_id)
+
+    async def test_get_order_by_cancel_token_missing(self):
+        self.assertIsNone(await db.get_order_by_cancel_token("doesnotexist"))
+
+    async def test_cancel_booking_by_token_marks_cancelled(self):
+        order_id = await db.create_booking_with_overlap_check(
+            master_id=1, client_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            duration_minutes=60, service_ids=[], source="public",
+        )
+        conn = await db.get_connection()
+        try:
+            cur = await conn.execute(
+                "SELECT cancel_token FROM orders WHERE id = ?", (order_id,)
+            )
+            token = (await cur.fetchone())["cancel_token"]
+        finally:
+            await conn.close()
+        result = await db.cancel_booking_by_token(token)
+        self.assertEqual(result, order_id)
+        row = await db.get_order_by_cancel_token(token)
+        self.assertEqual(row["status"], "cancelled")
+        # Idempotent: cancelling again returns None.
+        self.assertIsNone(await db.cancel_booking_by_token(token))

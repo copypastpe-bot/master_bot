@@ -6,6 +6,7 @@ import logging
 import random
 import re
 import string
+import uuid
 from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Any, Optional
@@ -502,6 +503,119 @@ async def delete_master_schedule_exception(master_id: int, exception_id: int) ->
             (exception_id, master_id),
         )
         await conn.commit()
+    finally:
+        await conn.close()
+
+
+class BookingConflictError(Exception):
+    """Raised when a self-booking would overlap an existing active order."""
+
+
+async def create_booking_with_overlap_check(
+    *,
+    master_id: int,
+    client_id: int,
+    scheduled_at: str,
+    duration_minutes: int,
+    service_ids: list[int],
+    source: str,
+    amount_total: int = 0,
+) -> int:
+    """Insert an order with status='confirmed' in a serialised transaction.
+
+    Overlap detection:
+        existing.start < candidate.end  AND  existing.end > candidate.start
+    against rows on the same master_id whose status is neither 'cancelled'
+    nor 'done'. The check + insert run inside BEGIN IMMEDIATE so a parallel
+    request waiting on busy_timeout (sprint 1) sees this row before its own
+    overlap check — racing requests get serialised, not paired.
+
+    Raises BookingConflictError if the slot would overlap.
+    """
+    cancel_token = uuid.uuid4().hex
+    conn = await get_connection()
+    try:
+        await conn.execute("BEGIN IMMEDIATE")
+        # SQLite has no real interval arithmetic on TEXT timestamps,
+        # but datetime(..., '+N minutes') gives us proper end-time math
+        # and ISO strings compare lexically.
+        cur = await conn.execute(
+            """
+            SELECT id FROM orders
+            WHERE master_id = ?
+              AND status NOT IN ('cancelled', 'done')
+              AND scheduled_at IS NOT NULL
+              AND datetime(scheduled_at) < datetime(?, '+' || ? || ' minutes')
+              AND datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')
+                  > datetime(?)
+            LIMIT 1
+            """,
+            (master_id, scheduled_at, duration_minutes, scheduled_at),
+        )
+        if await cur.fetchone():
+            await conn.rollback()
+            raise BookingConflictError(
+                f"slot {scheduled_at} already taken for master {master_id}"
+            )
+        cur = await conn.execute(
+            """
+            INSERT INTO orders
+                (master_id, client_id, scheduled_at, status, source,
+                 cancel_token, duration_minutes, amount_total)
+            VALUES (?, ?, ?, 'confirmed', ?, ?, ?, ?)
+            """,
+            (master_id, client_id, scheduled_at, source,
+             cancel_token, duration_minutes, amount_total),
+        )
+        order_id = cur.lastrowid
+        for service_id in service_ids:
+            await conn.execute(
+                "INSERT INTO order_items (order_id, service_id) VALUES (?, ?)",
+                (order_id, service_id),
+            )
+        await conn.commit()
+        return order_id
+    finally:
+        await conn.close()
+
+
+async def get_order_by_cancel_token(token: str) -> Optional[dict]:
+    """Look up an order by its public cancel_token. Returns dict or None."""
+    conn = await get_connection()
+    try:
+        cur = await conn.execute(
+            "SELECT * FROM orders WHERE cancel_token = ?", (token,)
+        )
+        row = await cur.fetchone()
+        return dict(row) if row else None
+    finally:
+        await conn.close()
+
+
+async def cancel_booking_by_token(token: str) -> Optional[int]:
+    """Mark booking as cancelled by its public cancel_token.
+
+    Returns the order_id on success. Returns None if the token does not
+    resolve or the order is already cancelled/done — caller decides how
+    to surface that (404 vs 409, etc.).
+    """
+    conn = await get_connection()
+    try:
+        await conn.execute("BEGIN IMMEDIATE")
+        cur = await conn.execute(
+            "SELECT id, status FROM orders WHERE cancel_token = ?", (token,)
+        )
+        row = await cur.fetchone()
+        if not row or row["status"] in ("cancelled", "done"):
+            await conn.rollback()
+            return None
+        await conn.execute(
+            "UPDATE orders SET status = 'cancelled', "
+            "cancel_reason = 'client_self_cancel' WHERE id = ?",
+            (row["id"],),
+        )
+        await conn.commit()
+        return row["id"]
     finally:
         await conn.close()
 
