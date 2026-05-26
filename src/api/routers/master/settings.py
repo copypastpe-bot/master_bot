@@ -720,6 +720,8 @@ class ServiceCreateBody(BaseModel):
     name: str
     price: int
     description: Optional[str] = None
+    # Self-booking: how long a slot of this service occupies.
+    duration_minutes: Optional[int] = None
 
     @field_validator("name")
     @classmethod
@@ -735,20 +737,31 @@ class ServiceCreateBody(BaseModel):
             raise ValueError("price must be > 0")
         return v
 
+    @field_validator("duration_minutes")
+    @classmethod
+    def duration_positive(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("duration_minutes must be > 0")
+        return v
+
 
 @router.post("/master/services")
 async def create_master_service(
     body: ServiceCreateBody,
     master: Master = Depends(get_current_master),
 ):
+    # Default to the SQL DEFAULT (60) when client omits the field — lets
+    # legacy Mini App clients keep working unchanged.
+    duration = body.duration_minutes if body.duration_minutes is not None else 60
     service = await create_service(
-        master.id, body.name, body.price, body.description
+        master.id, body.name, body.price, body.description, duration_minutes=duration,
     )
     return {
         "id": service.id,
         "name": service.name,
         "price": service.price or 0,
         "description": service.description or "",
+        "duration_minutes": service.duration_minutes,
     }
 
 
@@ -757,6 +770,7 @@ class ServiceUpdateBody(BaseModel):
     price: Optional[int] = None
     description: Optional[str] = None
     show_on_landing: Optional[bool] = None
+    duration_minutes: Optional[int] = None
 
     @field_validator("price")
     @classmethod

@@ -61,6 +61,7 @@ ALLOWED_MASTER_CLIENT_FIELDS = frozenset({
 
 ALLOWED_SERVICE_FIELDS = frozenset({
     "name", "price", "is_active", "description", "show_on_landing",
+    "duration_minutes",
 })
 
 ALLOWED_ORDER_FIELDS = frozenset({
@@ -2654,6 +2655,7 @@ async def get_services(master_id: int, active_only: bool = True) -> list[Service
             description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
             show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
+            duration_minutes=row["duration_minutes"] if "duration_minutes" in row.keys() else 60,
             created_at=row["created_at"],
         ) for row in rows]
     finally:
@@ -2677,6 +2679,7 @@ async def get_archived_services(master_id: int) -> list[Service]:
             description=row["description"] if "description" in row.keys() else None,
             is_active=bool(row["is_active"]),
             show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
+            duration_minutes=row["duration_minutes"] if "duration_minutes" in row.keys() else 60,
             created_at=row["created_at"],
         ) for row in rows]
     finally:
@@ -2701,6 +2704,7 @@ async def get_service_by_id(service_id: int) -> Optional[Service]:
                 description=row["description"] if "description" in row.keys() else None,
                 is_active=bool(row["is_active"]),
                 show_on_landing=bool(row["show_on_landing"]) if "show_on_landing" in row.keys() else True,
+                duration_minutes=row["duration_minutes"] if "duration_minutes" in row.keys() else 60,
                 created_at=row["created_at"],
             )
         return None
@@ -2712,14 +2716,17 @@ async def create_service(
     master_id: int,
     name: str,
     price: Optional[int] = None,
-    description: Optional[str] = None
+    description: Optional[str] = None,
+    duration_minutes: int = 60,
 ) -> Service:
-    """Create a new service."""
+    """Create a new service. duration_minutes drives the self-booking slot
+    grid (migration 026); default 60 matches the SQL DEFAULT."""
     conn = await get_connection()
     try:
         cursor = await conn.execute(
-            "INSERT INTO services (master_id, name, price, description) VALUES (?, ?, ?, ?)",
-            (master_id, name, price, description)
+            "INSERT INTO services (master_id, name, price, description, duration_minutes) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (master_id, name, price, description, duration_minutes),
         )
         await conn.commit()
         service_id = cursor.lastrowid
@@ -2731,6 +2738,7 @@ async def create_service(
             price=price,
             description=description,
             is_active=True,
+            duration_minutes=duration_minutes,
         )
     finally:
         await conn.close()

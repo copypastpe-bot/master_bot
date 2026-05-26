@@ -711,3 +711,79 @@ class MasterBookingApiTest(unittest.IsolatedAsyncioTestCase):
                 master=m,
             )
         self.assertEqual(ctx.exception.status_code, 422)
+
+
+class ServiceDurationApiTest(unittest.IsolatedAsyncioTestCase):
+    """services.duration_minutes round-trip through model / DB / endpoint."""
+
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (1, 100, 'M', 'tok')"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def _master(self):
+        return await db.get_master_by_id(1)
+
+    async def test_create_service_defaults_to_60_minutes(self):
+        service = await db.create_service(master_id=1, name="Haircut", price=2000)
+        self.assertEqual(service.duration_minutes, 60)
+        # Round-trip via get.
+        fetched = await db.get_service_by_id(service.id)
+        self.assertEqual(fetched.duration_minutes, 60)
+
+    async def test_create_service_with_explicit_duration(self):
+        service = await db.create_service(
+            master_id=1, name="Beard trim", price=800, duration_minutes=30,
+        )
+        self.assertEqual(service.duration_minutes, 30)
+        fetched = await db.get_service_by_id(service.id)
+        self.assertEqual(fetched.duration_minutes, 30)
+
+    async def test_update_service_changes_duration(self):
+        service = await db.create_service(master_id=1, name="x", price=100)
+        await db.update_service(service.id, duration_minutes=90)
+        fetched = await db.get_service_by_id(service.id)
+        self.assertEqual(fetched.duration_minutes, 90)
+
+    async def test_post_endpoint_accepts_duration_minutes(self):
+        from src.api.routers.master.settings import (
+            create_master_service, ServiceCreateBody,
+        )
+        m = await self._master()
+        resp = await create_master_service(
+            ServiceCreateBody(name="Manicure", price=1500, duration_minutes=90),
+            master=m,
+        )
+        self.assertEqual(resp["duration_minutes"], 90)
+
+    async def test_put_endpoint_accepts_duration_minutes(self):
+        from src.api.routers.master.settings import (
+            create_master_service, update_master_service,
+            ServiceCreateBody, ServiceUpdateBody,
+        )
+        m = await self._master()
+        created = await create_master_service(
+            ServiceCreateBody(name="x", price=100),
+            master=m,
+        )
+        await update_master_service(
+            created["id"],
+            ServiceUpdateBody(duration_minutes=45),
+            master=m,
+        )
+        fetched = await db.get_service_by_id(created["id"])
+        self.assertEqual(fetched.duration_minutes, 45)

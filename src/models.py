@@ -103,6 +103,8 @@ class Service:
     description: Optional[str] = None
     is_active: bool = True
     show_on_landing: bool = True
+    # Self-booking: how long a slot of this service occupies (migration 026).
+    duration_minutes: int = 60
     created_at: Optional[datetime] = None
 
 
