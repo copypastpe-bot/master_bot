@@ -44,6 +44,8 @@ ALLOWED_MASTER_FIELDS = frozenset({
     "subscription_until", "trial_used", "referral_code", "referred_by", "reminder_sent_at",
     "feedback_delay_hours", "feedback_message", "feedback_reply_5", "review_buttons",
     "about", "avatar_file_id", "landing_theme", "promo_page_started_at",
+    # Self-booking (migration 026).
+    "self_booking_enabled", "booking_cancel_cutoff_hours", "booking_horizon_days",
 })
 
 ALLOWED_CLIENT_FIELDS = frozenset({
@@ -193,6 +195,9 @@ def _parse_master_row(row) -> Master:
         avatar_file_id=row["avatar_file_id"] if "avatar_file_id" in row.keys() else None,
         landing_theme=row["landing_theme"] if "landing_theme" in row.keys() else "sunset",
         promo_page_started_at=_parse_db_datetime(row["promo_page_started_at"]) if "promo_page_started_at" in row.keys() else None,
+        self_booking_enabled=bool(row["self_booking_enabled"]) if "self_booking_enabled" in row.keys() else False,
+        booking_cancel_cutoff_hours=row["booking_cancel_cutoff_hours"] if "booking_cancel_cutoff_hours" in row.keys() else 24,
+        booking_horizon_days=row["booking_horizon_days"] if "booking_horizon_days" in row.keys() else 30,
         created_at=_parse_db_datetime(row["created_at"]),
     )
 

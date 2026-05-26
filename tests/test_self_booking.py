@@ -50,3 +50,49 @@ class SelfBookingSchemaTest(unittest.IsolatedAsyncioTestCase):
             await self._cols("master_schedule_exceptions"),
             {"id", "master_id", "date", "kind", "start_time", "end_time"},
         )
+
+
+class MasterBookingSettingsTest(unittest.IsolatedAsyncioTestCase):
+    """Master dataclass + whitelist exposure of new booking-settings columns."""
+
+    async def asyncSetUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token) "
+                "VALUES (1, 100, 'M', 'tok')"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_defaults_loaded_from_db(self):
+        m = await db.get_master_by_id(1)
+        self.assertFalse(m.self_booking_enabled)
+        self.assertEqual(m.booking_cancel_cutoff_hours, 24)
+        self.assertEqual(m.booking_horizon_days, 30)
+
+    async def test_update_master_persists_booking_flags(self):
+        await db.update_master(
+            1,
+            self_booking_enabled=True,
+            booking_cancel_cutoff_hours=12,
+            booking_horizon_days=14,
+        )
+        m = await db.get_master_by_id(1)
+        self.assertTrue(m.self_booking_enabled)
+        self.assertEqual(m.booking_cancel_cutoff_hours, 12)
+        self.assertEqual(m.booking_horizon_days, 14)
+
+    async def test_update_master_rejects_unknown_booking_field(self):
+        # Whitelist must not silently accept typos.
+        with self.assertRaises(ValueError):
+            await db.update_master(1, self_booking_enable=True)  # missing 'd'

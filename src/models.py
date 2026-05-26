@@ -54,6 +54,10 @@ class Master:
     avatar_file_id: Optional[str] = None
     landing_theme: str = "sunset"
     promo_page_started_at: Optional[datetime] = None
+    # Self-booking settings (migration 026).
+    self_booking_enabled: bool = False
+    booking_cancel_cutoff_hours: int = 24
+    booking_horizon_days: int = 30
     created_at: Optional[datetime] = None
 
 
