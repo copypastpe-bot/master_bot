@@ -364,6 +364,79 @@ async def cmd_start(message: Message, state: FSMContext, bot: Bot) -> None:
         await bot.send_message(message.chat.id, "Для начала работы нужна ссылка от специалиста.")
 
 
+@router.message(Command("book"))
+async def cmd_book(message: Message, state: FSMContext, bot: Bot) -> None:
+    """Quick booking command for clients already linked to a master.
+
+    Usage: /book <service_id> <YYYY-MM-DD> <HH:MM>
+    Example: /book 3 2026-06-01 14:00
+
+    MVP-shape: parametric. A full inline-keyboard flow (master picker →
+    service picker → date → time) is a follow-up sprint — the backend
+    contract from src/booking/client_bot_flow.py is the stable surface
+    that future UI will sit on top of.
+    """
+    await state.clear()
+    args = (message.text or "").split(maxsplit=3)
+    if len(args) < 4:
+        await bot.send_message(
+            message.chat.id,
+            "Использование: /book <id_услуги> <YYYY-MM-DD> <HH:MM>\n"
+            "Например: /book 3 2026-06-01 14:00",
+        )
+        return
+
+    _, service_str, date_str, time_str = args
+    try:
+        service_id = int(service_str)
+    except ValueError:
+        await bot.send_message(message.chat.id, "id_услуги должен быть числом.")
+        return
+
+    client, master, _mc = await get_client_context(
+        message.from_user.id, _active_masters.get(message.from_user.id)
+    )
+    if not client or not master:
+        await bot.send_message(
+            message.chat.id,
+            "Вы не привязаны к мастеру. Перейдите по ссылке от специалиста.",
+        )
+        return
+
+    scheduled_at = f"{date_str} {time_str}:00"
+    from src.booking.client_bot_flow import book_via_bot
+
+    # Get the FastAPI app for master_bot.send_message — we keep a module-level
+    # reference like other handlers do for master_bot integration; if absent,
+    # book_via_bot silently skips notification.
+    app_obj = getattr(bot, "_master_bot_app", None) or _NoApp()
+    result = await book_via_bot(
+        tg_id=message.from_user.id,
+        master_id=master.id,
+        service_id=service_id,
+        scheduled_at=scheduled_at,
+        app=app_obj,
+    )
+
+    msg_map = {
+        "ok": f"✅ Записал вас на {date_str} {time_str}.",
+        "self_booking_disabled": "Мастер сейчас не принимает онлайн-записи.",
+        "service_not_found": "Такой услуги нет.",
+        "slot_taken": "Это время уже занято. Попробуйте другое.",
+        "client_not_found": "Не нашли вашу карточку. Напишите /start.",
+        "master_not_found": "Мастер не найден.",
+    }
+    await bot.send_message(
+        message.chat.id, msg_map.get(result["status"], "Не удалось записать.")
+    )
+
+
+class _NoApp:
+    """Placeholder app for book_via_bot when no FastAPI app context is bound
+    to this bot — silences the master-notification step in that case."""
+    state = type("S", (), {"master_bot": None})()
+
+
 @router.message(Command("support"))
 async def cmd_support(message: Message, state: FSMContext, bot: Bot) -> None:
     """Handle /support command."""

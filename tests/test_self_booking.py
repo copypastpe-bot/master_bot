@@ -1092,3 +1092,105 @@ class PublicBookingApiTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((await cur.fetchone())["c"], 2)
         finally:
             await conn.close()
+
+
+class ClientBotBookingFlowTest(unittest.IsolatedAsyncioTestCase):
+    """Logic helper used by client_bot's /book command. Pure async function
+    over the booking helpers — no aiogram Message mocking needed."""
+
+    async def asyncSetUp(self):
+        from types import SimpleNamespace
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_db_path = db.DB_PATH
+        db.DB_PATH = str(Path(self.tmp.name) / "test.sqlite3")
+        await db.init_db()
+        conn = await db.get_connection()
+        try:
+            await conn.execute(
+                "INSERT INTO masters (id, tg_id, name, invite_token, self_booking_enabled) "
+                "VALUES (1, 100, 'M', 'tok', 1)"
+            )
+            await conn.execute(
+                "INSERT INTO services (id, master_id, name, price, duration_minutes) "
+                "VALUES (1, 1, 'Haircut', 1000, 60)"
+            )
+            # Linked client with tg_id 200.
+            await conn.execute(
+                "INSERT INTO clients (id, tg_id, name, phone) "
+                "VALUES (1, 200, 'C', '+79991234567')"
+            )
+            await conn.execute(
+                "INSERT INTO master_clients (master_id, client_id) VALUES (1, 1)"
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+        # Mon 10-18 weekly schedule.
+        await db.set_master_schedule_weekly(1, [
+            {"weekday": 0, "start": "10:00", "end": "18:00"},
+        ])
+
+        self.notifications = []
+
+        class _FakeMasterBot:
+            async def send_message(_self, chat_id, text, **_kw):
+                self.notifications.append((chat_id, text))
+
+        self.app = SimpleNamespace(state=SimpleNamespace(master_bot=_FakeMasterBot()))
+
+    async def asyncTearDown(self):
+        db.DB_PATH = self.old_db_path
+        self.tmp.cleanup()
+
+    async def test_book_via_bot_creates_order_with_telegram_source(self):
+        from src.booking.client_bot_flow import book_via_bot
+        result = await book_via_bot(
+            tg_id=200, master_id=1, service_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            app=self.app,
+        )
+        self.assertEqual(result["status"], "ok")
+        # Verify source stamped as telegram_bot.
+        conn = await db.get_connection()
+        try:
+            cur = await conn.execute(
+                "SELECT source FROM orders WHERE id = ?", (result["order_id"],)
+            )
+            self.assertEqual((await cur.fetchone())["source"], "telegram_bot")
+        finally:
+            await conn.close()
+        # Master got notified.
+        self.assertEqual(len(self.notifications), 1)
+
+    async def test_book_via_bot_rejects_unknown_tg_id(self):
+        from src.booking.client_bot_flow import book_via_bot
+        result = await book_via_bot(
+            tg_id=999, master_id=1, service_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            app=self.app,
+        )
+        self.assertEqual(result["status"], "client_not_found")
+
+    async def test_book_via_bot_rejects_disabled_master(self):
+        from src.booking.client_bot_flow import book_via_bot
+        await db.update_master(1, self_booking_enabled=False)
+        result = await book_via_bot(
+            tg_id=200, master_id=1, service_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            app=self.app,
+        )
+        self.assertEqual(result["status"], "self_booking_disabled")
+
+    async def test_book_via_bot_returns_conflict_on_overlap(self):
+        from src.booking.client_bot_flow import book_via_bot
+        await book_via_bot(
+            tg_id=200, master_id=1, service_id=1,
+            scheduled_at="2026-06-01 14:00:00",
+            app=self.app,
+        )
+        result = await book_via_bot(
+            tg_id=200, master_id=1, service_id=1,
+            scheduled_at="2026-06-01 14:30:00",  # overlaps
+            app=self.app,
+        )
+        self.assertEqual(result["status"], "slot_taken")
