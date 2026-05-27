@@ -373,6 +373,7 @@ export default function More({ onNavigate }) {
         <Cell icon={<UserIcon />} label={t('more.cells.profile')} onClick={() => onNavigate('profile')} />
         <Cell icon={<GiftIcon />} label={t('more.cells.bonus')} onClick={() => onNavigate('bonus')} />
         <Cell icon={<PaletteIcon />} label={t('more.cells.theme')} onClick={() => onNavigate('theme_picker')} />
+        <Cell icon={<CalendarIcon />} label={t('more.cells.autobooking')} onClick={() => onNavigate('autobooking')} />
         <Cell icon={<MessageIcon />} label={t('more.cells.feedbackSettings')} onClick={() => onNavigate('feedback_settings')} />
         <Cell icon={<ToolIcon />} label={t('more.cells.services')} onClick={() => onNavigate('services')} />
         <Cell

@@ -21,6 +21,7 @@ import Minisite from './pages/Minisite';
 import Reports from './pages/Reports';
 import Subscription from './pages/Subscription';
 import ThemePickerPage from './pages/ThemePickerPage';
+import AutobookingPage from './pages/AutobookingPage';
 import { getMasterMe, getMyCategories } from '../api/client';
 import { useI18n } from '../i18n';
 import AppHeader from './components/AppHeader';
@@ -148,6 +149,7 @@ export default function MasterApp() {
     subscription:  t('masterApp.titles.subscription'),
     broadcast:     t('masterApp.titles.broadcast'),
     theme_picker:  t('masterApp.titles.themePicker'),
+    autobooking:   t('masterApp.titles.autobooking'),
   };
 
   const currentTitle = current ? titleMap[current.type] : null;
@@ -318,6 +320,15 @@ export default function MasterApp() {
         <div className="master-shell">
           <AppHeader title={currentTitle} />
           <ThemePickerPage />
+        </div>
+      );
+    }
+
+    if (type === 'autobooking') {
+      return (
+        <div className="master-shell">
+          <AppHeader title={currentTitle} />
+          <AutobookingPage />
         </div>
       );
     }
