@@ -23,10 +23,16 @@ export default function AutobookingPage({ onNavigate }) {
   return (
     <div style={{ padding: 16 }}>
       <BookingToggleCard settings={data} />
-      <MissingDurationWarning onGotoServices={() => onNavigate?.('services')} />
-      <WeeklyScheduleCard settings={data} />
-      <ExceptionsCard settings={data} />
-      <PoliciesCard settings={data} />
+      {/* When the master flips the toggle off the rest of the screen
+          stays editable (so they can pre-configure schedule before
+          turning self-booking on) but visually dimmed as a hint that
+          nothing is currently exposed publicly. */}
+      <div style={{ opacity: data.enabled ? 1 : 0.65 }}>
+        <MissingDurationWarning onGotoServices={() => onNavigate?.('services')} />
+        <WeeklyScheduleCard settings={data} />
+        <ExceptionsCard settings={data} />
+        <PoliciesCard settings={data} />
+      </div>
     </div>
   );
 }

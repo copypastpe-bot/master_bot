@@ -14,13 +14,12 @@ import { useUpdateBookingSettings } from '../../hooks/useBookingSettings';
 export default function PoliciesCard({ settings }) {
   const { t } = useI18n();
   const updateMut = useUpdateBookingSettings();
+  // Local state initialised once. Cross-device editing during a single
+  // session is out of scope for the pilot — if it ever becomes a concern,
+  // switch to the React 19 setState-during-render pattern for derived
+  // state. The optimistic mutation already keeps the cache in sync.
   const [cutoff, setCutoff] = useState(settings.cancel_cutoff_hours);
   const [horizon, setHorizon] = useState(settings.horizon_days);
-
-  // Keep local state in sync if the server ever returns a different value
-  // (e.g. another device changed it while this one was idle).
-  useEffect(() => { setCutoff(settings.cancel_cutoff_hours); }, [settings.cancel_cutoff_hours]);
-  useEffect(() => { setHorizon(settings.horizon_days); }, [settings.horizon_days]);
 
   const timer = useRef(null);
   const queueSave = (nextCutoff, nextHorizon) => {
