@@ -361,3 +361,19 @@ export const deletePortfolioPhoto = (id) =>
 const publicApi = axios.create({ baseURL: API_URL });
 export const getPublicMasterProfile = (inviteToken) =>
   publicApi.get(`/api/public/master/${inviteToken}`).then(r => r.data);
+
+// Self-booking endpoints (backend deployed at 6dac549).
+export const getBookingSettings = () =>
+  api.get('/api/master/booking-settings').then(r => r.data);
+
+export const updateBookingSettings = (body) =>
+  api.put('/api/master/booking-settings', body).then(r => r.data);
+
+export const replaceWeeklySchedule = (intervals) =>
+  api.put('/api/master/schedule/weekly', intervals).then(r => r.data);
+
+export const addScheduleException = (body) =>
+  api.post('/api/master/schedule/exceptions', body).then(r => r.data);
+
+export const removeScheduleException = (id) =>
+  api.delete(`/api/master/schedule/exceptions/${id}`).then(r => r.data);
