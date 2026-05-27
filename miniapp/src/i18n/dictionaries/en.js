@@ -673,6 +673,46 @@ const en = {
       subtitle: 'The master has been notified and will contact you in Telegram',
     },
   },
+
+  autobooking: {
+    title: 'Self-booking',
+    on: 'on',
+    off: 'off',
+    toggle: {
+      label: 'Accept online bookings',
+      hint: 'Clients can book slots via your public link',
+    },
+    weekly: {
+      title: 'Schedule',
+      applyToWeekdays: 'Apply to weekdays',
+      dayOff: 'day off',
+      dayShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      intervalFrom: 'from',
+      intervalTo: 'to',
+      intervalAdd: 'Add interval',
+    },
+    exceptions: {
+      title: 'Exceptions',
+      add: 'Add exception',
+      asUsual: 'As usual',
+      off: 'Day off',
+      override: 'Custom hours',
+    },
+    policies: {
+      title: 'Policies',
+      cutoffLabel: 'Client cancellation cutoff',
+      cutoffUnit: 'h',
+      horizonLabel: 'Booking horizon',
+      horizonUnit: 'd',
+    },
+    missingDuration: {
+      title: 'Some services have no duration set',
+      body: 'Slots will be calculated as 60 minutes',
+      cta: 'Go to services',
+    },
+    serviceDurationLabel: 'Duration (min)',
+    saveFailed: 'Save failed',
+  },
 };
 
 export default en;

@@ -673,6 +673,46 @@ const ru = {
       subtitle: 'Мастер получил уведомление и свяжется с вами в Telegram',
     },
   },
+
+  autobooking: {
+    title: 'Автозапись',
+    on: 'вкл',
+    off: 'выкл',
+    toggle: {
+      label: 'Принимать онлайн-записи',
+      hint: 'Клиенты смогут бронировать слоты по публичной ссылке',
+    },
+    weekly: {
+      title: 'Расписание',
+      applyToWeekdays: 'Применить к будням',
+      dayOff: 'выходной',
+      dayShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+      intervalFrom: 'с',
+      intervalTo: 'до',
+      intervalAdd: 'Добавить интервал',
+    },
+    exceptions: {
+      title: 'Исключения',
+      add: 'Добавить исключение',
+      asUsual: 'Как обычно',
+      off: 'Выходной',
+      override: 'Особые часы',
+    },
+    policies: {
+      title: 'Политики',
+      cutoffLabel: 'До отмены клиентом',
+      cutoffUnit: 'ч',
+      horizonLabel: 'Горизонт записи',
+      horizonUnit: 'дн',
+    },
+    missingDuration: {
+      title: 'У некоторых услуг не задана длительность',
+      body: 'Слоты будут рассчитаны как 60 минут',
+      cta: 'Перейти к услугам',
+    },
+    serviceDurationLabel: 'Длительность (мин)',
+    saveFailed: 'Не удалось сохранить',
+  },
 };
 
 export default ru;
