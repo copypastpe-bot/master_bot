@@ -7,6 +7,7 @@ import {
   getMasterGoogleCalendarConnectUrl,
   disconnectMasterGoogleCalendar,
   trackMasterReferralLinkCopied,
+  getBookingSettings,
 } from '../../api/client';
 import SubscriptionPaywallSheet from '../components/SubscriptionPaywallSheet';
 import { useI18n } from '../../i18n';
@@ -176,6 +177,12 @@ export default function More({ onNavigate }) {
     queryKey: ['master-subscription'],
     queryFn: getMasterSubscription,
     staleTime: 20_000,
+  });
+  // Shared with AutobookingPage — same queryKey, cache is shared.
+  const { data: bookingSettings } = useQuery({
+    queryKey: ['booking-settings'],
+    queryFn: getBookingSettings,
+    staleTime: 15_000,
   });
 
   const connectGcMutation = useMutation({
@@ -373,7 +380,12 @@ export default function More({ onNavigate }) {
         <Cell icon={<UserIcon />} label={t('more.cells.profile')} onClick={() => onNavigate('profile')} />
         <Cell icon={<GiftIcon />} label={t('more.cells.bonus')} onClick={() => onNavigate('bonus')} />
         <Cell icon={<PaletteIcon />} label={t('more.cells.theme')} onClick={() => onNavigate('theme_picker')} />
-        <Cell icon={<CalendarIcon />} label={t('more.cells.autobooking')} onClick={() => onNavigate('autobooking')} />
+        <Cell
+          icon={<CalendarIcon />}
+          label={t('more.cells.autobooking')}
+          value={bookingSettings ? t(bookingSettings.enabled ? 'autobooking.on' : 'autobooking.off') : null}
+          onClick={() => onNavigate('autobooking')}
+        />
         <Cell icon={<MessageIcon />} label={t('more.cells.feedbackSettings')} onClick={() => onNavigate('feedback_settings')} />
         <Cell icon={<ToolIcon />} label={t('more.cells.services')} onClick={() => onNavigate('services')} />
         <Cell
