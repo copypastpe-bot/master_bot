@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n';
 import { useBookingSettings } from '../hooks/useBookingSettings';
 import BookingToggleCard from '../components/autobooking/BookingToggleCard';
+import PoliciesCard from '../components/autobooking/PoliciesCard';
 
 // AppHeader (from MasterApp) renders the back button + the
 // `masterApp.titles.autobooking` page title. This page renders only the
@@ -19,6 +20,7 @@ export default function AutobookingPage() {
   return (
     <div style={{ padding: 16 }}>
       <BookingToggleCard settings={data} />
+      <PoliciesCard settings={data} />
     </div>
   );
 }
