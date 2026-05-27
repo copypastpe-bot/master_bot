@@ -414,6 +414,7 @@ const en = {
       price: 'Price, {currency}',
       description: 'Description',
       descriptionPlaceholder: 'Optional',
+      duration: 'Duration (min)',
       archive: 'Archive',
       showOnLanding: 'Show on mini-site',
       showOnLandingHint: 'Service will be visible on your mini-site',

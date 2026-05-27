@@ -2,13 +2,14 @@ import { useI18n } from '../../i18n';
 import { useBookingSettings } from '../hooks/useBookingSettings';
 import BookingToggleCard from '../components/autobooking/BookingToggleCard';
 import PoliciesCard from '../components/autobooking/PoliciesCard';
+import MissingDurationWarning from '../components/autobooking/MissingDurationWarning';
 
 // AppHeader (from MasterApp) renders the back button + the
 // `masterApp.titles.autobooking` page title. This page renders only the
 // scrollable body content. Subsequent tasks (6-9) add more cards under
 // the toggle: MissingDurationWarning, WeeklyScheduleCard, ExceptionsCard,
 // PoliciesCard.
-export default function AutobookingPage() {
+export default function AutobookingPage({ onNavigate }) {
   const { t } = useI18n();
   const { data, isLoading, isError } = useBookingSettings();
 
@@ -20,6 +21,7 @@ export default function AutobookingPage() {
   return (
     <div style={{ padding: 16 }}>
       <BookingToggleCard settings={data} />
+      <MissingDurationWarning onGotoServices={() => onNavigate?.('services')} />
       <PoliciesCard settings={data} />
     </div>
   );

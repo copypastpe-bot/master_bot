@@ -328,7 +328,7 @@ export default function MasterApp() {
       return (
         <div className="master-shell">
           <AppHeader title={currentTitle} />
-          <AutobookingPage />
+          <AutobookingPage onNavigate={(t, p) => push(t, p)} />
         </div>
       );
     }

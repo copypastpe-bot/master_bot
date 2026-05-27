@@ -73,9 +73,14 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
   const [price, setPrice] = useState(String(initial?.price || ''));
   const [description, setDescription] = useState(initial?.description || '');
   const [showOnLanding, setShowOnLanding] = useState(initial?.show_on_landing ?? true);
+  // duration_minutes drives the self-booking slot grid; default 60 matches
+  // the SQL DEFAULT in migration 026. Stored as string for the controlled
+  // number input, parsed on save.
+  const [duration, setDuration] = useState(String(initial?.duration_minutes ?? 60));
 
   const handleSave = () => {
     const parsedPrice = parseInt(price, 10);
+    const parsedDuration = parseInt(duration, 10);
     if (!name.trim() || !parsedPrice || parsedPrice <= 0) {
       hapticNotify('error');
       return;
@@ -86,6 +91,7 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
       price: parsedPrice,
       description: description.trim() || null,
       show_on_landing: showOnLanding,
+      duration_minutes: parsedDuration > 0 ? parsedDuration : 60,
     });
   };
 
@@ -120,6 +126,17 @@ function ServiceSheet({ initial, onClose, onSave, onArchive, loading, currencySy
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t('services.sheet.descriptionPlaceholder')}
           rows={3}
+          className="enterprise-sheet-input"
+        />
+
+        <label className="enterprise-services-sheet-label">{t('services.sheet.duration')}</label>
+        <input
+          type="number"
+          min={15}
+          step={15}
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          placeholder="60"
           className="enterprise-sheet-input"
         />
 

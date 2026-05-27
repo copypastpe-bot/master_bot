@@ -414,6 +414,7 @@ const ru = {
       price: 'Цена, {currency}',
       description: 'Описание',
       descriptionPlaceholder: 'Необязательно',
+      duration: 'Длительность (мин)',
       archive: 'В архив',
       showOnLanding: 'Показывать на минисайте',
       showOnLandingHint: 'Услуга будет видна на вашем минисайте',
