@@ -4,6 +4,7 @@ import BookingToggleCard from '../components/autobooking/BookingToggleCard';
 import PoliciesCard from '../components/autobooking/PoliciesCard';
 import MissingDurationWarning from '../components/autobooking/MissingDurationWarning';
 import WeeklyScheduleCard from '../components/autobooking/WeeklyScheduleCard';
+import ExceptionsCard from '../components/autobooking/ExceptionsCard';
 
 // AppHeader (from MasterApp) renders the back button + the
 // `masterApp.titles.autobooking` page title. This page renders only the
@@ -24,6 +25,7 @@ export default function AutobookingPage({ onNavigate }) {
       <BookingToggleCard settings={data} />
       <MissingDurationWarning onGotoServices={() => onNavigate?.('services')} />
       <WeeklyScheduleCard settings={data} />
+      <ExceptionsCard settings={data} />
       <PoliciesCard settings={data} />
     </div>
   );
